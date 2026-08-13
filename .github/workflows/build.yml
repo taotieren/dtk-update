@@ -11,7 +11,7 @@ jobs:
   build-deb:
     runs-on: ubuntu-latest
     container:
-      image: deepinroot/deepin-build:25
+      image: deepin/deepin-build:25
     steps:
       - uses: actions/checkout@v4
 
@@ -47,7 +47,7 @@ jobs:
   build-dtk5:
     runs-on: ubuntu-latest
     container:
-      image: deepinroot/deepin-build:25
+      image: deepin/deepin-build:25
     steps:
       - uses: actions/checkout@v4
       - name: Install DTK5 build deps

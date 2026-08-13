@@ -117,7 +117,7 @@ ctest --output-on-failure   # unit tests
 sudo make install
 ```
 
-CI builds on the `deepinroot/deepin-build:25` image and produces `.deb` artifacts.
+CI builds on the `deepin/deepin-build:25` image and produces `.deb` artifacts.
 
 ## Translations
 

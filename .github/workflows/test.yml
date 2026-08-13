@@ -10,7 +10,7 @@ jobs:
   unit-test:
     runs-on: ubuntu-latest
     container:
-      image: deepinroot/deepin-build:25
+      image: deepin/deepin-build:25
     steps:
       - uses: actions/checkout@v4
       - name: Install deps

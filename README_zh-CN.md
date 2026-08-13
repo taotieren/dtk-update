@@ -97,7 +97,7 @@ ctest --output-on-failure   # 单元测试
 sudo make install
 ```
 
-CI 使用 `deepinroot/deepin-build:25` 镜像构建并产出 `.deb` 产物。
+CI 使用 `deepin/deepin-build:25` 镜像构建并产出 `.deb` 产物。
 
 ## 翻译
 
