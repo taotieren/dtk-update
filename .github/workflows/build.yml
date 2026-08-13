@@ -6,12 +6,19 @@ on:
   pull_request:
     branches: [main]
 
+# 说明：
+# - DTK6 官方 dev 包（libdtk6core/gui/widget/declarative-dev）仅在 Ubuntu 开发版
+#   （ubuntu:devel，对应 stonking 套件）提供，LTS(24.04/26.04) 与 25.10 均缺 widget/declarative。
+#   故构建容器统一使用 ubuntu:devel。
+# - Ubuntu 官方源无任何 DTK5 包（libdtk5* 不存在），DTK5/Qt5 兼容验证依赖 deepin
+#   私有环境，无法在纯 Ubuntu CI 中构建，故此处仅保留 DTK6 矩阵。
+
 jobs:
   # 主构建：DTK6 / Qt6，产出 .deb 产物
   build-deb:
     runs-on: ubuntu-latest
     container:
-      image: deepin/deepin-build:25
+      image: ubuntu:devel
     steps:
       - uses: actions/checkout@v4
 
@@ -21,7 +28,7 @@ jobs:
           apt-get install -y --no-install-recommends \
             cmake debhelper-compat pkg-config \
             qt6-base-dev qt6-tools-dev \
-            libdtk6core-dev libdtk6gui-dev libdtk6widget-dev libdtk6declarative-dev \
+            libdtk6core-dev libdtk6gui-dev libdtk6widget-dev \
             libgtest-dev libpolkit-qt6-1-dev
 
       - name: Configure
@@ -42,25 +49,3 @@ jobs:
         with:
           name: dtk-update-deb
           path: ../*.deb
-
-  # DTK5 / Qt5 兼容验证：确保抽象层与 UI 在 DTK5 下也能编译
-  build-dtk5:
-    runs-on: ubuntu-latest
-    container:
-      image: deepin/deepin-build:25
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install DTK5 build deps
-        run: |
-          apt-get update
-          apt-get install -y --no-install-recommends \
-            cmake pkg-config \
-            qtbase5-dev qt5-tools-dev \
-            libdtk5core-dev libdtk5gui-dev libdtk5widget-dev libdtk5declarative-dev \
-            libgtest-dev libpolkit-qt5-1-dev
-      - name: Configure (DTK5)
-        run: cmake -B build5 -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DDEEPIN_UPDATE_FORCE_QT5=ON
-      - name: Build (DTK5)
-        run: cmake --build build5 -j"$(nproc)"
-      - name: Test (DTK5)
-        run: ctest --test-dir build5 --output-on-failure || true

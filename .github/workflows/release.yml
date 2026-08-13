@@ -14,7 +14,7 @@ jobs:
   release-deb:
     runs-on: ubuntu-latest
     container:
-      image: deepin/deepin-build:25
+      image: ubuntu:devel
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,7 +27,7 @@ jobs:
           apt-get install -y --no-install-recommends \
             cmake debhelper-compat pkg-config \
             qt6-base-dev qt6-tools-dev \
-            libdtk6core-dev libdtk6gui-dev libdtk6widget-dev libdtk6declarative-dev \
+            libdtk6core-dev libdtk6gui-dev libdtk6widget-dev \
             libgtest-dev libpolkit-qt6-1-dev
 
       - name: Determine version from tag
