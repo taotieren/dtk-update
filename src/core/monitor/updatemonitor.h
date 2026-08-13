@@ -1,0 +1,95 @@
+#pragma once
+
+#include "core/package/packageinfo.h"
+#include "common/appconfig.h"
+#include "core/security/securityadvisor.h"
+#include "core/healthcheck/preupdatecheck.h"
+#include "core/healthcheck/postupdatecheck.h"
+
+#include <QObject>
+#include <QTimer>
+#include <QDateTime>
+#include <QLockFile>
+
+namespace DtkUpdate {
+
+class PackageBackend;
+
+/**
+ * @brief 更新监控调度
+ *
+ * 按 DConfig 间隔定时检查；监听网络恢复（NetworkManager）与会话就绪信号触发检查。
+ * 维护状态机：Idle / Checking / HasUpdates / Updating / Error。
+ * 仅负责调度与状态聚合；检查委托 PackageBackend，升级前经 SecurityAdvisor 评估。
+ */
+class UpdateMonitor : public QObject {
+    Q_OBJECT
+public:
+    enum class State { Idle, Checking, HasUpdates, Updating, Error };
+    Q_ENUM(State)
+
+    explicit UpdateMonitor(PackageBackend *backend,
+                           AppConfig *config,
+                           QObject *parent = nullptr);
+    ~UpdateMonitor() override;
+
+    State state() const { return m_state; }
+    const PackageList &upgradable() const { return m_upgradable; }
+    QDateTime lastCheck() const { return m_lastCheck; }
+
+    // 设置安全提示器（可选；为空则跳过升级前提示）
+    void setSecurityAdvisor(SecurityAdvisor *advisor) { m_advisor = advisor; }
+
+public slots:
+    void start();
+    void stop();
+    void checkNow();          // 手动/事件触发检查
+    void applyUpdates();      // 执行升级（全部可升级包）
+    void proceedUpdate();     // 安全提示确认后继续（由 UI 调用）
+    void cancelUpdate();      // 用户取消升级（由 UI 调用）
+
+signals:
+    void stateChanged(State state);
+    void updatesAvailable(const PackageList &packages);
+    void checkFailed(const QString &error);
+
+    // 升级前安全提示（UI 据此弹窗确认，确认后调用 proceedUpdate）。
+    // pre：升级前预检报告（内核待重启/服务/配置审阅建议），仅展示不自动执行。
+    void securityPrompt(const QString &overallSeverity,
+                        const QList<SecurityAdvisor::Advisory> &advs,
+                        const PreCheckReport &pre);
+    void upgradeProgress(const QString &stage, int percent);
+    void upgradeFinished(bool success, const QString &detail);
+
+    // 升级被用户取消
+    void upgradeCancelled();
+
+    // 升级后后检报告（内核/服务/配置审阅建议），供 UI 提示用户，绝不自动执行
+    void postCheck(const PostCheckReport &report);
+
+private slots:
+    void onTimeout();
+    void onConfigChanged();
+    void onPrepareForSleep(bool sleeping);   // logind 唤醒后检查
+    void onNmStateChanged(uint state);       // NetworkManager 连通后检查
+    void onBackendProgress(const QString &stage, int percent);
+    void onBackendFinished(bool success, const QString &detail);
+
+private:
+    void setState(State s);
+    void applyConfigInterval();
+
+    PackageBackend *m_backend;
+    AppConfig *m_config;
+    SecurityAdvisor *m_advisor = nullptr;
+    QTimer *m_timer;
+    State m_state = State::Idle;
+    PackageList m_upgradable;
+    QDateTime m_lastCheck;
+    QLockFile *m_lock = nullptr;  // 进程级并发锁，防止 gui+tray 同时写系统
+    // 用户已取消升级标志：install 为异步后台执行，cancelUpdate 后子线程仍可能 emit
+    // operationFinished，此时必须忽略（不再弹后检/重查），否则会与"已取消"矛盾。
+    bool m_cancelled = false;
+};
+
+}  // namespace DtkUpdate
