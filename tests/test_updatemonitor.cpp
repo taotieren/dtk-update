@@ -1,0 +1,161 @@
+#include <gtest/gtest.h>
+
+#include "core/monitor/updatemonitor.h"
+#include "core/package/packagebackend.h"
+#include "core/security/securityadvisor.h"
+
+#include <QtTest/QTest>
+#include <QtTest/QSignalSpy>
+
+using namespace DtkUpdate;
+
+// 进程级 QCoreApplication 单例由 test_runprivasync.cpp 定义（同一 Qt::Test 条件块内），
+// 此处仅声明引用，避免多 TU 重复构造 QCoreApplication 导致崩溃。
+extern void ensureApp();
+
+// 伪后端：可控返回，记录写操作调用
+class MonitorFakeBackend : public PackageBackend {
+    Q_OBJECT
+public:
+    explicit MonitorFakeBackend(QObject *parent = nullptr) : PackageBackend(parent) {}
+    BackendType backendType() const override { return BackendType::Apt; }
+    QString backendId() const override { return QStringLiteral("fake"); }
+    QString backendName() const override { return QStringLiteral("Fake"); }
+    bool isAvailable() const override { return true; }
+    bool supportsResidualConfig() const override { return true; }
+    QVariantMap backendOptions() const override { return {}; }
+
+    bool fetchUpgradable(PackageList &out, QString &) override
+    {
+        out = m_upgradable;
+        return m_fetchOk;
+    }
+    bool listInstalled(PackageList &, const QString &, QString &) override { return true; }
+    bool simulateInstall(const QString &, QString &, QString &) override { return true; }
+    bool listResidualPackages(PackageList &, QString &) override { return true; }
+    QStringList cacheDirectories() const override { return {}; }
+
+    bool install(const QStringList &packages, QString &) override
+    {
+        m_installed = packages;
+        emit operationFinished(true, QStringLiteral("ok"));
+        return true;
+    }
+    bool remove(const QStringList &, QString &) override { return true; }
+    bool purge(const QStringList &, QString &) override { return true; }
+    bool autoremove(QString &) override { return true; }
+    bool cleanCache(QString &) override { return true; }
+
+    PackageList m_upgradable;
+    bool m_fetchOk = true;
+    QStringList m_installed;
+};
+
+// 伪配置：固定间隔，避免依赖 DConfig 实现
+class FakeConfig : public AppConfig {
+public:
+    explicit FakeConfig(QObject *p = nullptr) : AppConfig(p) {}
+};
+
+TEST(UpdateMonitorTest, CheckNowSetsHasUpdates)
+{
+    MonitorFakeBackend backend;
+    PackageInfo pi; pi.name = QStringLiteral("foo"); pi.isUpgradable = true;
+    backend.m_upgradable = {pi};
+
+    FakeConfig config;
+    UpdateMonitor monitor(&backend, &config);
+    QSignalSpy spyState(&monitor, &UpdateMonitor::stateChanged);
+    QSignalSpy spyAvail(&monitor, &UpdateMonitor::updatesAvailable);
+
+    monitor.checkNow();
+    EXPECT_EQ(monitor.state(), UpdateMonitor::State::HasUpdates);
+    EXPECT_EQ(monitor.upgradable().size(), 1);
+    EXPECT_EQ(spyAvail.count(), 1);
+}
+
+TEST(UpdateMonitorTest, CheckNowNoUpdatesIdle)
+{
+    MonitorFakeBackend backend;  // 空列表
+    FakeConfig config;
+    UpdateMonitor monitor(&backend, &config);
+    monitor.checkNow();
+    EXPECT_EQ(monitor.state(), UpdateMonitor::State::Idle);
+}
+
+TEST(UpdateMonitorTest, CheckNowFailureSetsError)
+{
+    MonitorFakeBackend backend;
+    backend.m_fetchOk = false;
+    FakeConfig config;
+    UpdateMonitor monitor(&backend, &config);
+    QSignalSpy spyFail(&monitor, &UpdateMonitor::checkFailed);
+    monitor.checkNow();
+    EXPECT_EQ(monitor.state(), UpdateMonitor::State::Error);
+    EXPECT_EQ(spyFail.count(), 1);
+}
+
+TEST(UpdateMonitorTest, ApplyUpdatesEmitsSecurityPromptThenProceed)
+{
+    ensureApp();
+    MonitorFakeBackend backend;
+    PackageInfo pi; pi.name = QStringLiteral("systemd"); pi.isUpgradable = true;  // critical 组件
+    backend.m_upgradable = {pi};
+
+    FakeConfig config;
+    SecurityAdvisor advisor;
+    UpdateMonitor monitor(&backend, &config);
+    monitor.setSecurityAdvisor(&advisor);
+
+    // 真实流程：checkNow 同步填充 m_upgradable（升级目标来自已发现的可升级包）
+    QSignalSpy spyAvail(&monitor, &UpdateMonitor::updatesAvailable);
+    monitor.checkNow();
+    ASSERT_EQ(spyAvail.count(), 1);
+    ASSERT_EQ(monitor.state(), UpdateMonitor::State::HasUpdates);
+
+    QSignalSpy spyPrompt(&monitor, &UpdateMonitor::securityPrompt);
+    QSignalSpy spyFinished(&monitor, &UpdateMonitor::upgradeFinished);
+
+    monitor.applyUpdates();
+    // 有 advisor 时应触发安全提示并暂停，不立即安装
+    EXPECT_EQ(spyPrompt.count(), 1);
+    EXPECT_TRUE(backend.m_installed.isEmpty());
+
+    // 用户确认后继续
+    monitor.proceedUpdate();
+    EXPECT_TRUE(backend.m_installed.contains(QStringLiteral("systemd")));
+    EXPECT_EQ(spyFinished.count(), 1);
+}
+
+TEST(UpdateMonitorTest, ApplyUpdatesWithoutAdvisorInstallsDirectly)
+{
+    ensureApp();
+    MonitorFakeBackend backend;
+    PackageInfo pi; pi.name = QStringLiteral("firefox"); pi.isUpgradable = true;
+    backend.m_upgradable = {pi};
+
+    FakeConfig config;
+    UpdateMonitor monitor(&backend, &config);  // 无 advisor
+
+    QSignalSpy spyAvail(&monitor, &UpdateMonitor::updatesAvailable);
+    monitor.checkNow();
+    ASSERT_EQ(spyAvail.count(), 1);
+    ASSERT_EQ(monitor.state(), UpdateMonitor::State::HasUpdates);
+
+    QSignalSpy spyPrompt(&monitor, &UpdateMonitor::securityPrompt);
+    monitor.applyUpdates();
+    // 无 advisor 时直接安装，不发安全提示
+    EXPECT_EQ(spyPrompt.count(), 0);
+    EXPECT_TRUE(backend.m_installed.contains(QStringLiteral("firefox")));
+}
+
+TEST(UpdateMonitorTest, ApplyUpdatesEmptyNoOp)
+{
+    MonitorFakeBackend backend;  // 无可升级
+    FakeConfig config;
+    UpdateMonitor monitor(&backend, &config);
+    monitor.applyUpdates();
+    EXPECT_TRUE(backend.m_installed.isEmpty());
+}
+
+#include "test_updatemonitor.moc"
