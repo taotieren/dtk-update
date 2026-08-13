@@ -26,10 +26,10 @@ jobs:
         run: |
           apt-get update
           apt-get install -y --no-install-recommends \
-            cmake g++ pkg-config \
+            cmake g++ build-essential pkg-config \
             qt6-base-dev qt6-tools-dev \
             libdtk6core-dev libdtk6gui-dev libdtk6widget-dev \
-            libgtest-dev libpolkit-qt6-1-dev
+            libgtest-dev libpolkit-qt6-1-dev debhelper
 
       - name: Configure
         env:

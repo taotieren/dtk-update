@@ -287,7 +287,10 @@ namespace DtkUpdate
         Q_UNUSED(error)
         // 容器环境无独立内核，重启检查无意义（多为宿主内核），直接判否避免误报。
         if (SystemInfo::isContainer())
-            return true; // 支持探测，但结果为不需要重启
+        {
+            required = false; // 与 DnfBackend 一致：容器不报需重启
+            return true;      // 支持探测，但结果为不需要重启
+        }
         // Debian/Ubuntu/Deepin 约定：/run/reboot-required（或 /var/run/reboot-required）
         // 存在即表示本次更新需要重启（内核或底层库）。仅读取，不修改。
         required = QFile::exists(QStringLiteral("/run/reboot-required")) ||
