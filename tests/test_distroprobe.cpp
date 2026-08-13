@@ -1,23 +1,24 @@
+#include <QFile>
+#include <QTemporaryDir>
+#include <QTextStream>
+
 #include "common/distroprobe.h"
 
 #include <gtest/gtest.h>
 
-#include <QTemporaryDir>
-#include <QFile>
-#include <QTextStream>
-
 using namespace DtkUpdate;
 
-namespace {
-void writeOsRelease(const QString &path, const QString &content)
+namespace
 {
-    QFile f(path);
-    ASSERT_TRUE(f.open(QIODevice::WriteOnly | QIODevice::Text));
-    QTextStream ts(&f);
-    ts.setEncoding(QStringConverter::Utf8);
-    ts << content;
-}
-}
+    void writeOsRelease(const QString& path, const QString& content)
+    {
+        QFile f(path);
+        ASSERT_TRUE(f.open(QIODevice::WriteOnly | QIODevice::Text));
+        QTextStream ts(&f);
+        ts.setEncoding(QStringConverter::Utf8);
+        ts << content;
+    }
+} // namespace
 
 TEST(DistroProbeTest, DetectDebianFamily)
 {

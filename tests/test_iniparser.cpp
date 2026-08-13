@@ -77,8 +77,7 @@ TEST(IniParserTest, CrlfTolerated)
 {
     IniParser p;
     QString err;
-    ASSERT_TRUE(p.parse("PreferredBackend = dnf\r\n[apt]\r\nX = 1\r\n", &err))
-        << err.toStdString();
+    ASSERT_TRUE(p.parse("PreferredBackend = dnf\r\n[apt]\r\nX = 1\r\n", &err)) << err.toStdString();
     EXPECT_EQ(p.value("PreferredBackend").toStdString(), "dnf");
     EXPECT_EQ(p.value("apt.X").toStdString(), "1");
 }

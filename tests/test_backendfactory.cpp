@@ -1,18 +1,18 @@
-#include <gtest/gtest.h>
-
 #include "core/package/backendfactory.h"
+
+#include <gtest/gtest.h>
 
 using namespace DtkUpdate;
 
 TEST(BackendFactoryTest, CreateById)
 {
     // 按 id 强制创建后端（不依赖系统是否真实存在）
-    PackageBackend *apt = BackendFactory::createById(QStringLiteral("apt"));
+    PackageBackend* apt = BackendFactory::createById(QStringLiteral("apt"));
     ASSERT_NE(apt, nullptr);
     EXPECT_EQ(apt->backendId(), QStringLiteral("apt"));
     delete apt;
 
-    PackageBackend *dnf = BackendFactory::createById(QStringLiteral("dnf"));
+    PackageBackend* dnf = BackendFactory::createById(QStringLiteral("dnf"));
     ASSERT_NE(dnf, nullptr);
     EXPECT_EQ(dnf->backendId(), QStringLiteral("dnf"));
     delete dnf;
@@ -37,7 +37,7 @@ TEST(BackendFactoryTest, AvailableIdsDoesNotThrow)
 TEST(BackendFactoryTest, NoSilentFallbackOnUnsupportedFamily)
 {
     // Arch 系本机缺 apt-get/dpkg-query 与 rpm，任何后端都不可用
-    PackageBackend *b = BackendFactory::createBackend(DistroProbe::Family::Arch, nullptr);
+    PackageBackend* b = BackendFactory::createBackend(DistroProbe::Family::Arch, nullptr);
     EXPECT_EQ(b, nullptr) << "factory must not silently pick an unrelated backend "
                              "on families without an implemented backend";
     delete b;
@@ -47,8 +47,8 @@ TEST(BackendFactoryTest, NoSilentFallbackOnUnsupportedFamily)
 TEST(BackendFactoryTest, AutoDetectRespectsFamily)
 {
     // 在 Arch 上自动探测应返回 nullptr（无可用后端）
-    PackageBackend *b = BackendFactory::createBackend(DistroProbe::Family::Arch, nullptr,
-                                                      QString());
+    PackageBackend* b =
+        BackendFactory::createBackend(DistroProbe::Family::Arch, nullptr, QString());
     EXPECT_EQ(b, nullptr);
     delete b;
 }

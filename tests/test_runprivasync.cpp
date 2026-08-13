@@ -1,14 +1,13 @@
-#include <gtest/gtest.h>
-
-#include "core/package/packagebackend.h"
-#include "core/package/aptbackend.h"
-
-#include <QSignalSpy>
 #include <QCoreApplication>
+#include <QSignalSpy>
 #include <QtConcurrent>
-
 #include <chrono>
 #include <thread>
+
+#include "core/package/aptbackend.h"
+#include "core/package/packagebackend.h"
+
+#include <gtest/gtest.h>
 
 using namespace DtkUpdate;
 
@@ -19,17 +18,18 @@ void ensureApp()
 {
     static int argc = 1;
     static char arg0[] = "test-runprivasync";
-    static char *argv[] = {arg0, nullptr};
+    static char* argv[] = {arg0, nullptr};
     static QCoreApplication app(argc, argv);
     Q_UNUSED(app);
 }
 
 // runPrivilegedAsync 是 PackageBackend 的 protected 方法；子类化暴露以便测试。
-class AsyncHarness : public AptBackend {
+class AsyncHarness : public AptBackend
+{
     Q_OBJECT
-public:
+  public:
     using AptBackend::AptBackend;
-    void runAsync(std::function<bool(QString &, QString &)> task)
+    void runAsync(std::function<bool(QString&, QString&)> task)
     {
         runPrivilegedAsync(std::move(task));
     }
@@ -44,11 +44,13 @@ TEST(RunPrivilegedAsyncTest, DoesNotBlockCaller)
     // 任务睡眠 200ms 模拟升级耗时
     bool ran = false;
     auto start = std::chrono::steady_clock::now();
-    h.runAsync([&ran](QString &, QString &) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
-        ran = true;
-        return true;
-    });
+    h.runAsync(
+        [&ran](QString&, QString&)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            ran = true;
+            return true;
+        });
     auto elapsed = std::chrono::steady_clock::now() - start;
     // 若同步阻塞，elapsed 应 >= 200ms；异步则远小于此。
     EXPECT_LT(std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count(), 100)
@@ -66,10 +68,12 @@ TEST(RunPrivilegedAsyncTest, ResultDeliveredViaSignal)
     ensureApp();
     AsyncHarness h;
     QSignalSpy spy(&h, &PackageBackend::operationFinished);
-    h.runAsync([](QString &out, QString &) {
-        out = QStringLiteral("done-123");
-        return true;
-    });
+    h.runAsync(
+        [](QString& out, QString&)
+        {
+            out = QStringLiteral("done-123");
+            return true;
+        });
     ASSERT_TRUE(spy.wait(2000));
     ASSERT_EQ(spy.count(), 1);
     // 参数：(bool success, QString detail)
@@ -83,10 +87,12 @@ TEST(RunPrivilegedAsyncTest, FailureDeliveredViaSignal)
     ensureApp();
     AsyncHarness h;
     QSignalSpy spy(&h, &PackageBackend::operationFinished);
-    h.runAsync([](QString &out, QString &) {
-        out = QStringLiteral("boom");
-        return false;
-    });
+    h.runAsync(
+        [](QString& out, QString&)
+        {
+            out = QStringLiteral("boom");
+            return false;
+        });
     ASSERT_TRUE(spy.wait(2000));
     ASSERT_EQ(spy.count(), 1);
     EXPECT_FALSE(spy.first().at(0).toBool());

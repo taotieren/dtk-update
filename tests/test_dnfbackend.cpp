@@ -1,8 +1,8 @@
-#include <gtest/gtest.h>
-
 #include <QStandardPaths>
 
 #include "core/package/dnfbackend.h"
+
+#include <gtest/gtest.h>
 
 using namespace DtkUpdate;
 
@@ -25,7 +25,8 @@ TEST(DnfBackendTest, NotAvailableWhenRpmMissing)
     DnfBackend backend;
     const bool avail = backend.isAvailable();
 #ifdef __linux__
-    if (!QStandardPaths::findExecutable(QStringLiteral("rpm")).isEmpty()) {
+    if (!QStandardPaths::findExecutable(QStringLiteral("rpm")).isEmpty())
+    {
         GTEST_SKIP() << "real dnf/rpm environment, skip negative assertion";
     }
     EXPECT_FALSE(avail) << "dnf backend must NOT report available when "

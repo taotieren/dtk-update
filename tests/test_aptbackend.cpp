@@ -1,9 +1,9 @@
-#include <gtest/gtest.h>
-
 #include <QStandardPaths>
 
 #include "core/package/aptbackend.h"
 #include "core/package/packageparser.h"
+
+#include <gtest/gtest.h>
 
 using namespace DtkUpdate;
 
@@ -28,8 +28,7 @@ TEST(AptBackendTest, OptionsReflectConfig)
 TEST(AptBackendTest, ParseUpgradableLine)
 {
     PackageInfo info;
-    const QString line =
-        QStringLiteral("firefox/stable 120.0.1 amd64 [upgradable from: 119.0]");
+    const QString line = QStringLiteral("firefox/stable 120.0.1 amd64 [upgradable from: 119.0]");
     ASSERT_TRUE(PackageParser::parseUpgradableLine(line, info));
     EXPECT_EQ(info.name, QStringLiteral("firefox"));
     EXPECT_EQ(info.candidateVersion, QStringLiteral("120.0.1"));
@@ -45,8 +44,9 @@ TEST(AptBackendTest, NotAvailableWhenKeyCommandsMissing)
     const bool avail = backend.isAvailable();
 #ifdef __linux__
     // 仅在确认缺失关键命令的平台上断言为 false，避免在有真实 apt 的 CI 上误判
-    if (!QStandardPaths::findExecutable(QStringLiteral("apt-get")).isEmpty()
-        && !QStandardPaths::findExecutable(QStringLiteral("dpkg-query")).isEmpty()) {
+    if (!QStandardPaths::findExecutable(QStringLiteral("apt-get")).isEmpty() &&
+        !QStandardPaths::findExecutable(QStringLiteral("dpkg-query")).isEmpty())
+    {
         GTEST_SKIP() << "real apt environment, skip negative assertion";
     }
     EXPECT_FALSE(avail) << "apt backend must NOT report available when "

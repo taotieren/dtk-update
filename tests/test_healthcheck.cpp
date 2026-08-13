@@ -1,15 +1,15 @@
-#include "core/package/aptbackend.h"
-#include "core/package/dnfbackend.h"
-#include "core/healthcheck/preupdatecheck.h"
-#include "core/healthcheck/postupdatecheck.h"
-#include "common/systeminfo.h"
-
-#include <gtest/gtest.h>
-
 #include <QDir>
 #include <QFileInfo>
 #include <QSysInfo>
 #include <algorithm>
+
+#include "common/systeminfo.h"
+#include "core/healthcheck/postupdatecheck.h"
+#include "core/healthcheck/preupdatecheck.h"
+#include "core/package/aptbackend.h"
+#include "core/package/dnfbackend.h"
+
+#include <gtest/gtest.h>
 
 using namespace DtkUpdate;
 
@@ -41,7 +41,7 @@ TEST(HealthCheckTest, AptConfigFilesToReviewNoCrash)
     QStringList paths;
     QString err;
     ASSERT_TRUE(be.checkConfigFilesToReview(paths, err));
-    SUCCEED();  // 不保证有 .dpkg-new，仅验证调用稳定
+    SUCCEED(); // 不保证有 .dpkg-new，仅验证调用稳定
 }
 
 TEST(HealthCheckTest, PreCheckAggNoBackendSafe)
@@ -63,7 +63,7 @@ TEST(HealthCheckTest, PreCheckAggregatesFromAptBackend)
     AptBackend be;
     PreCheckReport r = PreUpdateCheck::run(&be);
     // 不崩溃且返回结构有效（本机 apt 探测结果可能为空，但聚合逻辑稳定）
-    EXPECT_TRUE(r.rebootRequired || !r.rebootRequired);  // 恒真，仅验证无异常
+    EXPECT_TRUE(r.rebootRequired || !r.rebootRequired); // 恒真，仅验证无异常
 }
 
 TEST(HealthCheckTest, PostCheckAggregatesFromAptBackend)
@@ -106,10 +106,10 @@ TEST(HealthCheckTest, DnfProbesGraceful)
     QStringList svcs, cfgs, units;
     QString err;
     const bool rebootSupported = be.checkRebootRequired(required, err);
-    EXPECT_TRUE(rebootSupported);  // 本机有 /usr/lib/modules，内核比对分支必支持
+    EXPECT_TRUE(rebootSupported); // 本机有 /usr/lib/modules，内核比对分支必支持
     const bool svcSupported = be.checkServicesNeedingRestart(svcs, err);
     EXPECT_TRUE(svcSupported || svcs.isEmpty());
-    ASSERT_TRUE(be.checkConfigFilesToReview(cfgs, err));  // 扫描 /etc 总是可做的
+    ASSERT_TRUE(be.checkConfigFilesToReview(cfgs, err)); // 扫描 /etc 总是可做的
     const bool unitsSupported = be.checkFailedUnits(units, err);
     EXPECT_TRUE(unitsSupported || units.isEmpty());
 }
@@ -128,11 +128,13 @@ TEST(HealthCheckTest, DnfRebootProbeFallsBackToKernelCompare)
     // running 内核与 /usr/lib/modules 最新内核若不一致，必须判需重启（不应静默 false）
     const QString running = QSysInfo::kernelVersion();
     QDir modules(QStringLiteral("/usr/lib/modules"));
-    if (modules.exists()) {
+    if (modules.exists())
+    {
         QStringList kernels;
-        for (const QFileInfo &fi : modules.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot))
+        for (const QFileInfo& fi : modules.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot))
             kernels.append(fi.fileName());
-        if (!kernels.isEmpty()) {
+        if (!kernels.isEmpty())
+        {
             std::sort(kernels.begin(), kernels.end());
             const QString latest = kernels.last();
             EXPECT_EQ(required, (running != latest))

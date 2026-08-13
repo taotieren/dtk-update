@@ -1,48 +1,49 @@
 #pragma once
 
-#include "packagebackend.h"
 #include "common/distroprobe.h"
+#include "packagebackend.h"
 
-namespace DtkUpdate {
-
-/**
- * @brief 包管理后端工厂
- *
- * 负责根据当前系统探测并创建合适的 PackageBackend 实例。
- * 上层（daemon/tray/ui）只需调用 createBackend() 即可获得与发行版匹配的后端，
- * 无需关心具体是 apt 还是 dnf。
- *
- * 扩展新发行版：在 createBackend() 中追加对应后端的可用性探测与实例化即可。
- */
-class BackendFactory {
-public:
-    /**
-     * @brief 创建当前系统首选的后端
-     * @param parent 父对象（可选）
-     * @param preferredId 首选后端 id（如 "apt"/"dnf"）；为空时按发行版预设自动探测
-     * @return 若 preferredId 指定且可用则用它；否则优先选发行版预设后端，
-     *         再回退其它可用后端；都不可用返回 nullptr（绝不静默选错后端）
-     */
-    static PackageBackend *createBackend(QObject *parent = nullptr,
-                                         const QString &preferredId = QString());
+namespace DtkUpdate
+{
 
     /**
-     * @brief 同上，但显式传入发行系（避免重复探测 / 测试可控）
+     * @brief 包管理后端工厂
+     *
+     * 负责根据当前系统探测并创建合适的 PackageBackend 实例。
+     * 上层（daemon/tray/ui）只需调用 createBackend() 即可获得与发行版匹配的后端，
+     * 无需关心具体是 apt 还是 dnf。
+     *
+     * 扩展新发行版：在 createBackend() 中追加对应后端的可用性探测与实例化即可。
      */
-    static PackageBackend *createBackend(DistroProbe::Family family,
-                                         QObject *parent = nullptr,
-                                         const QString &preferredId = QString());
+    class BackendFactory
+    {
+      public:
+        /**
+         * @brief 创建当前系统首选的后端
+         * @param parent 父对象（可选）
+         * @param preferredId 首选后端 id（如 "apt"/"dnf"）；为空时按发行版预设自动探测
+         * @return 若 preferredId 指定且可用则用它；否则优先选发行版预设后端，
+         *         再回退其它可用后端；都不可用返回 nullptr（绝不静默选错后端）
+         */
+        static PackageBackend* createBackend(QObject* parent = nullptr,
+                                             const QString& preferredId = QString());
 
-    /**
-     * @brief 按 backendId 强制创建指定后端（用于测试或手动选择）
-     * @param id 如 "apt" / "dnf"
-     */
-    static PackageBackend *createById(const QString &id, QObject *parent = nullptr);
+        /**
+         * @brief 同上，但显式传入发行系（避免重复探测 / 测试可控）
+         */
+        static PackageBackend* createBackend(DistroProbe::Family family, QObject* parent = nullptr,
+                                             const QString& preferredId = QString());
 
-    /**
-     * @brief 列出当前系统所有可用的后端 id（调试/UI 展示用）
-     */
-    static QStringList availableBackendIds();
-};
+        /**
+         * @brief 按 backendId 强制创建指定后端（用于测试或手动选择）
+         * @param id 如 "apt" / "dnf"
+         */
+        static PackageBackend* createById(const QString& id, QObject* parent = nullptr);
 
-}  // namespace DtkUpdate
+        /**
+         * @brief 列出当前系统所有可用的后端 id（调试/UI 展示用）
+         */
+        static QStringList availableBackendIds();
+    };
+
+} // namespace DtkUpdate

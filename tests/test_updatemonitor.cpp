@@ -1,11 +1,10 @@
-#include <gtest/gtest.h>
-
 #include "core/monitor/updatemonitor.h"
 #include "core/package/packagebackend.h"
 #include "core/security/securityadvisor.h"
 
-#include <QtTest/QTest>
 #include <QtTest/QSignalSpy>
+#include <QtTest/QTest>
+#include <gtest/gtest.h>
 
 using namespace DtkUpdate;
 
@@ -14,10 +13,11 @@ using namespace DtkUpdate;
 extern void ensureApp();
 
 // 伪后端：可控返回，记录写操作调用
-class MonitorFakeBackend : public PackageBackend {
+class MonitorFakeBackend : public PackageBackend
+{
     Q_OBJECT
-public:
-    explicit MonitorFakeBackend(QObject *parent = nullptr) : PackageBackend(parent) {}
+  public:
+    explicit MonitorFakeBackend(QObject* parent = nullptr) : PackageBackend(parent) {}
     BackendType backendType() const override { return BackendType::Apt; }
     QString backendId() const override { return QStringLiteral("fake"); }
     QString backendName() const override { return QStringLiteral("Fake"); }
@@ -25,26 +25,26 @@ public:
     bool supportsResidualConfig() const override { return true; }
     QVariantMap backendOptions() const override { return {}; }
 
-    bool fetchUpgradable(PackageList &out, QString &) override
+    bool fetchUpgradable(PackageList& out, QString&) override
     {
         out = m_upgradable;
         return m_fetchOk;
     }
-    bool listInstalled(PackageList &, const QString &, QString &) override { return true; }
-    bool simulateInstall(const QString &, QString &, QString &) override { return true; }
-    bool listResidualPackages(PackageList &, QString &) override { return true; }
+    bool listInstalled(PackageList&, const QString&, QString&) override { return true; }
+    bool simulateInstall(const QString&, QString&, QString&) override { return true; }
+    bool listResidualPackages(PackageList&, QString&) override { return true; }
     QStringList cacheDirectories() const override { return {}; }
 
-    bool install(const QStringList &packages, QString &) override
+    bool install(const QStringList& packages, QString&) override
     {
         m_installed = packages;
         emit operationFinished(true, QStringLiteral("ok"));
         return true;
     }
-    bool remove(const QStringList &, QString &) override { return true; }
-    bool purge(const QStringList &, QString &) override { return true; }
-    bool autoremove(QString &) override { return true; }
-    bool cleanCache(QString &) override { return true; }
+    bool remove(const QStringList&, QString&) override { return true; }
+    bool purge(const QStringList&, QString&) override { return true; }
+    bool autoremove(QString&) override { return true; }
+    bool cleanCache(QString&) override { return true; }
 
     PackageList m_upgradable;
     bool m_fetchOk = true;
@@ -52,15 +52,18 @@ public:
 };
 
 // 伪配置：固定间隔，避免依赖 DConfig 实现
-class FakeConfig : public AppConfig {
-public:
-    explicit FakeConfig(QObject *p = nullptr) : AppConfig(p) {}
+class FakeConfig : public AppConfig
+{
+  public:
+    explicit FakeConfig(QObject* p = nullptr) : AppConfig(p) {}
 };
 
 TEST(UpdateMonitorTest, CheckNowSetsHasUpdates)
 {
     MonitorFakeBackend backend;
-    PackageInfo pi; pi.name = QStringLiteral("foo"); pi.isUpgradable = true;
+    PackageInfo pi;
+    pi.name = QStringLiteral("foo");
+    pi.isUpgradable = true;
     backend.m_upgradable = {pi};
 
     FakeConfig config;
@@ -76,7 +79,7 @@ TEST(UpdateMonitorTest, CheckNowSetsHasUpdates)
 
 TEST(UpdateMonitorTest, CheckNowNoUpdatesIdle)
 {
-    MonitorFakeBackend backend;  // 空列表
+    MonitorFakeBackend backend; // 空列表
     FakeConfig config;
     UpdateMonitor monitor(&backend, &config);
     monitor.checkNow();
@@ -99,7 +102,9 @@ TEST(UpdateMonitorTest, ApplyUpdatesEmitsSecurityPromptThenProceed)
 {
     ensureApp();
     MonitorFakeBackend backend;
-    PackageInfo pi; pi.name = QStringLiteral("systemd"); pi.isUpgradable = true;  // critical 组件
+    PackageInfo pi;
+    pi.name = QStringLiteral("systemd");
+    pi.isUpgradable = true; // critical 组件
     backend.m_upgradable = {pi};
 
     FakeConfig config;
@@ -131,11 +136,13 @@ TEST(UpdateMonitorTest, ApplyUpdatesWithoutAdvisorInstallsDirectly)
 {
     ensureApp();
     MonitorFakeBackend backend;
-    PackageInfo pi; pi.name = QStringLiteral("firefox"); pi.isUpgradable = true;
+    PackageInfo pi;
+    pi.name = QStringLiteral("firefox");
+    pi.isUpgradable = true;
     backend.m_upgradable = {pi};
 
     FakeConfig config;
-    UpdateMonitor monitor(&backend, &config);  // 无 advisor
+    UpdateMonitor monitor(&backend, &config); // 无 advisor
 
     QSignalSpy spyAvail(&monitor, &UpdateMonitor::updatesAvailable);
     monitor.checkNow();
@@ -151,7 +158,7 @@ TEST(UpdateMonitorTest, ApplyUpdatesWithoutAdvisorInstallsDirectly)
 
 TEST(UpdateMonitorTest, ApplyUpdatesEmptyNoOp)
 {
-    MonitorFakeBackend backend;  // 无可升级
+    MonitorFakeBackend backend; // 无可升级
     FakeConfig config;
     UpdateMonitor monitor(&backend, &config);
     monitor.applyUpdates();

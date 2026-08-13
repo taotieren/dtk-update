@@ -1,20 +1,21 @@
-#include <gtest/gtest.h>
+#include <QString>
 
 #include "core/package/aptbackend.h"
 #include "core/package/dnfbackend.h"
 
-#include <QString>
+#include <gtest/gtest.h>
 
 using namespace DtkUpdate;
 
 // runProbe 是 PackageBackend 的 protected 方法；通过子类暴露以便测试。
 // 这是修复"needs-restarting 退出码语义反转"的根基：
 //   探针以退出码承载语义（1=需重启），runProbe 必须如实把退出码交到 *exitCode。
-class ProbeHarness : public AptBackend {
+class ProbeHarness : public AptBackend
+{
     Q_OBJECT
-public:
+  public:
     using AptBackend::AptBackend;
-    bool probe(const QStringList &args, QString &out, int &code) const
+    bool probe(const QStringList& args, QString& out, int& code) const
     {
         return runProbe(args, out, code);
     }
@@ -45,17 +46,18 @@ TEST(RunProbeTest, MissingCommandReportsFalse)
     ProbeHarness h;
     QString out;
     int code = -2;
-    ASSERT_FALSE(h.probe(QStringList{QStringLiteral("this-command-does-not-exist-xyz")},
-                         out, code));
+    ASSERT_FALSE(
+        h.probe(QStringList{QStringLiteral("this-command-does-not-exist-xyz")}, out, code));
     EXPECT_EQ(code, -1) << "unstartable command leaves exitCode at -1";
 }
 
 // 退出码契约同样直接适用于 dnf 后端（runProbe 现已统一为 protected）。
-class DnfProbeHarness : public DnfBackend {
+class DnfProbeHarness : public DnfBackend
+{
     Q_OBJECT
-public:
+  public:
     using DnfBackend::DnfBackend;
-    bool probe(const QStringList &args, QString &out, int &code) const
+    bool probe(const QStringList& args, QString& out, int& code) const
     {
         return runProbe(args, out, code);
     }
@@ -79,10 +81,9 @@ TEST(RunProbeTest, InheritsStableLocaleC)
     ProbeHarness h;
     QString out;
     int code = -2;
-    ASSERT_TRUE(h.probe(QStringList{QStringLiteral("bash"),
-                                     QStringLiteral("-c"),
-                                     QStringLiteral("echo $LC_ALL")},
-                        out, code));
+    ASSERT_TRUE(h.probe(
+        QStringList{QStringLiteral("bash"), QStringLiteral("-c"), QStringLiteral("echo $LC_ALL")},
+        out, code));
     EXPECT_EQ(code, 0);
     EXPECT_EQ(out.trimmed(), QStringLiteral("C"))
         << "runProbe must force LC_ALL=C into the child so output anchors stay untranslated";

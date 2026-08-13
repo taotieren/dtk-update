@@ -2,8 +2,9 @@
 
 #include <QString>
 
-namespace DtkUpdate {
+namespace DtkUpdate
+{
 
-void loadTranslator(const QString &appName);
+    void loadTranslator(const QString& appName);
 
-}  // namespace DtkUpdate
+} // namespace DtkUpdate

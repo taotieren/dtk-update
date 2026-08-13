@@ -1,6 +1,6 @@
-#include <gtest/gtest.h>
-
 #include "core/security/securityadvisor.h"
+
+#include <gtest/gtest.h>
 
 using namespace DtkUpdate;
 
@@ -32,8 +32,10 @@ TEST(SecurityAdvisorTest, OverallSeverityPicksMax)
 {
     SecurityAdvisor advisor;
     SecurityAdvisor::Advisory low, high;
-    low.package = QStringLiteral("a"); low.severity = QStringLiteral("low");
-    high.package = QStringLiteral("b"); high.severity = QStringLiteral("high");
+    low.package = QStringLiteral("a");
+    low.severity = QStringLiteral("low");
+    high.package = QStringLiteral("b");
+    high.severity = QStringLiteral("high");
     QList<SecurityAdvisor::Advisory> list{low, high};
     EXPECT_EQ(advisor.overallSeverity(list), QStringLiteral("high"));
 }
@@ -48,7 +50,8 @@ TEST(SecurityAdvisorTest, OverallSeverityCriticalWins)
 {
     SecurityAdvisor advisor;
     SecurityAdvisor::Advisory a;
-    a.package = QStringLiteral("linux-image-6.6"); a.severity = QStringLiteral("critical");
+    a.package = QStringLiteral("linux-image-6.6");
+    a.severity = QStringLiteral("critical");
     EXPECT_EQ(advisor.overallSeverity({a}), QStringLiteral("critical"));
 }
 
@@ -64,8 +67,7 @@ TEST(SecurityAdvisorTest, UpstreamUnknownDistroReturnsEmpty)
     SecurityAdvisor advisor;
     advisor.setFetchUpstream(true);
     QList<SecurityAdvisor::Advisory> ups =
-        advisor.fetchUpstreamFor(QStringLiteral("unknown-distro-xyz"),
-                                 { QStringLiteral("apt") });
+        advisor.fetchUpstreamFor(QStringLiteral("unknown-distro-xyz"), {QStringLiteral("apt")});
     EXPECT_TRUE(ups.isEmpty());
 }
 
@@ -73,7 +75,7 @@ TEST(SecurityAdvisorTest, AdvisoryHasSourceField)
 {
     SecurityAdvisor advisor;
     QList<SecurityAdvisor::Advisory> out;
-    ASSERT_TRUE(advisor.fetchAdvisories({ QStringLiteral("systemd") }, out));
+    ASSERT_TRUE(advisor.fetchAdvisories({QStringLiteral("systemd")}, out));
     ASSERT_EQ(out.size(), 1);
     EXPECT_EQ(out.first().source.toStdString(), "offline");
 }

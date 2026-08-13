@@ -1,21 +1,21 @@
-#include "dtkupdated.h"
-#include "logger.h"
-
+#include <DLog>
 #include <QCoreApplication>
 #include <QDBusConnection>
 #include <QDBusError>
 
-#include <DLog>
+#include "dtkupdated.h"
+#include "logger.h"
 DCORE_USE_NAMESPACE
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
     QCoreApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("dtk-update-daemon"));
     app.setOrganizationName(QStringLiteral("dtk"));
 
     DtkUpdate::Daemon daemon;
-    if (!daemon.registerOnBus()) {
+    if (!daemon.registerOnBus())
+    {
         qCWarning(dtkUpdateDaemon) << "Failed to register on DBus, exiting";
         return 1;
     }
