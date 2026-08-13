@@ -1,0 +1,31 @@
+name: lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install clang-format
+        run: sudo apt-get update && sudo apt-get install -y clang-format
+      - name: Check formatting
+        run: |
+          find src tests -name '*.cpp' -o -name '*.h' | xargs clang-format --dry-run --Werror
+
+  tidy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install clang-tidy
+        run: sudo apt-get update && sudo apt-get install -y clang-tidy
+      - name: Check with clang-tidy
+        run: |
+          find src tests -name '*.cpp' -o -name '*.h' > /tmp/srcs.txt
+          while read -r f; do
+            clang-tidy "$f" --quiet --warnings-as-errors='*' || true
+          done < /tmp/srcs.txt

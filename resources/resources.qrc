@@ -1,0 +1,8 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/icons">
+        <!-- 应用内使用的 SVG 图标，dci 由设计资源提供 -->
+        <file>icons/dtk-update.svg</file>
+        <file>icons/dtk-update-update.svg</file>
+    </qresource>
+</RCC>

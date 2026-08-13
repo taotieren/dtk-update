@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=com.dtk.update.Daemon
+Exec=/usr/lib/dtk-update/dtk-update-daemon
+SystemdService=dtk-update.service

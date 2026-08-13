@@ -1,0 +1,9 @@
+#!/bin/sh
+set -e
+
+# 启用用户级 systemd 服务（若用户会话存在）
+if [ "$1" = "configure" ]; then
+    systemctl --user enable dtk-update.service 2>/dev/null || true
+fi
+
+#DEBHELPER#

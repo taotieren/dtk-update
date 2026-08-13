@@ -1,0 +1,15 @@
+build/
+*.o
+*.so
+*.so.*
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+compile_commands.json
+*.user
+*.deb
+.debhelper
+obj-*/
+
+# Agent 工作记忆（非项目源码，不入库）
+.codebuddy/

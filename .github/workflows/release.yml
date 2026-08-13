@@ -1,0 +1,75 @@
+name: release
+
+# 仅在推送 tag（形如 v1.2.3 或 1.2.3）时触发，构建 .deb 并发布到 GitHub Release
+on:
+  push:
+    tags:
+      - 'v*'
+      - '[0-9]+.[0-9]+.[0-9]+*'
+
+permissions:
+  contents: write
+
+jobs:
+  release-deb:
+    runs-on: ubuntu-latest
+    container:
+      image: deepinroot/deepin-build:25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            cmake debhelper-compat pkg-config \
+            qt6-base-dev qt6-tools-dev \
+            libdtk6core-dev libdtk6gui-dev libdtk6widget-dev libdtk6declarative-dev \
+            libgtest-dev libpolkit-qt6-1-dev
+
+      - name: Determine version from tag
+        id: ver
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          # 去掉可能的 v 前缀
+          VER="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "Building release $VER (tag $TAG)"
+
+      - name: Stamp changelog
+        run: |
+          VER="${{ steps.ver.outputs.version }}"
+          DATE=$(date -R)
+          {
+            echo "dtk-update ($VER) unstable; urgency=medium"
+            echo ""
+            echo "  * Release $VER"
+            echo ""
+            echo " -- $(dpkg-parsechangelog -S Maintainer)  $DATE"
+            echo ""
+            cat debian/changelog
+          } > debian/changelog.tmp && mv debian/changelog.tmp debian/changelog
+
+      - name: Build & package deb
+        run: dpkg-buildpackage -us -uc -b
+
+      - name: List artifacts
+        run: ls -1 ../*.deb ../*.changes ../*.dsc 2>/dev/null || true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: dtk-update ${{ steps.ver.outputs.version }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            ../*.deb
+            ../*.changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

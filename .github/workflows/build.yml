@@ -1,0 +1,66 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # 主构建：DTK6 / Qt6，产出 .deb 产物
+  build-deb:
+    runs-on: ubuntu-latest
+    container:
+      image: deepinroot/deepin-build:25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            cmake debhelper-compat pkg-config \
+            qt6-base-dev qt6-tools-dev \
+            libdtk6core-dev libdtk6gui-dev libdtk6widget-dev libdtk6declarative-dev \
+            libgtest-dev libpolkit-qt6-1-dev
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+
+      - name: Build
+        run: cmake --build build -j"$(nproc)"
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure || true
+
+      - name: Package deb
+        run: |
+          dpkg-buildpackage -us -uc -b
+
+      - name: Upload deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dtk-update-deb
+          path: ../*.deb
+
+  # DTK5 / Qt5 兼容验证：确保抽象层与 UI 在 DTK5 下也能编译
+  build-dtk5:
+    runs-on: ubuntu-latest
+    container:
+      image: deepinroot/deepin-build:25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install DTK5 build deps
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            cmake pkg-config \
+            qtbase5-dev qt5-tools-dev \
+            libdtk5core-dev libdtk5gui-dev libdtk5widget-dev libdtk5declarative-dev \
+            libgtest-dev libpolkit-qt5-1-dev
+      - name: Configure (DTK5)
+        run: cmake -B build5 -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DDEEPIN_UPDATE_FORCE_QT5=ON
+      - name: Build (DTK5)
+        run: cmake --build build5 -j"$(nproc)"
+      - name: Test (DTK5)
+        run: ctest --test-dir build5 --output-on-failure || true

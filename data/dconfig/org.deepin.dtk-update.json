@@ -1,0 +1,56 @@
+{
+    "id": "org.deepin.dtk-update",
+    "name": "dtk-update configuration",
+    "version": "1.0",
+    "contents": {
+        "checkIntervalMinutes": {
+            "value": 360,
+            "serial": 1,
+            "flag": 1,
+            "name": "Check interval (minutes)",
+            "description": "Interval between automatic update checks"
+        },
+        "showSecurityAdvisory": {
+            "value": true,
+            "serial": 1,
+            "flag": 1,
+            "name": "Show security advisory",
+            "description": "Show security advisory banners and require confirmation before updating critical packages"
+        },
+        "fetchUpstreamAdvisories": {
+            "value": true,
+            "serial": 1,
+            "flag": 1,
+            "name": "Fetch upstream advisories",
+            "description": "Fetch security notices from the upstream official advisory feeds of the distro/packages. Display only; on failure it silently falls back to local info and never blocks updates"
+        },
+        "preferredBackend": {
+            "value": "",
+            "serial": 1,
+            "flag": 1,
+            "name": "Preferred package backend",
+            "description": "Runtime override of preferred backend id (e.g. apt/dnf). Lower priority than backend.conf; empty = auto-detect by distro preset"
+        },
+        "noInstallRecommends": {
+            "value": true,
+            "serial": 1,
+            "flag": 1,
+            "name": "No install recommends",
+            "description": "Skip optional Recommends dependencies on install (APT)"
+        },
+        "autoRemoveOrphans": {
+            "value": true,
+            "serial": 1,
+            "flag": 1,
+            "name": "Auto remove orphans",
+            "description": "Run autoremove to purge orphan dependencies after operations"
+        },
+        "autoCleanCache": {
+            "value": false,
+            "serial": 1,
+            "flag": 1,
+            "name": "Auto clean cache",
+            "description": "Clean downloaded package cache after operations"
+        }
+    }
+}

@@ -1,0 +1,17 @@
+[Desktop Entry]
+Type=Application
+Name=Dtk Update Tray
+Name[zh_CN]=DTK 更新托盘
+Name[es]=Bandeja de Dtk Update
+Name[fr]=Bac de Dtk Update
+Name[de]=Dtks Update-Tray
+Comment=dtk-update tray applet
+Comment[zh_CN]=dtk-update 托盘小程序
+Comment[es]=Aplicación de bandeja de dtk-update
+Comment[fr]=Applet de bureau dtk-update
+Comment[de]=dtk-update Tray-Applet
+Exec=dtk-update-gui
+Icon=dtk-update
+Terminal=false
+NoDisplay=true
+X-GNOME-Autostart-enabled=true

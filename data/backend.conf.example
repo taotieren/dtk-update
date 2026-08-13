@@ -1,0 +1,41 @@
+# dtk-update 后端配置文件示例
+#
+# 说明：
+#   - 本文件为 conf / INI 风格，可用任意文本编辑器修改。
+#   - 系统级路径：/etc/dtk-update/backend.conf
+#   - 用户级路径：~/.config/dtk-update/backend.conf （覆盖系统级同名键）
+#   - 所有开关都可改；下面对应 DConfig 的默认值，仅作参考。
+#
+# 重要：所有写操作（安装/移除/清理）均需经 polkit 提权，且升级前会弹出
+#       确认对话框。本工具不会在未经您确认的情况下修改系统或移除依赖。
+
+# 您喜欢的后端（只能从已注册后端中选：apt / dnf）。
+# 留空 = 按当前发行版预设自动选择。
+PreferredBackend = apt
+
+# ---- 全局选项（对所有后端生效，可被下方 [段] 覆盖） ----
+
+# 安装时跳过「可选依赖」（Recommends），避免引入非必需软件包
+NoInstallRecommends = true
+
+# 操作后自动移除孤儿依赖（autoremove）。注意：可能移除您仍在使用的包，
+# 升级前会有确认提示，可在此关闭。
+AutoRemoveOrphans = true
+
+# 操作后清理已下载的包缓存
+AutoCleanCache = false
+
+# 升级前是否展示安全公告（来自系统本地/上游官方源）。关闭则直接弹升级确认。
+ShowSecurityAdvisory = true
+
+# 是否到对应发行版/软件包的上游官方安全公告源获取更新注意信息。
+# 仅作信息展示，获取失败会静默降级到系统本地信息，绝不阻塞升级。
+FetchUpstreamAdvisories = true
+
+# 按后端细分配置（段名即后端 id）
+[apt]
+NoInstallRecommends = true
+AutoRemoveOrphans = true
+
+[dnf]
+AutoCleanCache = false

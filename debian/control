@@ -1,0 +1,43 @@
+Source: dtk-update
+Section: utils
+Priority: optional
+Maintainer: taotieren <admin@taotieren.com>
+Build-Depends:
+ cmake,
+ debhelper-compat (= 13),
+ pkg-config,
+ qt6-base-dev,
+ qt6-tools-dev,
+ libdtk6core-dev,
+ libdtk6gui-dev,
+ libdtk6widget-dev,
+ libdtk6declarative-dev,
+ libgtest-dev,
+ libpolkit-qt6-1-dev,
+Standards-Version: 4.6.2
+Homepage: https://github.com/taotieren/dtk-update
+
+Package: dtk-update
+Architecture: any
+Depends:
+ ${misc:Depends},
+ ${shlibs:Depends},
+ policykit-1,
+ libdtk6widget,
+ libdtk6gui,
+ libdtk6core,
+Recommends:
+ apt,
+ dpkg,
+ deepin-security-center,
+Suggests:
+ dnf,
+Description: DTK tray applet for distribution-agnostic package update management
+ Monitors and manages system package updates, installations, removals,
+ purges and residual cleanup, with dependency resolution and security advisories.
+ Designed to support multiple package managers (apt, dnf, ...) via pluggable
+ backends, and integrates as a dde-tray-loader plugin.
+ .
+ The active package manager is auto-detected per distribution; install the
+ corresponding backend package (apt/dpkg or dnf/rpm) to enable updates on
+ your system.

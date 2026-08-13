@@ -1,0 +1,27 @@
+[Desktop Entry]
+Type=Application
+Name=Dtk Update
+Name[zh_CN]=DTK 更新
+Name[es]=Dtk Update
+Name[fr]=Dtk Update
+Name[de]=Dtk Update
+GenericName=Update Manager
+GenericName[zh_CN]=更新管理器
+GenericName[es]=Gestor de actualizaciones
+GenericName[fr]=Gestionnaire de mises à jour
+GenericName[de]=Aktualisierungsverwaltung
+Comment=Manage system package updates across distributions
+Comment[zh_CN]=管理跨发行版的系统软件包更新
+Comment[es]=Gestiona las actualizaciones de paquetes del sistema en las distribuciones
+Comment[fr]=Gère les mises à jour de paquets système sur les distributions
+Comment[de]=Verwaltet Systempaket-Aktualisierungen über Distributionen hinweg
+Exec=dtk-update-gui
+Icon=dtk-update
+Terminal=false
+Categories=System;PackageManager;
+Keywords=update;package;apt;dnf;
+Keywords[zh_CN]=更新;软件包;apt;dnf;
+Keywords[es]=actualizar;paquete;apt;dnf;
+Keywords[fr]=mettre à jour;paquet;apt;dnf;
+Keywords[de]=aktualisieren;paket;apt;dnf;
+X-DDE-Dock-Plugin=dtk-update

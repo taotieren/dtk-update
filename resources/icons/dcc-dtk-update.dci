@@ -1,0 +1,13 @@
+DCI icon placeholder
+====================
+This file is a placeholder for the DCI (Deepin Customized Icon) format used by
+the dde control center settings list (required by Attribute_CanSetting).
+
+Replace this text file with the real binary .dci exported from the deepin icon
+toolchain (Designer exports .dci with multi-resolution/dark-light variants).
+
+The build installs it to:
+  ${DCC_ICON_INSTALL_DIR} = share/dde-dock/icons/dcc-setting/
+
+and the plugin reports its settings icon via the dcc-setting entry so it can be
+toggled in the control center.
