@@ -27,7 +27,7 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends \
             cmake g++ build-essential pkg-config \
-            qt6-base-dev qt6-tools-dev \
+            qt6-base-dev qt6-tools-dev qt6-tools-dev-tools \
             libdtk6core-dev libdtk6gui-dev libdtk6widget-dev \
             libgtest-dev libpolkit-qt6-1-dev debhelper
 

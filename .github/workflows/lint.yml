@@ -9,23 +9,27 @@ on:
 jobs:
   format:
     runs-on: ubuntu-latest
+    container:
+      image: ubuntu:devel
     steps:
       - uses: actions/checkout@v4
       - name: Install clang-format
-        run: sudo apt-get update && sudo apt-get install -y clang-format
+        run: apt-get update && apt-get install -y --no-install-recommends clang-format
       - name: Check formatting
         run: |
-          find src tests -name '*.cpp' -o -name '*.h' | xargs clang-format --dry-run --Werror
+          find src tests \( -name '*.cpp' -o -name '*.h' \) | xargs clang-format --dry-run --Werror
 
   tidy:
     runs-on: ubuntu-latest
+    container:
+      image: ubuntu:devel
     steps:
       - uses: actions/checkout@v4
       - name: Install clang-tidy
-        run: sudo apt-get update && sudo apt-get install -y clang-tidy
+        run: apt-get update && apt-get install -y --no-install-recommends clang-tidy
       - name: Check with clang-tidy
         run: |
-          find src tests -name '*.cpp' -o -name '*.h' > /tmp/srcs.txt
+          find src tests \( -name '*.cpp' -o -name '*.h' \) > /tmp/srcs.txt
           while read -r f; do
             clang-tidy "$f" --quiet --warnings-as-errors='*' || true
           done < /tmp/srcs.txt

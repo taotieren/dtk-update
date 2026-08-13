@@ -25,20 +25,24 @@ else()
     # 退路：直接用 lrelease 生成 .qm（CI 镜像无 LinguistTools 模块时）
     message(WARNING "Qt LinguistTools not found, falling back to lrelease for translations")
     find_program(LRELEASE_EXECUTABLE lrelease)
-    set(QM_FILES)
-    foreach(ts ${TRANSLATION_FILES})
-        string(REPLACE ".ts" ".qm" qm_name "${ts}")
-        set(qm "${CMAKE_CURRENT_BINARY_DIR}/${qm_name}")
-        add_custom_command(
-            OUTPUT ${qm}
-            COMMAND ${LRELEASE_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${ts} -qm ${qm}
-            DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${ts}
-            COMMENT "Generating ${qm}"
+    if(NOT LRELEASE_EXECUTABLE)
+        message(WARNING "lrelease not found either; skipping translation generation")
+    else()
+        set(QM_FILES)
+        foreach(ts ${TRANSLATION_FILES})
+            string(REPLACE ".ts" ".qm" qm_name "${ts}")
+            set(qm "${CMAKE_CURRENT_BINARY_DIR}/${qm_name}")
+            add_custom_command(
+                OUTPUT ${qm}
+                COMMAND ${LRELEASE_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${ts} -qm ${qm}
+                DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${ts}
+                COMMENT "Generating ${qm}"
+            )
+            list(APPEND QM_FILES ${qm})
+        endforeach()
+        add_custom_target(translations ALL DEPENDS ${QM_FILES})
+        install(FILES ${QM_FILES}
+            DESTINATION ${TRANSLATION_INSTALL_DIR}
         )
-        list(APPEND QM_FILES ${qm})
-    endforeach()
-    add_custom_target(translations ALL DEPENDS ${QM_FILES})
-    install(FILES ${QM_FILES}
-        DESTINATION ${TRANSLATION_INSTALL_DIR}
-    )
+    endif()
 endif()
