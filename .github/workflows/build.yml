@@ -26,12 +26,15 @@ jobs:
         run: |
           apt-get update
           apt-get install -y --no-install-recommends \
-            cmake debhelper-compat pkg-config \
+            cmake g++ pkg-config \
             qt6-base-dev qt6-tools-dev \
             libdtk6core-dev libdtk6gui-dev libdtk6widget-dev \
             libgtest-dev libpolkit-qt6-1-dev
 
       - name: Configure
+        env:
+          CC: /usr/bin/gcc
+          CXX: /usr/bin/g++
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
 
       - name: Build

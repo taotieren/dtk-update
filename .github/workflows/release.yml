@@ -25,7 +25,7 @@ jobs:
         run: |
           apt-get update
           apt-get install -y --no-install-recommends \
-            cmake debhelper-compat pkg-config \
+            cmake g++ debhelper-compat pkg-config \
             qt6-base-dev qt6-tools-dev \
             libdtk6core-dev libdtk6gui-dev libdtk6widget-dev \
             libgtest-dev libpolkit-qt6-1-dev
@@ -55,6 +55,9 @@ jobs:
           } > debian/changelog.tmp && mv debian/changelog.tmp debian/changelog
 
       - name: Build & package deb
+        env:
+          CC: /usr/bin/gcc
+          CXX: /usr/bin/g++
         run: dpkg-buildpackage -us -uc -b
 
       - name: List artifacts
