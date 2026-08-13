@@ -46,9 +46,11 @@ jobs:
       - name: Package deb
         run: |
           dpkg-buildpackage -us -uc -b
+          mkdir -p artifacts
+          cp ../*.deb artifacts/
 
       - name: Upload deb artifact
         uses: actions/upload-artifact@v4
         with:
           name: dtk-update-deb
-          path: ../*.deb
+          path: artifacts/
