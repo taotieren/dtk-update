@@ -27,7 +27,8 @@ else()
     find_program(LRELEASE_EXECUTABLE lrelease)
     set(QM_FILES)
     foreach(ts ${TRANSLATION_FILES})
-        set(qm "${CMAKE_CURRENT_BINARY_DIR}/${ts%.ts}.qm")
+        string(REPLACE ".ts" ".qm" qm_name "${ts}")
+        set(qm "${CMAKE_CURRENT_BINARY_DIR}/${qm_name}")
         add_custom_command(
             OUTPUT ${qm}
             COMMAND ${LRELEASE_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${ts} -qm ${qm}
