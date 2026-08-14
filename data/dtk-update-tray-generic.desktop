@@ -1,0 +1,19 @@
+[Desktop Entry]
+Type=Application
+Name=Dtk Update Tray (generic)
+Name[zh_CN]=DTK 更新托盘（通用）
+Name[es]=Bandeja de Dtk Update (genérica)
+Name[fr]=Bac de Dtk Update (générique)
+Name[de]=Dtks Update-Tray (generisch)
+Comment=Cross-distro freedesktop status tray for dtk-update
+Comment[zh_CN]=dtk-update 跨发行版通用状态栏托盘
+Comment[es]=Bandeja de estado freedesktop multi-distribución para dtk-update
+Comment[fr]=Bac d'état freedesktop multi-distribution pour dtk-update
+Comment[de]=Freies freedesktop-Status-Tray für dtk-update über Distributionen hinweg
+Exec=dtk-update-tray-generic
+Icon=dtk-update
+Terminal=false
+NoDisplay=true
+# deepin/UOS 使用 dde-tray-loader 插件，避免重复托盘
+NotShowIn=deepin;
+X-GNOME-Autostart-enabled=true

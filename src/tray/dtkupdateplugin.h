@@ -3,10 +3,7 @@
 #include <QObject>
 #include <QPointer>
 
-#include "common/appconfig.h"
-#include "core/monitor/updatemonitor.h"
-#include "core/package/packagebackend.h"
-#include "core/security/securityadvisor.h"
+#include "indicator/updateindicator.h"
 
 #include <pluginsiteminterface.h>
 
@@ -17,12 +14,14 @@ namespace DtkUpdate
 {
 
     /**
-     * @brief dde-tray-loader 托盘插件（V2 接口）
+     * @brief dde-tray-loader 托盘插件（V2 接口，deepin/UOS）
      *
+     * 继承 UpdateIndicator 复用监控/安全/玲珑逻辑，仅负责把钩子接到 Dock 表现。
      * flags: Type_Tray | Attribute_CanSetting
      * 提供：托盘图标、左键更新概览面板、右键菜单。
+     * 依赖 dde-dock SDK（pluginsiteminterface.h），缺失时整个 target 被跳过。
      */
-    class DtkUpdatePlugin : public QObject, public PluginsItemInterfaceV2
+    class DtkUpdatePlugin : public UpdateIndicator, public PluginsItemInterfaceV2
     {
         Q_OBJECT
         Q_INTERFACES(PluginsItemInterfaceV2)
@@ -47,22 +46,18 @@ namespace DtkUpdate
         // 左键弹出面板
         QWidget* itemPopupApplet(const QString& itemKey) override;
 
-      private:
-        void buildBackend();
-        void updateTrayState();
-        // 安全公告确认：展示公告（含上游官方链接），用户同意才继续，取消则放弃
-        void showSecurityConfirm(const QString& severity,
-                                 const QList<SecurityAdvisor::Advisory>& advs,
-                                 const PreCheckReport& pre);
-        void showPostCheck(const PostCheckReport& report);
+      protected:
+        void onStateChanged(bool hasUpdates, int count) override;
+        void onBackendUnavailable(const QString& backendId, const QString& reason) override;
+        void onSecurityPrompt(const QString& severity,
+                              const QList<SecurityAdvisor::Advisory>& advs,
+                              const PreCheckReport& pre) override;
+        void onPostCheck(const PostCheckReport& report) override;
 
+      private:
         PluginProxyInterface* m_proxyInter = nullptr;
         QPointer<TrayWidget> m_trayWidget;
         QPointer<QWidget> m_popup;
-        PackageBackend* m_backend = nullptr;
-        AppConfig* m_config = nullptr;
-        SecurityAdvisor* m_advisor = nullptr;
-        UpdateMonitor* m_monitor = nullptr;
     };
 
 } // namespace DtkUpdate
