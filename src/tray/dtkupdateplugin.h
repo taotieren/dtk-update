@@ -1,8 +1,13 @@
 #pragma once
 
+#include <QIcon>
+#include <QList>
+#include <QMenu>
 #include <QObject>
 #include <QPointer>
+#include <QString>
 #include <QTranslator>
+#include <QWidget>
 
 #include "indicator/updateindicator.h"
 

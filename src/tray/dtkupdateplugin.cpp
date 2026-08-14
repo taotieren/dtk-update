@@ -1,11 +1,16 @@
 #include "dtkupdateplugin.h"
 
 #include <QCoreApplication>
+#include <QIcon>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLocale>
 #include <QProcess>
+#include <QTranslator>
+#include <QVariant>
 #include <QVariantMap>
+#include <QWidget>
 
 #include "common/translator.h"
 #include "core/package/backendfactory.h"
