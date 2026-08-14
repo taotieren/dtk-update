@@ -109,6 +109,10 @@ zh["Another update is already in progress"] = "已有其他更新正在进行中
 zh["Linyaps Environment Issue"] = "玲珑运行环境异常"
 zh["The Linyaps (玲珑) runtime environment is abnormal; sandbox application updates are unavailable. Please check the ll-cli installation and runtime."] = "玲珑（Linyaps）运行环境异常，沙箱应用更新不可用。请检查 ll-cli 的安装与运行环境。"
 
+# --- Recent release notes & notices dialog (distro notices popup) ---
+zh["Recent release notes & notices"] = "近期发布说明与通知"
+zh["\n… (%1 more)"] = "\n…（另有 %1 条）"
+
 # --- Spanish ---
 es["Backend: %1"] = "Backend: %1"
 es["Dtk Update"] = "Dtk Update"
@@ -178,6 +182,10 @@ es["Working"] = "Trabajando"
 es["Another update is already in progress"] = "Ya hay otra actualización en curso"
 es["Linyaps Environment Issue"] = "Problema del entorno Linyaps"
 es["The Linyaps (玲珑) runtime environment is abnormal; sandbox application updates are unavailable. Please check the ll-cli installation and runtime."] = "El entorno de ejecución de Linyaps (玲珑) es anormal; las actualizaciones de aplicaciones en sandbox no están disponibles. Verifique la instalación y el entorno de ll-cli."
+
+# --- Recent release notes & notices dialog (distro notices popup) ---
+es["Recent release notes & notices"] = "Notas de la versión y avisos recientes"
+es["\n… (%1 more)"] = "\n… (%1 más)"
 
 # --- French ---
 fr["Backend: %1"] = "Backend : %1"
@@ -249,6 +257,10 @@ fr["Another update is already in progress"] = "Une autre mise à jour est déjà
 fr["Linyaps Environment Issue"] = "Problème d'environnement Linyaps"
 fr["The Linyaps (玲珑) runtime environment is abnormal; sandbox application updates are unavailable. Please check the ll-cli installation and runtime."] = "L'environnement d'exécution Linyaps (玲珑) est anormal ; les mises à jour d'applications en sandbox sont indisponibles. Vérifiez l'installation et l'environnement de ll-cli."
 
+# --- Recent release notes & notices dialog (distro notices popup) ---
+fr["Recent release notes & notices"] = "Notes de version et avis récents"
+fr["\n… (%1 more)"] = "\n… (%1 de plus)"
+
 # --- German ---
 de["Backend: %1"] = "Backend: %1"
 de["Dtk Update"] = "Dtk Update"
@@ -318,6 +330,10 @@ de["Working"] = "Wird verarbeitet"
 de["Another update is already in progress"] = "Eine andere Aktualisierung läuft bereits"
 de["Linyaps Environment Issue"] = "Linyaps-Umgebungsproblem"
 de["The Linyaps (玲珑) runtime environment is abnormal; sandbox application updates are unavailable. Please check the ll-cli installation and runtime."] = "Die Linyaps-Laufzeitumgebung (玲珑) ist fehlerhaft; Sandbox-Anwendungsupdates sind nicht verfügbar. Bitte prüfen Sie die ll-cli-Installation und -Laufzeitumgebung."
+
+# --- Recent release notes & notices dialog (distro notices popup) ---
+de["Recent release notes & notices"] = "Aktuelle Versionshinweise & Mitteilungen"
+de["\n… (%1 more)"] = "\n… (%1 weitere)"
 
 
 def fill_ts(lang: str, table: dict):
