@@ -81,7 +81,7 @@ namespace DtkUpdate
     QWidget* DtkUpdatePlugin::itemWidget(const QString& itemKey)
     {
         Q_UNUSED(itemKey)
-        return m_trayWidget;
+        return m_trayWidget.data();
     }
 
     Dock::PluginFlags DtkUpdatePlugin::flags() const
@@ -180,7 +180,7 @@ namespace DtkUpdate
             m_trayWidget->setState(count);
         // 状态变化刷新图标（控制中心/任务栏可能缓存）
         if (m_proxyInter)
-            m_proxyInter->itemUpdated(this, pluginName());
+            m_proxyInter->itemUpdate(this, pluginName());
     }
 
     bool DtkUpdatePlugin::pluginIsAllowDisable()
@@ -213,7 +213,7 @@ namespace DtkUpdate
         Q_UNUSED(itemKey)
         // 图标主题（亮/暗）切换时由框架调用，转发刷新
         if (m_proxyInter)
-            m_proxyInter->itemUpdated(this, pluginName());
+            m_proxyInter->itemUpdate(this, pluginName());
     }
 
     void DtkUpdatePlugin::onBackendUnavailable(const QString& backendId, const QString& reason)

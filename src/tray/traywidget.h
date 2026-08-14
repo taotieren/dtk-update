@@ -3,6 +3,7 @@
 #include <DWidget>
 #include <QMouseEvent>
 #include <QPaintEvent>
+#include <QWidget>
 
 namespace DtkUpdate
 {

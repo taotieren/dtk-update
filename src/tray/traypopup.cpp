@@ -4,6 +4,7 @@
 #include <DListView>
 #include <DProgressBar>
 #include <DSpinner>
+#include <QAbstractItemView>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
@@ -66,7 +67,6 @@ namespace DtkUpdate
         const auto& pkgs = m_monitor->upgradable();
         const int n = pkgs.size();
 
-        QPalette pal = DGuiApplicationHelper::standardPalette();
         switch (m_monitor->state())
         {
         case UpdateMonitor::State::Checking:

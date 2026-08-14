@@ -14,11 +14,10 @@
 #include <pluginsiteminterface.h>
 #include <pluginsiteminterface_v2.h>
 
-class TrayWidget;
-class QMenu;
-
 namespace DtkUpdate
 {
+
+    class TrayWidget; // 必须在本命名空间内，否则 QPointer<TrayWidget> 会绑定到 ::TrayWidget
 
     /**
      * @brief dde-tray-loader 托盘插件（V2 接口，deepin/UOS）

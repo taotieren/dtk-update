@@ -5,6 +5,7 @@
 #include <QLabel>
 #include <QPointer>
 #include <QPushButton>
+#include <QWidget>
 
 #include "core/monitor/updatemonitor.h"
 
