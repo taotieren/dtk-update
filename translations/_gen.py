@@ -89,6 +89,26 @@ zh["Installing"] = "正在安装"
 zh["Security-sensitive package update"] = "安全敏感软件包更新"
 zh["This package is security-sensitive. Review the changelog before updating."] = "此软件包属于安全敏感类型。更新前请查看更新日志。"
 
+# --- Generic tray shared UI strings ---
+zh["Quit"] = "退出"
+zh["%1 update(s) available"] = "有 %1 个更新可用"
+zh["Updates available"] = "有更新可用"
+zh["%1 package(s) can be updated."] = "有 %1 个软件包可更新。"
+
+# --- Backend operation progress (PackageBackend template) ---
+zh["Removing"] = "正在移除"
+zh["Purging"] = "正在清除配置"
+zh["Removing orphans"] = "正在移除孤立包"
+zh["Cleaning cache"] = "正在清理缓存"
+zh["Working"] = "正在处理"
+
+# --- UpdateMonitor ---
+zh["Another update is already in progress"] = "已有其他更新正在进行中"
+
+# --- Linyaps availability dialog (shared) ---
+zh["Linyaps Environment Issue"] = "玲珑运行环境异常"
+zh["The Linyaps (玲珑) runtime environment is abnormal; sandbox application updates are unavailable. Please check the ll-cli installation and runtime."] = "玲珑（Linyaps）运行环境异常，沙箱应用更新不可用。请检查 ll-cli 的安装与运行环境。"
+
 # --- Spanish ---
 es["Backend: %1"] = "Backend: %1"
 es["Dtk Update"] = "Dtk Update"
@@ -146,6 +166,18 @@ es["Download cache can be cleaned: %1 MB"] = "Caché de descargas que puede limp
 es["Installing"] = "Instalando"
 es["Security-sensitive package update"] = "Actualización de paquete sensible para la seguridad"
 es["This package is security-sensitive. Review the changelog before updating."] = "Este paquete es sensible para la seguridad. Revise el registro de cambios antes de actualizar."
+es["Quit"] = "Salir"
+es["%1 update(s) available"] = "Hay %1 actualizaciones disponibles"
+es["Updates available"] = "Hay actualizaciones disponibles"
+es["%1 package(s) can be updated."] = "Hay %1 paquetes que se pueden actualizar."
+es["Removing"] = "Eliminando"
+es["Purging"] = "Purga"
+es["Removing orphans"] = "Eliminando huérfanos"
+es["Cleaning cache"] = "Limpiando caché"
+es["Working"] = "Trabajando"
+es["Another update is already in progress"] = "Ya hay otra actualización en curso"
+es["Linyaps Environment Issue"] = "Problema del entorno Linyaps"
+es["The Linyaps (玲珑) runtime environment is abnormal; sandbox application updates are unavailable. Please check the ll-cli installation and runtime."] = "El entorno de ejecución de Linyaps (玲珑) es anormal; las actualizaciones de aplicaciones en sandbox no están disponibles. Verifique la instalación y el entorno de ll-cli."
 
 # --- French ---
 fr["Backend: %1"] = "Backend : %1"
@@ -204,6 +236,18 @@ fr["Download cache can be cleaned: %1 MB"] = "Cache de téléchargement pouvant 
 fr["Installing"] = "Installation"
 fr["Security-sensitive package update"] = "Mise à jour de paquet sensible à la sécurité"
 fr["This package is security-sensitive. Review the changelog before updating."] = "Ce paquet est sensible à la sécurité. Consultez le journal des modifications avant la mise à jour."
+fr["Quit"] = "Quitter"
+fr["%1 update(s) available"] = "%1 mises à jour disponibles"
+fr["Updates available"] = "Mises à jour disponibles"
+fr["%1 package(s) can be updated."] = "%1 paquet(s) peuvent être mis à jour."
+fr["Removing"] = "Suppression"
+fr["Purging"] = "Purge"
+fr["Removing orphans"] = "Suppression des orphelins"
+fr["Cleaning cache"] = "Nettoyage du cache"
+fr["Working"] = "Traitement"
+fr["Another update is already in progress"] = "Une autre mise à jour est déjà en cours"
+fr["Linyaps Environment Issue"] = "Problème d'environnement Linyaps"
+fr["The Linyaps (玲珑) runtime environment is abnormal; sandbox application updates are unavailable. Please check the ll-cli installation and runtime."] = "L'environnement d'exécution Linyaps (玲珑) est anormal ; les mises à jour d'applications en sandbox sont indisponibles. Vérifiez l'installation et l'environnement de ll-cli."
 
 # --- German ---
 de["Backend: %1"] = "Backend: %1"
@@ -262,6 +306,18 @@ de["Download cache can be cleaned: %1 MB"] = "Bereinigbarer Download-Cache: %1 M
 de["Installing"] = "Installieren"
 de["Security-sensitive package update"] = "Sicherheitsrelevantes Paket-Update"
 de["This package is security-sensitive. Review the changelog before updating."] = "Dieses Paket ist sicherheitsrelevant. Prüfen Sie das Änderungsprotokoll vor der Aktualisierung."
+de["Quit"] = "Beenden"
+de["%1 update(s) available"] = "%1 Aktualisierungen verfügbar"
+de["Updates available"] = "Aktualisierungen verfügbar"
+de["%1 package(s) can be updated."] = "%1 Paket(e) können aktualisiert werden."
+de["Removing"] = "Entfernen"
+de["Purging"] = "Bereinigen"
+de["Removing orphans"] = "Verwaiste entfernen"
+de["Cleaning cache"] = "Cache bereinigen"
+de["Working"] = "Wird verarbeitet"
+de["Another update is already in progress"] = "Eine andere Aktualisierung läuft bereits"
+de["Linyaps Environment Issue"] = "Linyaps-Umgebungsproblem"
+de["The Linyaps (玲珑) runtime environment is abnormal; sandbox application updates are unavailable. Please check the ll-cli installation and runtime."] = "Die Linyaps-Laufzeitumgebung (玲珑) ist fehlerhaft; Sandbox-Anwendungsupdates sind nicht verfügbar. Bitte prüfen Sie die ll-cli-Installation und -Laufzeitumgebung."
 
 
 def fill_ts(lang: str, table: dict):
