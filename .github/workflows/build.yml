@@ -27,6 +27,10 @@ jobs:
           - arch: loong64
             runner: ubuntu-24.04
 
+    # loong64 经 qemu 用户态模拟编译极慢，统一上限 120 分钟，
+    # 防止卡死在 GitHub 默认 6 小时上限；amd64/arm64 远用不满。
+    timeout-minutes: 120
+
     steps:
       - uses: actions/checkout@v4
         with:
