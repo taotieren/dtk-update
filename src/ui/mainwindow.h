@@ -49,12 +49,16 @@ namespace DtkUpdate
         void onInspectClicked();
         void onOpenSettings();
 
+        // 玲珑(linyaps)运行环境异常时提示用户处理
+        void onBackendUnavailable(const QString& backendId, const QString& reason);
+
       private:
         void buildUI();
         bool confirmApply(const QList<SecurityAdvisor::Advisory>& advs, const PreCheckReport& pre);
         void showPostCheckHint(const PostCheckReport& report);
 
         PackageBackend* m_backend;
+        PackageBackend* m_linyaps = nullptr; // 跨发行版沙箱应用后端（可选，可为空）
         AppConfig* m_config;
         SecurityAdvisor* m_advisor;
         UpdateMonitor* m_monitor;

@@ -5,6 +5,9 @@ install(FILES dtk-update.desktop
 install(FILES dtk-update-tray.desktop
     DESTINATION /etc/xdg/autostart
 )
+install(FILES dtk-update-tray-generic.desktop
+    DESTINATION /etc/xdg/autostart
+)
 
 # DConfig 元数据（配置项集中定义，供控制中心/命令行调整）
 install(FILES dconfig/org.deepin.dtk-update.json

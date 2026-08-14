@@ -19,6 +19,8 @@
 #include <QVBoxLayout>
 
 #include "core/dependency/dependencyresolver.h"
+#include "core/package/backendfactory.h"
+#include "core/package/linyapsbackend.h"
 #include "logger.h"
 
 DWIDGET_USE_NAMESPACE
@@ -52,6 +54,29 @@ namespace DtkUpdate
         m_monitor = new UpdateMonitor(m_backend, m_config, this);
         if (m_advisor)
             m_monitor->setSecurityAdvisor(m_advisor);
+
+        // 跨发行版接入可选的玲珑(linyaps)沙箱应用后端：无论当前发行系为何，
+        // 只要 ll-cli 运行环境健康即启用；不可用时由 checkNow 经 backendUnavailable 提示用户。
+        m_linyaps = BackendFactory::createById(QStringLiteral("linyaps"), this);
+        if (m_linyaps)
+        {
+            if (!m_linyaps->isAvailable())
+            {
+                // 环境未就绪：保留实例以便 backendUnavailable 暴露诊断，但暂不接入聚合
+                qCInfo(dtkUpdateUi) << "linglong backend not available at startup:"
+                                    << m_linyaps->availabilityError();
+                m_linyaps->deleteLater();
+                m_linyaps = nullptr;
+            }
+            else
+            {
+                m_linyaps->setConfig(m_config);
+                m_monitor->setLinyapsBackend(m_linyaps);
+            }
+        }
+
+        connect(m_monitor, &UpdateMonitor::backendUnavailable, this,
+                &MainWindow::onBackendUnavailable);
 
         d = new Private;
         buildUI();
@@ -429,6 +454,21 @@ namespace DtkUpdate
                          QStringLiteral("org.deepin.dde.control-center"), QStringLiteral("--"),
                          QStringLiteral("-p"), QStringLiteral("update")};
         QProcess::startDetached(QStringLiteral("dde-am"), args);
+    }
+
+    void MainWindow::onBackendUnavailable(const QString& backendId, const QString& reason)
+    {
+        if (backendId != QStringLiteral("linyaps"))
+            return; // 目前仅玲珑为跨发行系可选后端，环境异常需提示用户
+        DDialog dlg(this);
+        dlg.setTitle(tr("Linyaps Environment Issue"));
+        dlg.setMessage(reason.isEmpty()
+                           ? tr("The Linyaps (玲珑) runtime environment is abnormal; "
+                                "sandbox application updates are unavailable. "
+                                "Please check the ll-cli installation and runtime.")
+                           : reason);
+        dlg.addButton(QStringLiteral("OK"), true, DDialog::ButtonRecommend);
+        dlg.exec();
     }
 
 } // namespace DtkUpdate
