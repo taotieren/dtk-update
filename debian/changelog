@@ -1,5 +1,17 @@
 dtk-update (0.1.0) unstable; urgency=medium
 
+  * refactor: centralize Linyaps backend wiring in BackendFactory::attachLinyaps,
+    eliminating duplicated probe/connect boilerplate in GUI and both trays.
+  * refactor: route DependencyResolver dry-run parsing by real backendId (APT/DNF
+    formats) and degrade gracefully to target-only packages for backends without
+    structured transaction output (fixes false failures on dnf/linyaps).
+  * docs: align README (en/zh-CN) packaging script reference, design constraints and
+    backend-extension guide with the actual implementation; clarify attachLinyaps wiring.
+  * debian: add dtk-update.install, expand control Description, refresh changelog.
+  * ci: fix arm64 runner label typo (ubuntu-24.04-arm64 -> ubuntu-24.04-arm) and add a
+    120-minute timeout guard for the loong64 qemu build job.
+  * refactor: decouple multi-backend wiring, modularize upgrade flow,
+    synchronize docs, translations, CI and debian packaging.
   * Initial release: tray plugin skeleton, package backend abstraction,
     dependency resolver, residue cleaner, security advisor, monitor,
     systemd user service and debian packaging.

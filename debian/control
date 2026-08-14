@@ -37,9 +37,15 @@ Suggests:
 Description: DTK tray applet for distribution-agnostic package update management
  Monitors and manages system package updates, installations, removals,
  purges and residual cleanup, with dependency resolution and security advisories.
- Designed to support multiple package managers (apt, dnf, ...) via pluggable
- backends, and integrates as a dde-tray-loader plugin.
+ .
+ Supports multiple package backends via pluggable modules: apt/dpkg on
+ Debian/Ubuntu/UOS/Deepin, dnf/rpm on Fedora/openEuler, and the linyaps
+ (linglong) sandboxed app ecosystem, with per-distribution auto-detection.
+ .
+ Provides two tray integrations: a native dde-dock plugin (for Deepin/UOS
+ desktop) and a generic Qt system tray (freedesktop, no dde-dock dependency),
+ plus a standalone GUI and an optional D-Bus/systemd user daemon.
  .
  The active package manager is auto-detected per distribution; install the
- corresponding backend package (apt/dpkg or dnf/rpm) to enable updates on
- your system.
+ corresponding backend package (apt/dpkg, dnf/rpm, or linyaps) to enable
+ updates on your system.
