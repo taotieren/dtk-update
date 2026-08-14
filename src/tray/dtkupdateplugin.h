@@ -52,6 +52,7 @@ namespace DtkUpdate
         void onSecurityPrompt(const QString& severity, const QList<SecurityAdvisor::Advisory>& advs,
                               const PreCheckReport& pre) override;
         void onPostCheck(const PostCheckReport& report) override;
+        void onDistroNotices(const QList<SecurityAdvisor::Notice>& notices) override;
 
       private:
         PluginProxyInterface* m_proxyInter = nullptr;
