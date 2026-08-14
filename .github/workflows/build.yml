@@ -69,14 +69,20 @@ jobs:
           sudo cp -a . /tmp/rootfs/src/
           # 排除本机 build 残留（避免污染 chroot 构建）
           sudo rm -rf /tmp/rootfs/src/build
+          set -o pipefail
+          rc=0
           sudo chroot /tmp/rootfs bash -c \
-            'cd /src && mkdir -p build && cd build && \
-             cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON 2>&1 | tee /tmp/cmake.log && \
-             make -j$(nproc) 2>&1 | tee /tmp/make.log'
-          # 失败时输出关键日志（GitHub 日志页可见）
-          sudo bash -c 'test -f /tmp/rootfs/tmp/make.log && grep -iE "error:|fatal" /tmp/rootfs/tmp/make.log | tail -20 || true'
+            'set -o pipefail; cd /src && mkdir -p build && cd build && \
+             cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON && \
+             make -j$(nproc)' 2>&1 | tee /tmp/build.log || rc=$?
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::chroot 内编译失败 (exit $rc)"
+            grep -iE 'error:|fatal|No such file' /tmp/build.log | tail -30 || true
+            exit "$rc"
+          fi
 
       - name: Package deb
+        id: pkg
         run: |
           # 版本号：tag 触发用 tag 名（去 v 前缀），分支触发用默认 0.1.0
           VER="${GITHUB_REF_NAME#v}"
@@ -84,21 +90,34 @@ jobs:
             0.*|1.*|2.*) ;;  # 形如 0.1.0 的 tag
             *) VER="0.1.0" ;;
           esac
-          set -x
-          sudo chroot /tmp/rootfs bash -x -c "cd /src && bash ci/package-deb.sh ${{ matrix.arch }} $VER" \
-            2>&1 | tee /tmp/pkg.log || true
-          echo "=== pkg.log tail ==="
-          tail -40 /tmp/pkg.log
-          sudo cp /tmp/pkg.log /tmp/rootfs/src/ci-pkg.log || true
-          ls -la /tmp/rootfs/src/../dtk-update_*_${{ matrix.arch }}.deb 2>/dev/null || ls -la /tmp/rootfs/dtk-update_*_${{ matrix.arch }}.deb 2>/dev/null || true
+          sudo mkdir -p /tmp/artifacts
+          # 不再用 `|| true` 吞掉失败：打包失败必须让本步骤红掉，
+          # 同时保留 pkg.log 供 always() 上传排查。
+          set -o pipefail
+          rc=0
+          sudo chroot /tmp/rootfs bash -c "cd /src && bash ci/package-deb.sh ${{ matrix.arch }} $VER" \
+            2>&1 | tee /tmp/pkg.log || rc=$?
+          sudo cp /tmp/pkg.log /tmp/artifacts/ci-pkg-${{ matrix.arch }}.log || true
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::dpkg-buildpackage 失败 (exit $rc)，以下为末尾日志"
+            tail -60 /tmp/pkg.log
+            exit "$rc"
+          fi
 
       - name: Collect deb from chroot
         run: |
-          # dpkg-buildpackage 产物在 chroot 的上级目录（/）
           sudo mkdir -p /tmp/artifacts
-          sudo find /tmp/rootfs -maxdepth 3 -name 'dtk-update_*_${{ matrix.arch }}.deb' -exec cp {} /tmp/artifacts/ \; 2>/dev/null || true
-          sudo cp /tmp/pkg.log /tmp/artifacts/ci-pkg-${{ matrix.arch }}.log || true
-          ls -la /tmp/artifacts/ || exit 1
+          # dpkg-buildpackage 产物落在源码目录的上级，即 chroot 内的 /
+          sudo find /tmp/rootfs -maxdepth 3 -name 'dtk-update_*_${{ matrix.arch }}.deb' \
+            -exec cp -v {} /tmp/artifacts/ \;
+          ls -la /tmp/artifacts/
+          # 必须真的收到 deb，否则立刻失败（避免只上传日志的“假成功”）
+          if ! ls /tmp/artifacts/dtk-update_*_${{ matrix.arch }}.deb >/dev/null 2>&1; then
+            echo "::error::未在 chroot 中找到 dtk-update_*_${{ matrix.arch }}.deb"
+            echo "--- chroot 根目录内容 ---"
+            sudo ls -la /tmp/rootfs/ | head -40
+            exit 1
+          fi
 
       - name: Sanity check deb
         run: |
