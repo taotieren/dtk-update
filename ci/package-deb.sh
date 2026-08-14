@@ -40,8 +40,14 @@ echo "==> 重写 changelog 顶部版本为 $VER"
 sed -i "1s/.*/dtk-update ($VER) beige; urgency=medium/" debian/changelog
 head -1 debian/changelog
 
+# 清理历史构建残留，保证 dpkg-buildpackage 从零单次编译（避免复用陈旧 CMakeCache 导致
+# dh_auto_configure 误判；CI 里编译只此一次，由 dpkg-buildpackage 完成，不再前置独立 cmake+make）
+rm -rf build obj-* CMakeCache.txt
+
 echo "==> dpkg-buildpackage (本地构建 $HOST_ARCH, ver=$VER)"
 # -us -uc 跳过签名；-b 仅二进制；不加 -a（见文件头说明）
+# dh 会自行 dh_auto_configure + dh_auto_build（含 BUILD_TESTING=ON）+ dh_auto_test，
+# 即编译与测试均在此一步完成，无需 CI 另起一次 cmake+make。
 dpkg-buildpackage -us -uc -b
 
 echo "==> 产物（仓库上级目录）:"

@@ -71,22 +71,6 @@ jobs:
             apt-get build-dep -y /src
 
 
-      - name: Copy source + build
-        run: |
-          # 源码与 build-dep 已在上一阶段就位；此处仅重新同步（幂等）并排除本机 build 残留
-          sudo rm -rf /tmp/rootfs/src/build
-          set -o pipefail
-          rc=0
-          sudo chroot /tmp/rootfs bash -c \
-            'set -o pipefail; cd /src && mkdir -p build && cd build && \
-             cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON && \
-             make -j$(nproc)' 2>&1 | tee /tmp/build.log || rc=$?
-          if [ "$rc" -ne 0 ]; then
-            echo "::error::chroot 内编译失败 (exit $rc)"
-            grep -iE 'error:|fatal|No such file' /tmp/build.log | tail -30 || true
-            exit "$rc"
-          fi
-
       - name: Package deb
         id: pkg
         run: |
