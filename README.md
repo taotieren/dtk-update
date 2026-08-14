@@ -15,8 +15,11 @@ so the project is no longer tied to a single distribution or package manager.
 - Dependency resolution via backend dry-run parsing
 - Residual config & cache cleanup (`rc` packages, orphan configs)
 - Optional security advisories (deepin security center D-Bus, with offline heuristic fallback)
-- **Upstream security advisory fetch** before applying updates (configurable, times-out
-  gracefully and never blocks the update flow)
+- **Upstream security advisory fetch** before applying updates (auto-selects the per-distro
+  source: Debian DSA / Ubuntu USN / openSUSE / Arch, configurable, time-out graceful degrade,
+  async prefetch never blocks the update flow)
+- **Distro official "recent news / notices" fetch** (package-independent; pulled from the
+  distro website / announcement service and shown as an informational notification in the tray / GUI)
 - **Pre-update / post-update health checks** (reboot required, services to restart,
   config files to review, **failed systemd units**) — inspection only, never auto-applies
 - **Container-aware**: reboot / service / failed-unit probes are skipped inside
@@ -58,7 +61,7 @@ src/core        business logic (UI-agnostic, fully unit-tested)
                 · LinyapsBackend(ll-cli/玲珑, cross-distro) · BackendFactory(auto-detect by distro
                   + always probe Linyaps independently) · PackageParser(pure parsing)
   dependency/   DependencyResolver (backend dry-run parsing)
-  security/     SecurityAdvisor (deepin security center D-Bus + upstream advisory fetch, optional)
+  security/     SecurityAdvisor (deepin security center D-Bus + per-distro upstream advisories + recent notices fetch, optional)
   healthcheck/  PreUpdateCheck / PostUpdateCheck (pre/post update, read-only probes)
   monitor/      UpdateMonitor (state machine + periodic scheduling, aggregates linyaps)
 src/indicator  UpdateIndicator (desktop-agnostic core shared by both trays: builds backend /

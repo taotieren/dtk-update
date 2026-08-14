@@ -22,7 +22,8 @@ DConfig appId 为 `org.deepin.dtk-update`。
   - `monitor/` — `UpdateMonitor`（聚合后端、状态机、并发锁、D-Bus/网络监听）。
   - `dependency/` — `DependencyResolver`（后端 dry-run 输出解析）。
   - `healthcheck/` — `PreUpdateCheck` / `PostUpdateCheck`（仅检查，不修改）。
-  - `security/` — `SecurityAdvisor`（上游安全公告拉取，超时安全）。
+  - `security/` — `SecurityAdvisor`（安全公告聚合：deepin 安全中心 D-Bus + 发行版官方源 +
+    离线启发式兜底；另含发行版「最近新闻 / 通知」抓取，与包名无关仅展示）。
 - `src/common` — `iniparser`、`distroprobe`、`presetconfig`、`backendconfig`、
   `appconfig`、`systeminfo`。无第三方依赖。
 - `src/indicator` — `UpdateIndicator`（桌面无关的共享核心，静态库，被两个托盘继承）
@@ -96,6 +97,12 @@ DConfig appId 为 `org.deepin.dtk-update`。
   优先用值成员。可选的子对象所持有的后端（如 `UpdateMonitor::m_linyaps`）用 `QPointer`，
   父对象删除时自动置空。跨对象的裸指针（`m_backend`、`m_config`）由外部所有，持有方
   不得 `delete`。
+- **异步网络**：`SecurityAdvisor` 所有网络访问均为异步（`QNetworkAccessManager` + 信号槽 +
+  超时 `QTimer::singleShot` 中断），绝不 `QEventLoop::exec()` 阻塞调用线程。上游安全公告
+  在 `UpdateMonitor::checkNow` 拿到可升级列表后 `prefetchUpstream` 异步预取并缓存，
+  `applyUpdates` 内的 `fetchAdvisories` 同步合并缓存（永不发起网络）。发行版「最近新闻 /
+  通知」经 `fetchDistroNotices` 异步拉取，结果由 `UpdateIndicator::distroNoticesReady` 转发
+  到前端弹窗。`m_fetchUpstream` 默认 false，需用户显式开启（`AppConfig::fetchUpstreamAdvisories`）。
 - **单元测试确定性**：不要在 `UpdateMonitor` 构造内自动接入真实后端（如 Linyaps），
   这会破坏 `CheckNow` 测试。前端应显式调用
   `BackendFactory::attachLinyaps(m_monitor, m_config, this)`。
@@ -155,6 +162,10 @@ ctest --output-on-failure        # 预期 66 passed + 3 skipped（非 debian 开
    跑 `clang-format -i` 覆盖改动文件；`read_lints` 无错误；`git status` 确认无遗留草稿文件。
 7. **文档同步**：本文件与 README（en / zh-CN）在同一改动里更新；changelog 追加版本条目，
    措辞与代码模块名对齐。
-8. **按功能分组提交**：不同性质的改动（清理 / 修复 / 文档）拆成独立 commit，commit message
+8. **网络源时效**：`SecurityAdvisor::upstreamFeedUrl` / `distroNoticeUrl` 里的发行版官方 RSS/
+   Atom 端点可能随官网改版失效。长任务或定期自查时，对每个 `DistroProbe::Family` 分支的 URL
+   做一次可访问性确认（web_fetch 探测），失效则更新；无稳定源的发行系（如 Fedora 安全公告）
+   保持返回空并注释，绝不指向无关地址。
+9. **按功能分组提交**：不同性质的改动（清理 / 修复 / 文档）拆成独立 commit，commit message
    用 `cleanup:`/`fix:`/`refactor:`/`docs:` 前缀，便于回溯，不要混成一团。
 

@@ -13,7 +13,10 @@
 - 基于后端 dry-run 解析的依赖解析
 - 残留配置与缓存清理（`rc` 包、孤儿配置）
 - 可选的安全公告（deepin 安全中心 D-Bus，离线启发式兜底）
-- 应用更新前 **拉取上游官方安全公告**（可配置，超时优雅降级，绝不阻塞更新流程）
+- 应用更新前 **拉取上游官方安全公告**（按发行版自动选择源：Debian DSA / Ubuntu USN /
+  openSUSE / Arch 等，可配置，超时优雅降级，异步预取绝不阻塞更新流程）
+- **发行版官方「最近新闻 / 通知」抓取**（独立于包名，按发行版从官网 / 公告服务拉取，
+  在托盘 / GUI 弹出信息性通知）
 - **更新前 / 更新后健康检查**（内核待重启 / 服务待重启 / 配置待审阅 / **失败的 systemd 单元**）——仅检查，绝不自动执行
 - **容器感知**：在容器内会跳过内核重启 / 服务 / 失败单元的检查，避免误报宿主状态
 - 更新后报告**残留包与可清理下载缓存**，交由用户显式清理（绝不自动删除）
@@ -45,7 +48,7 @@ src/core      业务逻辑（与 UI 无关，完整单元测试）
                 · LinyapsBackend(ll-cli/玲珑, 跨发行系) · BackendFactory(按发行系自动探测
                   + 始终独立探测 Linyaps) · PackageParser(纯解析)
   dependency/   DependencyResolver (后端 dry-run 解析)
-  security/     SecurityAdvisor (deepin 安全中心 D-Bus + 上游公告拉取，可选)
+  security/     SecurityAdvisor (deepin 安全中心 D-Bus + 发行版上游公告 + 最近通知抓取，可选)
   healthcheck/  PreUpdateCheck / PostUpdateCheck (预检/后检，只读探测)
   monitor/      UpdateMonitor (状态机 + 定时调度)
 src/indicator  UpdateIndicator (与桌面环境解耦的共享核心，供两个托盘复用：构建后端 /
