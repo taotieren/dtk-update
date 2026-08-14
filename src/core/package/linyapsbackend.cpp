@@ -59,6 +59,7 @@ namespace DtkUpdate
     {
         Q_UNUSED(onlyUpgradable)
         out.clear();
+        // `raw` 是 const 引用；此处仅读取内容，const_cast 安全（QTextStream 不修改它）
         QTextStream stream(const_cast<QString*>(&raw));
         QString line;
         while (stream.readLineInto(&line))

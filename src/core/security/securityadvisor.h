@@ -58,7 +58,6 @@ namespace DtkUpdate
         // 返回某发行版对应的上游官方安全公告索引 URL（无则空）
         static QString upstreamFeedUrl(const QString& distroId);
 
-        bool m_available = false;     // deepin 安全中心 D-Bus 是否可用
         bool m_fetchUpstream = false; // 是否获取上游官方源
     };
 

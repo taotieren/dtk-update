@@ -131,9 +131,8 @@ namespace DtkUpdate
 
     SecurityAdvisor::SecurityAdvisor(QObject* parent) : QObject(parent)
     {
-        QDBusConnection bus = QDBusConnection::systemBus();
-        m_available = bus.interface() && bus.interface()->isServiceRegistered(kService);
-        if (!m_available)
+        if (!QDBusConnection::systemBus().interface() ||
+            !QDBusConnection::systemBus().interface()->isServiceRegistered(kService))
             qCInfo(dtkUpdateCore)
                 << "deepin security center D-Bus unavailable, fallback to offline heuristic";
     }
@@ -209,7 +208,8 @@ namespace DtkUpdate
             return true;
 
         // 1) 尝试从安全中心 D-Bus 拉取（失败则降级）
-        if (m_available)
+        if (QDBusConnection::systemBus().interface() &&
+            QDBusConnection::systemBus().interface()->isServiceRegistered(kService))
         {
             QDBusInterface iface(kService, kPath, kIface, QDBusConnection::systemBus());
             if (iface.isValid())
