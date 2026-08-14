@@ -23,24 +23,9 @@ namespace DtkUpdate
         m_monitor->setSecurityAdvisor(m_advisor = new SecurityAdvisor(this));
         m_advisor->setFetchUpstream(m_config->fetchUpstreamAdvisories());
 
-        // 跨发行版接入可选的玲珑(linyaps)沙箱应用后端：无论当前发行系为何，
-        // 只要 ll-cli 运行环境健康即聚合；不可用时经 onBackendUnavailable 提示用户。
-        m_linyaps = BackendFactory::createById(QStringLiteral("linyaps"), this);
-        if (m_linyaps)
-        {
-            if (!m_linyaps->isAvailable())
-            {
-                qCInfo(dtkUpdateTray)
-                    << "linglong backend not available:" << m_linyaps->availabilityError();
-                m_linyaps->deleteLater();
-                m_linyaps = nullptr;
-            }
-            else
-            {
-                m_linyaps->setConfig(m_config);
-                m_monitor->setLinyapsBackend(m_linyaps);
-            }
-        }
+        // 跨发行系接入可选的玲珑(linyaps)后端：由 BackendFactory 统一探测，
+        // 可用则接入 monitor 聚合，不可用则自动丢弃，此处无需重复样板。
+        BackendFactory::attachLinyaps(m_monitor, m_config, this);
 
         connect(m_monitor, &UpdateMonitor::backendUnavailable, this,
                 &UpdateIndicator::onBackendUnavailable);

@@ -59,8 +59,7 @@ namespace DtkUpdate
     } // namespace
 
     UpdateMonitor::UpdateMonitor(PackageBackend* backend, AppConfig* config, QObject* parent)
-        : QObject(parent), m_backend(backend), m_config(config),
-          m_lock(new QLockFile(userLockPath()))
+        : QObject(parent), m_backend(backend), m_config(config), m_lock(userLockPath())
     {
         m_timer = new QTimer(this);
         m_timer->setSingleShot(false);
@@ -213,7 +212,7 @@ namespace DtkUpdate
 
         // 进程级并发锁：防止 gui 与 tray 同时触发写系统（双实例竞态）。
         // /run/lock 不可写时回退到 /tmp；锁获取失败即视为已有实例在更新，放弃本次。
-        if (m_lock->isLocked() || !m_lock->tryLock())
+        if (m_lock.isLocked() || !m_lock.tryLock())
         {
             qCWarning(dtkUpdateCore) << "another dtk-update instance is updating, abort";
             emit upgradeFinished(false, tr("Another update is already in progress"));
@@ -243,8 +242,8 @@ namespace DtkUpdate
         if (sysPkgs.isEmpty() && llPkgs.isEmpty())
         {
             setState(State::Idle);
-            if (m_lock && m_lock->isLocked())
-                m_lock->unlock();
+            if (m_lock.isLocked())
+                m_lock.unlock();
             emit upgradeFinished(true, QString());
         }
     }
@@ -259,8 +258,8 @@ namespace DtkUpdate
         if (m_state != State::Updating)
             setState(State::HasUpdates);
         m_upgradable.clear(); // 用户已明确放弃本次升级
-        if (m_lock && m_lock->isLocked())
-            m_lock->unlock();
+        if (m_lock.isLocked())
+            m_lock.unlock();
         setState(State::Idle);
         emit upgradeCancelled();
     }
@@ -315,8 +314,8 @@ namespace DtkUpdate
             setState(State::Error);
         }
         // 无论成功失败都释放并发锁，避免后续更新被永久阻塞。
-        if (m_lock && m_lock->isLocked())
-            m_lock->unlock();
+        if (m_lock.isLocked())
+            m_lock.unlock();
         emit upgradeFinished(success, detail);
         // 升级后重新检查，刷新状态
         if (success)

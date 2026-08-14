@@ -39,13 +39,18 @@ namespace DtkUpdate
         QStringList toRemove() const { return m_toRemove; }
 
         /**
-         * @brief 解析 APT 的 apt-get install -s 输出（静态，便于单测）
+         * @brief 解析后端干跑输出（静态，便于单测）
+         *
+         * 按后端类型分流：APT 解析 `Inst`/`Remv` 行（dnfFormat=false，默认），
+         * DNF 解析 `Installing:`/`Removing:` 行（dnfFormat=true）。
+         * 玲珑(ll-cli)等无结构化事务输出的后端不在此解析，由 resolve() 降级处理。
          * @param outToInstall 传出将安装的包
          * @param outToRemove  传出将移除的包
-         * @return 是否解析到任何 Inst 行
+         * @param dnfFormat    true 时使用 DNF 事务行格式，默认 false（APT 格式）
+         * @return 是否解析到任何结构化事务行
          */
         static bool parseSimulateOutput(const QString& text, QStringList& outToInstall,
-                                        QStringList& outToRemove);
+                                        QStringList& outToRemove, bool dnfFormat = false);
 
       private:
         PackageBackend* m_backend = nullptr;

@@ -20,7 +20,6 @@
 
 #include "core/dependency/dependencyresolver.h"
 #include "core/package/backendfactory.h"
-#include "core/package/linyapsbackend.h"
 #include "logger.h"
 
 DWIDGET_USE_NAMESPACE
@@ -55,25 +54,9 @@ namespace DtkUpdate
         if (m_advisor)
             m_monitor->setSecurityAdvisor(m_advisor);
 
-        // 跨发行版接入可选的玲珑(linyaps)沙箱应用后端：无论当前发行系为何，
-        // 只要 ll-cli 运行环境健康即启用；不可用时由 checkNow 经 backendUnavailable 提示用户。
-        m_linyaps = BackendFactory::createById(QStringLiteral("linyaps"), this);
-        if (m_linyaps)
-        {
-            if (!m_linyaps->isAvailable())
-            {
-                // 环境未就绪：保留实例以便 backendUnavailable 暴露诊断，但暂不接入聚合
-                qCInfo(dtkUpdateUi) << "linglong backend not available at startup:"
-                                    << m_linyaps->availabilityError();
-                m_linyaps->deleteLater();
-                m_linyaps = nullptr;
-            }
-            else
-            {
-                m_linyaps->setConfig(m_config);
-                m_monitor->setLinyapsBackend(m_linyaps);
-            }
-        }
+        // 跨发行系接入可选的玲珑(linyaps)后端：由 BackendFactory 统一探测接入。
+        // 系统后端（apt/dnf）不可用时仍经 backendUnavailable 提示用户。
+        BackendFactory::attachLinyaps(m_monitor, m_config, this);
 
         connect(m_monitor, &UpdateMonitor::backendUnavailable, this,
                 &MainWindow::onBackendUnavailable);

@@ -4,12 +4,12 @@ name: build
 # 方案：debootstrap deepin beige rootfs + chroot 构建
 #   - amd64 / arm64: GitHub 原生 runner（ubuntu-24.04 / ubuntu-24.04-arm）
 #   - loong64: x86_64 runner + qemu-user-static 模拟（GitHub 无 loong64 runner）
-# 分支推送仅构建并上传 artifact；v* tag 推送额外自动发布 Release 合并三架构 deb。
+# 分支推送仅构建并上传 artifact；* tag 推送额外自动发布 Release 合并三架构 deb。
 
 on:
   push:
     branches: [main]
-    tags: ['v*']
+    tags: ['*']
   workflow_dispatch:
 
 jobs:

@@ -4,11 +4,13 @@
 #include <functional>
 
 #include "aptbackend.h"
+#include "common/appconfig.h"
 #include "common/distroprobe.h"
 #include "common/presetconfig.h"
 #include "dnfbackend.h"
 #include "linyapsbackend.h"
 #include "logger.h"
+#include "core/monitor/updatemonitor.h"
 
 namespace DtkUpdate
 {
@@ -179,6 +181,31 @@ namespace DtkUpdate
         }
         qCWarning(dtkUpdateCore) << "unknown backend id:" << id;
         return nullptr;
+    }
+
+    PackageBackend* BackendFactory::attachLinyaps(UpdateMonitor* monitor, AppConfig* config,
+                                                  QObject* parent)
+    {
+        // 玲珑(linyaps) 与系统级后端正交：独立无条件探测，可用则接入 monitor 聚合，
+        // 不可用直接丢弃。集中此逻辑，消除 GUI / 各托盘重复的接入样板。
+        // 返回接入的实例（或 nullptr 表示未接入），调用方可保存以便后续管理。
+        if (!monitor)
+            return nullptr;
+        PackageBackend* linyaps = createById(QStringLiteral("linyaps"), parent);
+        if (!linyaps)
+            return nullptr;
+        if (!linyaps->isAvailable())
+        {
+            qCInfo(dtkUpdateCore) << "linyaps backend present but unavailable:"
+                                  << linyaps->availabilityError();
+            linyaps->deleteLater();
+            return nullptr;
+        }
+        if (config)
+            linyaps->setConfig(config);
+        monitor->setLinyapsBackend(linyaps);
+        qCInfo(dtkUpdateCore) << "linyaps backend attached";
+        return linyaps;
     }
 
     QStringList BackendFactory::availableBackendIds()

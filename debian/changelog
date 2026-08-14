@@ -4,4 +4,4 @@ dtk-update (0.1.0) unstable; urgency=medium
     dependency resolver, residue cleaner, security advisor, monitor,
     systemd user service and debian packaging.
 
- -- dtk-update Maintainers <maintainer@example.com>  Thu, 13 Aug 2026 00:00:00 +0000
+ -- dtk-update taotieren <admin@taotieren.com>  Thu, 13 Aug 2026 00:00:00 +0000

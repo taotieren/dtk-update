@@ -7,7 +7,7 @@ namespace DtkUpdate
 {
 
     /**
-     * @brief 单个软件包的描述信息（来自 apt / dpkg 解析）
+     * @brief 单个软件包的描述信息（后端无关，可由 apt/dnf/linyaps 等后端填充）
      */
     struct PackageInfo
     {

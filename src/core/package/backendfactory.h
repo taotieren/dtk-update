@@ -6,6 +6,9 @@
 namespace DtkUpdate
 {
 
+    class UpdateMonitor;
+    class AppConfig;
+
     /**
      * @brief 包管理后端工厂
      *
@@ -66,6 +69,19 @@ namespace DtkUpdate
          * @note 包含跨发行系的 linyaps（若 ll-cli 环境健康）
          */
         static QStringList availableBackendIds();
+
+        /**
+         * @brief 将可选的玲珑(linyaps)沙箱后端接入 UpdateMonitor
+         *
+         * 玲珑与系统级后端正交：无条件探测 ll-cli 运行环境，健康则接入 monitor 参与更新聚合，
+         * 不可用则直接丢弃（不接入）。集中此逻辑以消除 GUI / 各托盘重复的接入样板。
+         * @param monitor 目标 UpdateMonitor（不可为空）
+         * @param config  配置（可为空；非空则转发给后端 setConfig）
+         * @param parent  创建的 linyaps 后端父对象（通常为调用方 this）
+         * @return 接入的 linyaps 实例，或 nullptr（未接入）；调用方可保存以便生命周期管理
+         */
+        static PackageBackend* attachLinyaps(UpdateMonitor* monitor, AppConfig* config = nullptr,
+                                             QObject* parent = nullptr);
     };
 
 } // namespace DtkUpdate

@@ -3,6 +3,7 @@
 #include <QDateTime>
 #include <QLockFile>
 #include <QObject>
+#include <QPointer>
 #include <QTimer>
 
 #include "common/appconfig.h"
@@ -96,14 +97,14 @@ namespace DtkUpdate
         void applyConfigInterval();
 
         PackageBackend* m_backend;
-        PackageBackend* m_linyaps = nullptr; // 可选：跨发行版沙箱应用后端，聚合更新
+        QPointer<PackageBackend> m_linyaps; // 可选：跨发行版沙箱应用后端（QPointer 防悬空）
         AppConfig* m_config;
         SecurityAdvisor* m_advisor = nullptr;
         QTimer* m_timer;
         State m_state = State::Idle;
         PackageList m_upgradable;
         QDateTime m_lastCheck;
-        QLockFile* m_lock = nullptr; // 进程级并发锁，防止 gui+tray 同时写系统
+        QLockFile m_lock; // 进程级并发锁，防止 gui+tray 同时写系统（值成员，析构自动释放）
         // 用户已取消升级标志：install 为异步后台执行，cancelUpdate 后子线程仍可能 emit
         // operationFinished，此时必须忽略（不再弹后检/重查），否则会与"已取消"矛盾。
         bool m_cancelled = false;

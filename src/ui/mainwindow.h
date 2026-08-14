@@ -58,7 +58,6 @@ namespace DtkUpdate
         void showPostCheckHint(const PostCheckReport& report);
 
         PackageBackend* m_backend;
-        PackageBackend* m_linyaps = nullptr; // 跨发行版沙箱应用后端（可选，可为空）
         AppConfig* m_config;
         SecurityAdvisor* m_advisor;
         UpdateMonitor* m_monitor;

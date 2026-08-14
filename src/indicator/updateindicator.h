@@ -51,7 +51,6 @@ namespace DtkUpdate
 
       private:
         PackageBackend* m_backend = nullptr;
-        PackageBackend* m_linyaps = nullptr; // 跨发行版沙箱应用后端（可选，可为空）
         AppConfig* m_config = nullptr;
         SecurityAdvisor* m_advisor = nullptr;
         UpdateMonitor* m_monitor = nullptr;
