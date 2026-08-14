@@ -158,12 +158,13 @@ ctest --output-on-failure        # 预期 66 passed + 3 skipped（非 debian 开
 ```
 
 本地机通常为 Arch/DTK6，apt/dnf 后端 `isAvailable()` 返回 false，相关测试 `SKIP`——
-这是预期，不是回归。deepin Dock 托盘（`src/tray`）本地被跳过（无 `dde-dock` SDK），
-在 CI 中构建。
+这是预期，不是回归。deepin Dock 托盘（`src/tray`）在本地无 `dde-dock` SDK 时被跳过，
+但 `debian/control` 的 `Build-Depends` 已声明 `dde-dock-dev`，因此 **`build.yml` 产出的
+官方 `deb` 默认编译并进 dde-tray 插件**；本地手动编译若想编出该插件需自装 `dde-dock-dev`。
 
 ### deepin 容器内从源码编译的依赖提示
 
-在 deepin 容器（非完整桌面环境）里编译时，常遇到两个 CMake 警告，按如下补齐依赖即可：
+在 deepin 容器（非完整桌面环境）里编译时，可能遇到两个 CMake 提示，按如下补齐依赖即可：
 
 - **`Could NOT find XKB`**：缺 `libxkbcommon-dev`（提供 libxkbcommon，Qt6 GUI 需要）。
   通常随 `qt6-base-dev` 带入，但精简容器会缺失。安装：`apt-get install -y libxkbcommon-dev`。
@@ -174,10 +175,16 @@ ctest --output-on-failure        # 预期 66 passed + 3 skipped（非 debian 开
   不装也能编译，只是跳过 `src/tray`（dde-dock 插件），其余 target（通用托盘、GUI、daemon、
   核心 + 测试）照常产出——这是设计内的优雅降级，非错误。
 
-完整依赖（与 `debian/control` 的 `Build-Depends` 一致，另加上面两个易缺项）：
+完整依赖（与 `debian/control` 的 `Build-Depends` 完全一致）：
 `cmake pkg-config qt6-base-dev qt6-tools-dev libdtk6core-dev libdtk6gui-dev
 libdtk6widget-dev libdtk6log-dev libgtest-dev libpolkit-qt6-1-dev libxkbcommon-dev
-[+ dde-dock-dev 启用 dde-tray]`。详见 README 的 `## Build` / `## 构建` 章节。
+dde-dock-dev`。详见 README 的 `## Build` / `## 构建` 章节。
+
+> **测试职责分离**：`build.yml` 打包阶段通过 `ci/package-deb.sh` 内
+> `DEB_BUILD_OPTIONS=nocheck` 关闭 `dh_auto_test`，不跑单元测试（避免 chroot 内慢且重复的
+> 双层测试）；单元测试统一由 `test.yml` 在 `ubuntu:devel` 容器内原生 `ctest` 负责，结果
+> 真实可失败。`debian/rules` 的 `override_dh_auto_test` 已去掉 `|| true`，本地若直接
+> `dpkg-buildpackage` 测试会真实暴露失败。
 
 ## 长任务后检查清单（防遗漏 / 未实现 / 死代码）
 

@@ -185,21 +185,16 @@ sudo apt-get install -y \
   libdtk6core-dev libdtk6gui-dev libdtk6widget-dev libdtk6log-dev \
   libgtest-dev libpolkit-qt6-1-dev \
   libxkbcommon-dev          # provides libxkbcommon (CMake 'XKB' check); Qt6 GUI needs it
+  dde-dock-dev              # provides /usr/include/dde-dock/pluginsiteminterface.h (dde-tray plugin)
 ```
 
-> If CMake prints `Could NOT find XKB`, install `libxkbcommon-dev`. It is normally
-> pulled in by `qt6-base-dev` but a minimal container may miss it.
-
-To also build the **dde-tray** Dock plugin (skipped by default when the SDK is absent),
-install the deepin Dock plugin SDK:
-
-```bash
-sudo apt-get install -y dde-dock-dev   # provides /usr/include/dde-dock/pluginsiteminterface.h
-```
-
-Without `dde-dock-dev` the build still succeeds and produces every other target
-(generic tray, GUI, daemon, core + tests); only `src/tray` (the dde-dock plugin) is
-skipped with the warning `dde-dock SDK not found, skip building tray plugin`.
+> `libxkbcommon-dev` and `dde-dock-dev` are both declared in `debian/control`
+> `Build-Depends`, so the official `deb` produced by `build.yml` already builds the
+> **dde-tray** Dock plugin. If CMake prints `Could NOT find XKB`, install
+> `libxkbcommon-dev` (normally pulled in by `qt6-base-dev` but a minimal container may
+> miss it). Without `dde-dock-dev` the build still succeeds and produces every other
+> target (generic tray, GUI, daemon, core + tests); only `src/tray` (the dde-dock
+> plugin) is skipped with the warning `dde-dock SDK not found, skip building tray plugin`.
 
 Then configure and build:
 
