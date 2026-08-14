@@ -1,6 +1,8 @@
 #pragma once
 
 #include <DWidget>
+#include <QMouseEvent>
+#include <QPaintEvent>
 
 namespace DtkUpdate
 {

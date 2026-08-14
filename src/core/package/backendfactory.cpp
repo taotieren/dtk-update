@@ -7,10 +7,10 @@
 #include "common/appconfig.h"
 #include "common/distroprobe.h"
 #include "common/presetconfig.h"
+#include "core/monitor/updatemonitor.h"
 #include "dnfbackend.h"
 #include "linyapsbackend.h"
 #include "logger.h"
-#include "core/monitor/updatemonitor.h"
 
 namespace DtkUpdate
 {

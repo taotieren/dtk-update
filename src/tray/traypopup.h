@@ -2,7 +2,9 @@
 
 #include <DListView>
 #include <DWidget>
+#include <QLabel>
 #include <QPointer>
+#include <QPushButton>
 
 #include "core/monitor/updatemonitor.h"
 
