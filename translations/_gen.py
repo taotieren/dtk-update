@@ -111,7 +111,7 @@ zh["The Linyaps (玲珑) runtime environment is abnormal; sandbox application up
 
 # --- Recent release notes & notices dialog (distro notices popup) ---
 zh["Recent release notes & notices"] = "近期发布说明与通知"
-zh["\n… (%1 more)"] = "\n…（另有 %1 条）"
+
 
 # --- Spanish ---
 es["Backend: %1"] = "Backend: %1"
@@ -185,7 +185,7 @@ es["The Linyaps (玲珑) runtime environment is abnormal; sandbox application up
 
 # --- Recent release notes & notices dialog (distro notices popup) ---
 es["Recent release notes & notices"] = "Notas de la versión y avisos recientes"
-es["\n… (%1 more)"] = "\n… (%1 más)"
+
 
 # --- French ---
 fr["Backend: %1"] = "Backend : %1"
@@ -259,7 +259,7 @@ fr["The Linyaps (玲珑) runtime environment is abnormal; sandbox application up
 
 # --- Recent release notes & notices dialog (distro notices popup) ---
 fr["Recent release notes & notices"] = "Notes de version et avis récents"
-fr["\n… (%1 more)"] = "\n… (%1 de plus)"
+
 
 # --- German ---
 de["Backend: %1"] = "Backend: %1"
@@ -333,7 +333,7 @@ de["The Linyaps (玲珑) runtime environment is abnormal; sandbox application up
 
 # --- Recent release notes & notices dialog (distro notices popup) ---
 de["Recent release notes & notices"] = "Aktuelle Versionshinweise & Mitteilungen"
-de["\n… (%1 more)"] = "\n… (%1 weitere)"
+
 
 
 def fill_ts(lang: str, table: dict):
@@ -346,7 +346,7 @@ def fill_ts(lang: str, table: dict):
     # The .ts stores apostrophes as &apos;, so also try the encoded form.
     missing = []
     for src_str, tgt in table.items():
-        candidates = [src_str, src_str.replace("'", "&apos;")]
+        candidates = [src_str, src_str.replace("'", "&apos;"), src_str.replace("&", "&amp;")]
         found = False
         for c in candidates:
             esc_src = re.escape(c)
