@@ -27,6 +27,11 @@ cd "$ROOT"
 # dpkg-buildpackage 要求 debian/rules 可执行
 chmod +x debian/rules
 
+# 打包阶段不跑单元测试：测试由 .github/workflows/test.yml 在 ubuntu:devel 容器内
+# 原生跑 ctest 负责（结果真实、可失败）。此处 nocheck 避免 chroot 内重复且慢的测试，
+# 同时 dde-tray 等需 dde-dock-dev 的 target 仍会正常编译并进 deb。
+export DEB_BUILD_OPTIONS="${DEB_BUILD_OPTIONS:-} nocheck"
+
 # 校验 chroot 架构与期望目标一致，不一致立即失败（避免产出错架构包）
 HOST_ARCH="$(dpkg-architecture -qDEB_HOST_ARCH)"
 echo "==> chroot dpkg 架构: $HOST_ARCH (期望: $ARCH)"
@@ -46,8 +51,8 @@ rm -rf build obj-* CMakeCache.txt
 
 echo "==> dpkg-buildpackage (本地构建 $HOST_ARCH, ver=$VER)"
 # -us -uc 跳过签名；-b 仅二进制；不加 -a（见文件头说明）
-# dh 会自行 dh_auto_configure + dh_auto_build（含 BUILD_TESTING=ON）+ dh_auto_test，
-# 即编译与测试均在此一步完成，无需 CI 另起一次 cmake+make。
+# dh 会自行 dh_auto_configure + dh_auto_build（含 BUILD_TESTING=ON）；
+# 测试已由上面的 DEB_BUILD_OPTIONS=nocheck 关闭，统一交给 test.yml 跑 ctest。
 dpkg-buildpackage -us -uc -b
 
 echo "==> 产物（仓库上级目录）:"
