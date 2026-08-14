@@ -132,23 +132,23 @@ namespace DtkUpdate
         Q_UNUSED(error);
         switch (op)
         {
-            case Op::Install:
-            {
-                QStringList args{QStringLiteral("install"), QStringLiteral("-y")};
-                args.append(packages);
-                return args;
-            }
-            case Op::Remove:
-            case Op::Purge: // rpm/dnf 无独立 purge；remove 已同时删除配置（%postun 处理）
-            {
-                QStringList args{QStringLiteral("remove"), QStringLiteral("-y")};
-                args.append(packages);
-                return args;
-            }
-            case Op::Autoremove:
-                return {QStringLiteral("autoremove"), QStringLiteral("-y")};
-            case Op::CleanCache:
-                return {QStringLiteral("clean"), QStringLiteral("all")};
+        case Op::Install:
+        {
+            QStringList args{QStringLiteral("install"), QStringLiteral("-y")};
+            args.append(packages);
+            return args;
+        }
+        case Op::Remove:
+        case Op::Purge: // rpm/dnf 无独立 purge；remove 已同时删除配置（%postun 处理）
+        {
+            QStringList args{QStringLiteral("remove"), QStringLiteral("-y")};
+            args.append(packages);
+            return args;
+        }
+        case Op::Autoremove:
+            return {QStringLiteral("autoremove"), QStringLiteral("-y")};
+        case Op::CleanCache:
+            return {QStringLiteral("clean"), QStringLiteral("all")};
         }
         return {};
     }

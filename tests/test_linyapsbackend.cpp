@@ -1,7 +1,7 @@
+#include <QStandardPaths>
+
 #include "core/package/backendfactory.h"
 #include "core/package/linyapsbackend.h"
-
-#include <QStandardPaths>
 
 #include <gtest/gtest.h>
 
@@ -74,4 +74,3 @@ TEST(LinyapsBackendTest, CrossDistroIndependentOfFamily)
     EXPECT_EQ(b->backendId(), QStringLiteral("linyaps"));
     delete b;
 }
-

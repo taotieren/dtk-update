@@ -80,16 +80,16 @@ namespace DtkUpdate
 
         auto make =
             [&](const QString& id, const QString& text, bool separator = false, bool active = true)
-            {
-                QVariantMap m;
-                m[QStringLiteral("itemId")] = id;
-                m[QStringLiteral("itemText")] = text;
-                m[QStringLiteral("isCheckable")] = false;
-                m[QStringLiteral("isActive")] = active;
-                m[QStringLiteral("isSeparator")] = separator;
-                m[QStringLiteral("checked")] = false;
-                items.append(m);
-            };
+        {
+            QVariantMap m;
+            m[QStringLiteral("itemId")] = id;
+            m[QStringLiteral("itemText")] = text;
+            m[QStringLiteral("isCheckable")] = false;
+            m[QStringLiteral("isActive")] = active;
+            m[QStringLiteral("isSeparator")] = separator;
+            m[QStringLiteral("checked")] = false;
+            items.append(m);
+        };
 
         const bool hasUpdates = monitor() && monitor()->state() == UpdateMonitor::State::HasUpdates;
         make(QStringLiteral("check"), tr("Check for Updates"));

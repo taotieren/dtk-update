@@ -49,8 +49,7 @@ namespace DtkUpdate
       protected:
         void onStateChanged(bool hasUpdates, int count) override;
         void onBackendUnavailable(const QString& backendId, const QString& reason) override;
-        void onSecurityPrompt(const QString& severity,
-                              const QList<SecurityAdvisor::Advisory>& advs,
+        void onSecurityPrompt(const QString& severity, const QList<SecurityAdvisor::Advisory>& advs,
                               const PreCheckReport& pre) override;
         void onPostCheck(const PostCheckReport& report) override;
 

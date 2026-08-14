@@ -39,10 +39,14 @@ namespace DtkUpdate
         auto* menu = new QMenu;
         auto* check = menu->addAction(tr("Check for Updates"));
         connect(check, &QAction::triggered, this,
-                [this] { if (monitor()) monitor()->checkNow(); });
+                [this]
+                {
+                    if (monitor())
+                        monitor()->checkNow();
+                });
         auto* open = menu->addAction(tr("Open Update Manager"));
-        connect(open, &QAction::triggered,
-                this, [] { QProcess::startDetached(QStringLiteral("dtk-update-gui"), {}); });
+        connect(open, &QAction::triggered, this,
+                [] { QProcess::startDetached(QStringLiteral("dtk-update-gui"), {}); });
         menu->addSeparator();
         auto* quit = menu->addAction(tr("Quit"));
         connect(quit, &QAction::triggered, &QApplication::quit);
@@ -62,14 +66,13 @@ namespace DtkUpdate
         updateIcon(hasUpdates);
         if (m_tray)
         {
-            m_tray->setToolTip(hasUpdates
-                                   ? tr("%1 update(s) available").arg(count)
-                                   : tr("System up to date"));
+            m_tray->setToolTip(hasUpdates ? tr("%1 update(s) available").arg(count)
+                                          : tr("System up to date"));
             if (hasUpdates)
             {
                 m_tray->showMessage(tr("Updates available"),
-                                   tr("%1 package(s) can be updated.").arg(count),
-                                   QSystemTrayIcon::Information, 5000);
+                                    tr("%1 package(s) can be updated.").arg(count),
+                                    QSystemTrayIcon::Information, 5000);
             }
         }
     }

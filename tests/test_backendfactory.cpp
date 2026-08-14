@@ -1,6 +1,6 @@
-#include "core/package/backendfactory.h"
-
 #include <QStandardPaths>
+
+#include "core/package/backendfactory.h"
 
 #include <gtest/gtest.h>
 

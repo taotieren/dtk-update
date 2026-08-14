@@ -462,11 +462,10 @@ namespace DtkUpdate
             return; // 目前仅玲珑为跨发行系可选后端，环境异常需提示用户
         DDialog dlg(this);
         dlg.setTitle(tr("Linyaps Environment Issue"));
-        dlg.setMessage(reason.isEmpty()
-                           ? tr("The Linyaps (玲珑) runtime environment is abnormal; "
-                                "sandbox application updates are unavailable. "
-                                "Please check the ll-cli installation and runtime.")
-                           : reason);
+        dlg.setMessage(reason.isEmpty() ? tr("The Linyaps (玲珑) runtime environment is abnormal; "
+                                             "sandbox application updates are unavailable. "
+                                             "Please check the ll-cli installation and runtime.")
+                                        : reason);
         dlg.addButton(QStringLiteral("OK"), true, DDialog::ButtonRecommend);
         dlg.exec();
     }

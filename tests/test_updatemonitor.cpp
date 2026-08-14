@@ -234,8 +234,7 @@ TEST(UpdateMonitorTest, MultiBackendAggregatesAndRoutes)
     {
         if (p.name == QStringLiteral("systemd") && p.backendId.isEmpty())
             hasSys = true;
-        if (p.name == QStringLiteral("org.deepin.demo") &&
-            p.backendId == QStringLiteral("linyaps"))
+        if (p.name == QStringLiteral("org.deepin.demo") && p.backendId == QStringLiteral("linyaps"))
             hasLl = true;
     }
     EXPECT_TRUE(hasSys);

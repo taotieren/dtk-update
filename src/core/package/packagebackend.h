@@ -22,8 +22,8 @@ namespace DtkUpdate
     enum class BackendType
     {
         Unknown = 0,
-        Apt, ///< Debian/Ubuntu/Deepin/UOS 等 (apt + dpkg)
-        Dnf, ///< Fedora/RHEL 等 (dnf + rpm)
+        Apt,     ///< Debian/Ubuntu/Deepin/UOS 等 (apt + dpkg)
+        Dnf,     ///< Fedora/RHEL 等 (dnf + rpm)
         Linyaps, ///< 玲珑 (ll-cli) 沙箱应用包管理
         // 后续可扩展：Pacman, Zypper, Portage ...
     };
@@ -35,11 +35,11 @@ namespace DtkUpdate
      */
     enum class Op
     {
-        Install,     ///< 安装并保留配置
-        Remove,      ///< 移除但保留配置
-        Purge,       ///< 移除并删除配置
-        Autoremove,  ///< 清理孤儿依赖
-        CleanCache,  ///< 清理下载缓存
+        Install,    ///< 安装并保留配置
+        Remove,     ///< 移除但保留配置
+        Purge,      ///< 移除并删除配置
+        Autoremove, ///< 清理孤儿依赖
+        CleanCache, ///< 清理下载缓存
     };
     Q_ENUM_NS(Op)
 
@@ -84,10 +84,7 @@ namespace DtkUpdate
          * 原因写入此字段，便于上层向用户给出可执行的修复建议，而不是笼统地说
          * "后端不可用"。默认实现返回空。
          */
-        virtual QString availabilityError() const
-        {
-            return QString();
-        }
+        virtual QString availabilityError() const { return QString(); }
 
         /** 该后端是否支持"残留配置文件"(如 dpkg 的 rc 状态)。dnf/rpm 无此概念。 */
         virtual bool supportsResidualConfig() const = 0;
@@ -121,7 +118,8 @@ namespace DtkUpdate
                 return false;
             QString raw;
             int exitCode = -1;
-            if (!runProbe({QStringLiteral("needs-restarting"), QStringLiteral("-s")}, raw, exitCode))
+            if (!runProbe({QStringLiteral("needs-restarting"), QStringLiteral("-s")}, raw,
+                          exitCode))
                 return false;
             if (exitCode == 0 && raw.trimmed().isEmpty())
                 return true; // 无服务需重启
@@ -288,7 +286,7 @@ namespace DtkUpdate
          * @return 命中路径列表
          */
         static QStringList collectConfigFiles(const QStringList& dirs, const QStringList& suffixes,
-                                             int maxDepth);
+                                              int maxDepth);
 
         /**
          * @brief 为 QProcess 注入稳定的 C locale 环境。

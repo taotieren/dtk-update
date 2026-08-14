@@ -52,8 +52,8 @@ namespace DtkUpdate
          * @brief 同上，但显式传入发行系（避免重复探测 / 测试可控）
          */
         static QList<PackageBackend*> createBackends(DistroProbe::Family family,
-                                                    QObject* parent = nullptr,
-                                                    const QString& preferredId = QString());
+                                                     QObject* parent = nullptr,
+                                                     const QString& preferredId = QString());
 
         /**
          * @brief 按 backendId 强制创建指定后端（用于测试或手动选择）

@@ -30,8 +30,8 @@ namespace DtkUpdate
         {
             if (!m_linyaps->isAvailable())
             {
-                qCInfo(dtkUpdateTray) << "linglong backend not available:"
-                                      << m_linyaps->availabilityError();
+                qCInfo(dtkUpdateTray)
+                    << "linglong backend not available:" << m_linyaps->availabilityError();
                 m_linyaps->deleteLater();
                 m_linyaps = nullptr;
             }
@@ -52,15 +52,14 @@ namespace DtkUpdate
                 });
         connect(m_monitor, &UpdateMonitor::securityPrompt, this,
                 [this](const QString& sev, const QList<SecurityAdvisor::Advisory>& advs,
-                       const PreCheckReport& pre)
-                { onSecurityPrompt(sev, advs, pre); });
+                       const PreCheckReport& pre) { onSecurityPrompt(sev, advs, pre); });
         connect(m_monitor, &UpdateMonitor::postCheck, this,
                 [this](const PostCheckReport& rep) { onPostCheck(rep); });
         connect(m_monitor, &UpdateMonitor::stateChanged, this,
                 [this]
                 {
-                    const bool has = m_monitor &&
-                                     m_monitor->state() == UpdateMonitor::State::HasUpdates;
+                    const bool has =
+                        m_monitor && m_monitor->state() == UpdateMonitor::State::HasUpdates;
                     const int count = m_monitor ? m_monitor->upgradable().size() : 0;
                     onStateChanged(has, count);
                 });

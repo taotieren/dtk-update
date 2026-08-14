@@ -140,32 +140,31 @@ namespace DtkUpdate
         Q_UNUSED(error);
         switch (op)
         {
-            case Op::Install:
-            {
-                QStringList args{QStringLiteral("install"), QStringLiteral("-y")};
-                const bool noRec = m_config ? m_config->noInstallRecommends() : true;
-                if (noRec)
-                    args << QStringLiteral("--no-install-recommends");
-                args.append(packages);
-                return args;
-            }
-            case Op::Remove:
-            {
-                QStringList args{QStringLiteral("remove"), QStringLiteral("-y")};
-                args.append(packages);
-                return args;
-            }
-            case Op::Purge:
-            {
-                QStringList args{QStringLiteral("purge"), QStringLiteral("-y")};
-                args.append(packages);
-                return args;
-            }
-            case Op::Autoremove:
-                return {QStringLiteral("autoremove"), QStringLiteral("-y"),
-                        QStringLiteral("--purge")};
-            case Op::CleanCache:
-                return {QStringLiteral("clean")};
+        case Op::Install:
+        {
+            QStringList args{QStringLiteral("install"), QStringLiteral("-y")};
+            const bool noRec = m_config ? m_config->noInstallRecommends() : true;
+            if (noRec)
+                args << QStringLiteral("--no-install-recommends");
+            args.append(packages);
+            return args;
+        }
+        case Op::Remove:
+        {
+            QStringList args{QStringLiteral("remove"), QStringLiteral("-y")};
+            args.append(packages);
+            return args;
+        }
+        case Op::Purge:
+        {
+            QStringList args{QStringLiteral("purge"), QStringLiteral("-y")};
+            args.append(packages);
+            return args;
+        }
+        case Op::Autoremove:
+            return {QStringLiteral("autoremove"), QStringLiteral("-y"), QStringLiteral("--purge")};
+        case Op::CleanCache:
+            return {QStringLiteral("clean")};
         }
         return {};
     }

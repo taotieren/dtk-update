@@ -33,9 +33,11 @@ namespace DtkUpdate
         QString out, err;
         if (!runQuery(QStringList{QStringLiteral("ll-cli"), QStringLiteral("list")}, out, err))
         {
-            m_availabilityError = QStringLiteral(
-                "ll-cli 命令存在，但执行 `ll-cli list` 失败，玲珑运行环境可能异常：")
-                + (err.isEmpty() ? QStringLiteral("（无错误输出，可能是权限不足或运行时未初始化）") : err);
+            m_availabilityError =
+                QStringLiteral(
+                    "ll-cli 命令存在，但执行 `ll-cli list` 失败，玲珑运行环境可能异常：") +
+                (err.isEmpty() ? QStringLiteral("（无错误输出，可能是权限不足或运行时未初始化）")
+                               : err);
             return false;
         }
         return true;
@@ -62,8 +64,8 @@ namespace DtkUpdate
         while (stream.readLineInto(&line))
         {
             const QString id = line.trimmed();
-            if (id.isEmpty() || id.startsWith(QStringLiteral("/"))
-                || id.startsWith(QStringLiteral("ID"))) // 跳过表头之类
+            if (id.isEmpty() || id.startsWith(QStringLiteral("/")) ||
+                id.startsWith(QStringLiteral("ID"))) // 跳过表头之类
                 continue;
             PackageInfo info;
             // ll-cli list 输出每行形如 "org.deepin.demo/1.0.0" 或纯应用 id
@@ -153,8 +155,7 @@ namespace DtkUpdate
         const QString sys = QStringLiteral("/var/lib/linglong");
         if (QDir(sys).exists())
             dirs.append(sys);
-        const QString home =
-            QString::fromLocal8Bit(qgetenv("XDG_DATA_HOME"));
+        const QString home = QString::fromLocal8Bit(qgetenv("XDG_DATA_HOME"));
         const QString userDir =
             (home.isEmpty() ? QDir::homePath() + QStringLiteral("/.local/share") : home) +
             QStringLiteral("/linglong");

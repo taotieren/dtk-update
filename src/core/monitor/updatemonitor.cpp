@@ -161,8 +161,7 @@ namespace DtkUpdate
             else
             {
                 // ll-cli 存在但环境异常 / 未安装：把具体原因交给 UI 提示用户处理
-                emit backendUnavailable(QStringLiteral("linyaps"),
-                                       m_linyaps->availabilityError());
+                emit backendUnavailable(QStringLiteral("linyaps"), m_linyaps->availabilityError());
             }
         }
         m_upgradable = list;

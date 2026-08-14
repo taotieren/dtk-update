@@ -1,13 +1,13 @@
 #include "packagebackend.h"
 
-#include "common/appconfig.h"
-
 #include <QDir>
 #include <QFutureWatcher>
 #include <QStandardPaths>
 #include <QtConcurrent>
 #include <functional>
 #include <utility>
+
+#include "common/appconfig.h"
 
 namespace DtkUpdate
 {
@@ -83,8 +83,7 @@ namespace DtkUpdate
         p.start(full.first(), full.mid(1));
         if (!p.waitForStarted(5000))
         {
-            output =
-                QStringLiteral("failed to start privileged command: ") + full.join(QChar(' '));
+            output = QStringLiteral("failed to start privileged command: ") + full.join(QChar(' '));
             return false;
         }
         // 取消竞态：外部置 *cancelled 时立即终止进程
@@ -116,11 +115,11 @@ namespace DtkUpdate
             QDir base(dir);
             if (!base.exists())
                 continue;
-            std::function<void(const QDir&, int)> walk = [&](const QDir& d, int depth) {
+            std::function<void(const QDir&, int)> walk = [&](const QDir& d, int depth)
+            {
                 if (depth > maxDepth)
                     return;
-                for (const QFileInfo& fi :
-                     d.entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot))
+                for (const QFileInfo& fi : d.entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot))
                 {
                     if (fi.isDir())
                     {
