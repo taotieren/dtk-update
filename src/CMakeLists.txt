@@ -7,7 +7,7 @@ add_subdirectory(core)
 # 跨发行版指示器共享核心（与桌面环境解耦；tray / tray-generic 复用）
 add_subdirectory(indicator)
 
-# dde-tray-loader 插件（deepin/UOS，依赖 dde-dock SDK；缺失则跳过）
+# dde-tray-loader 插件（deepin/UOS，依赖 dde-dock SDK；SDK 缺失或显式关闭则跳过，可选依赖）
 add_subdirectory(tray)
 
 # 通用 freedesktop 托盘（跨发行版备用方案，无 dde-dock 依赖）

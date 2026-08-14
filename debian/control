@@ -15,7 +15,10 @@ Build-Depends:
  libgtest-dev,
  libpolkit-qt6-1-dev,
  libxkbcommon-dev,
- dde-dock-dev,
+# dde-dock-dev 是 deepin/UOS 专属 SDK（beige 源中由 dde-tray-loader-dev 以虚拟包提供），
+# 非 deepin 发行系（Debian/Ubuntu/Fedora/Arch 等）仓库中没有此包。将其从必需依赖中移除，
+# 改为可选：CMake 在探测不到 dde-dock SDK 时自动跳过 src/tray 插件，其余 target 照常编译。
+# deepin beige 打包环境由 ci/package-deb.sh 显式安装 dde-tray-loader-dev 以编出该插件。
 Standards-Version: 4.6.2
 Homepage: https://github.com/taotieren/dtk-update
 

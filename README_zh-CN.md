@@ -148,15 +148,17 @@ sudo apt-get install -y \
   libdtk6core-dev libdtk6gui-dev libdtk6widget-dev libdtk6log-dev \
   libgtest-dev libpolkit-qt6-1-dev \
   libxkbcommon-dev          # 提供 libxkbcommon（CMake 的 'XKB' 检查项）；Qt6 GUI 需要它
-  dde-dock-dev              # 提供 /usr/include/dde-dock/pluginsiteminterface.h（dde-tray 插件）
 ```
 
-> `libxkbcommon-dev` 与 `dde-dock-dev` 均已写入 `debian/control` 的 `Build-Depends`，
-> 因此 `build.yml` 产出的官方 `deb` 默认就会编译并进 **dde-tray** Dock 插件。若 CMake
-> 打印 `Could NOT find XKB`，安装 `libxkbcommon-dev` 即可（通常随 `qt6-base-dev` 带入，
-> 但精简容器可能缺失）。不装 `dde-dock-dev` 时构建依然成功，会产出其余所有 target（通用托盘、
-> GUI、守护进程、核心 + 测试）；仅 `src/tray`（dde-dock 插件）会被跳过，并提示
-> `dde-dock SDK not found, skip building tray plugin`。
+> `dde-dock-dev` 是**可选**依赖。它仅存在于 deepin/UOS 源（在 beige 中由 `dde-tray-loader-dev`
+> 以虚拟包形式提供），且**未**写入 `debian/control` 的 `Build-Depends`，因此
+> `apt-get build-dep` 在纯 Debian/Ubuntu/Fedora/Arch 上也能成功。当 dde-dock SDK 缺失时，
+> CMake 会自动跳过 `src/tray` 并打印状态信息 `dde-dock SDK not found, skip building dde-dock
+> tray plugin`，其余所有 target（通用托盘、GUI、守护进程、核心 + 测试）照常编译。若想同时
+> 编译 dde-dock 插件，安装 `dde-dock-dev`（deepin 上为 `dde-tray-loader-dev`）后重新配置即可。
+> `build.yml` 产出的官方 `deb` 会在 beige chroot 内主动安装此 SDK，因此仍会带上 **dde-tray**
+> 插件。若 CMake 打印 `Could NOT find XKB`，安装 `libxkbcommon-dev` 即可（通常随 `qt6-base-dev`
+> 带入，但精简容器可能缺失）。
 
 然后配置并编译：
 

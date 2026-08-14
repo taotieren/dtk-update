@@ -8,15 +8,26 @@ set(TRAY_SOURCES
     tray.json
 )
 
+# dde-tray-loader 插件是 deepin/UOS 专属组件，dde-dock SDK 仅存在于 deepin 系源。
+# 设为可选依赖：非 deepin 环境（Debian/Ubuntu/Fedora/Arch 等）不装该 SDK 也能完整编译
+# 其余 target（通用托盘、GUI、daemon、core + tests）；仅 dde-tray 插件被跳过。
+option(BUILD_DDE_TRAY "Build the dde-dock tray plugin (requires dde-dock SDK)" ON)
+
 # dde-tray-loader 插件接口头文件路径（系统提供的 dock 插件 SDK）
 find_path(DDE_DOCK_INCLUDE_DIR
     NAMES pluginsiteminterface.h
     PATH_SUFFIXES dde-dock
 )
 
-# 本地无 dde-dock SDK 时跳过（CI 镜像会提供，不影响发布）
+# 显式关闭、或本地无 dde-dock SDK 时跳过（不影响其余 target 编译）
+if(NOT BUILD_DDE_TRAY)
+    message(STATUS "BUILD_DDE_TRAY=OFF, skip building dde-dock tray plugin")
+    return()
+endif()
+
 if(NOT DDE_DOCK_INCLUDE_DIR)
-    message(WARNING "dde-dock SDK not found, skip building tray plugin")
+    message(STATUS "dde-dock SDK not found, skip building dde-dock tray plugin "
+                   "(install dde-dock-dev / dde-tray-loader-dev to enable it)")
     return()
 endif()
 

@@ -27,6 +27,15 @@ cd "$ROOT"
 # dpkg-buildpackage 要求 debian/rules 可执行
 chmod +x debian/rules
 
+# dde-dock SDK（dde-tray-loader-dev）已从 debian/control 的必需 Build-Depends 移除，
+# 使其成为可选依赖，从而非 deepin 环境也能完整编译。deepin beige 打包环境下主动安装
+# dde-tray-loader-dev：它 Provides dde-dock-dev（虚拟包），提供
+# /usr/include/dde-dock/pluginsiteminterface.h，使 src/tray 插件照常编进 deb。
+# 非 deepin 仓库无此包，该步自然跳过、不影响其余 target 编译。
+apt-get install -y dde-tray-loader-dev 2>&1 | tail -3 || \
+  echo "::warning::dde-tray-loader-dev 不可用（非 deepin 源），跳过 dde-tray 插件构建"
+# 安装失败时不应阻断打包（其余 target 仍要产出），故上面用 || 吞掉非零退出码。
+
 # 打包阶段不跑单元测试：测试由 .github/workflows/test.yml 在 ubuntu:devel 容器内
 # 原生跑 ctest 负责（结果真实、可失败）。此处 nocheck 避免 chroot 内重复且慢的测试，
 # 同时 dde-tray 等需 dde-dock-dev 的 target 仍会正常编译并进 deb。

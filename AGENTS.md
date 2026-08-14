@@ -165,8 +165,12 @@ ctest --output-on-failure        # 预期 66 passed + 3 skipped（非 debian 开
 
 本地机通常为 Arch/DTK6，apt/dnf 后端 `isAvailable()` 返回 false，相关测试 `SKIP`——
 这是预期，不是回归。deepin Dock 托盘（`src/tray`）在本地无 `dde-dock` SDK 时被跳过，
-但 `debian/control` 的 `Build-Depends` 已声明 `dde-dock-dev`，因此 **`build.yml` 产出的
-官方 `deb` 默认编译并进 dde-tray 插件**；本地手动编译若想编出该插件需自装 `dde-dock-dev`。
+这是设计内的优雅降级，非错误。`dde-dock-dev` 是**可选**依赖（仅 deepin/UOS 源提供，
+beige 中由 `dde-tray-loader-dev` 以虚拟包形式提供），已**移除**出 `debian/control`
+的 `Build-Depends`，因此非 deepin 环境 `apt-get build-dep` 也能成功。**`build.yml` 在
+beige chroot 内由 `ci/package-deb.sh` 主动安装 `dde-tray-loader-dev`**，所以官方 `deb`
+默认仍编译并进 dde-tray 插件；本地手动编译若想编出该插件需自装 `dde-dock-dev`
+（`dde-tray-loader-dev`）。
 
 ### deepin 容器内从源码编译的依赖提示
 
@@ -175,16 +179,18 @@ ctest --output-on-failure        # 预期 66 passed + 3 skipped（非 debian 开
 - **`Could NOT find XKB`**：缺 `libxkbcommon-dev`（提供 libxkbcommon，Qt6 GUI 需要）。
   通常随 `qt6-base-dev` 带入，但精简容器会缺失。安装：`apt-get install -y libxkbcommon-dev`。
   该警告本身**不阻断编译**，但装上更干净、避免后续 xcb 平台插件问题。
-- **`dde-dock SDK not found, skip building tray plugin`**：缺 deepin Dock 插件 SDK
-  `dde-dock-dev`（提供 `/usr/include/dde-dock/pluginsiteminterface.h`，即
-  `PluginsItemInterfaceV2`）。安装：`apt-get install -y dde-dock-dev`。
+- **`dde-dock SDK not found, skip building dde-dock tray plugin`**：缺 deepin Dock 插件 SDK
+  `dde-dock-dev`（beige 上由 `dde-tray-loader-dev` 提供，含
+  `/usr/include/dde-dock/pluginsiteminterface.h`，即 `PluginsItemInterfaceV2`）。
+  安装：`apt-get install -y dde-dock-dev`（或 beige 上 `dde-tray-loader-dev`）。
   不装也能编译，只是跳过 `src/tray`（dde-dock 插件），其余 target（通用托盘、GUI、daemon、
   核心 + 测试）照常产出——这是设计内的优雅降级，非错误。
 
-完整依赖（与 `debian/control` 的 `Build-Depends` 完全一致）：
+完整依赖（与 `debian/control` 的 `Build-Depends` 完全一致，dde-dock SDK 已改为可选）：
 `cmake pkg-config qt6-base-dev qt6-tools-dev libdtk6core-dev libdtk6gui-dev
-libdtk6widget-dev libdtk6log-dev libgtest-dev libpolkit-qt6-1-dev libxkbcommon-dev
-dde-dock-dev`。详见 README 的 `## Build` / `## 构建` 章节。
+libdtk6widget-dev libdtk6log-dev libgtest-dev libpolkit-qt6-1-dev libxkbcommon-dev`。
+如需 dde-tray 插件，额外部署 `dde-dock-dev`（`dde-tray-loader-dev`）。详见 README 的
+`## Build` / `## 构建` 章节。
 
 > **测试职责分离**：`build.yml` 打包阶段通过 `ci/package-deb.sh` 内
 > `DEB_BUILD_OPTIONS=nocheck` 关闭 `dh_auto_test`，不跑单元测试（避免 chroot 内慢且重复的
