@@ -1,92 +1,75 @@
-name: release
+name: Release
 
-# 仅在推送 tag（形如 v1.2.3 或 1.2.3）时触发，为 x86_64/arm64/loong64
-# 三架构构建 .deb 并汇总上传到 GitHub Release。
 on:
   push:
     tags:
-      - 'v*'
-      - '[0-9]+.[0-9]+.[0-9]+*'
+      - "v*"
 
 permissions:
   contents: write
 
 jobs:
   build-deb:
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: amd64
-            runner: ubuntu-24.04
-          - arch: arm64
-            runner: ubuntu-24.04-arm64
-          - arch: loong64
-            runner: ubuntu-24.04
+    name: Build .deb (Ubuntu devel / DTK6)
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:devel
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Determine version from tag
-        id: ver
+      - name: Install build dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
         run: |
-          TAG="${GITHUB_REF_NAME}"
-          VER="${TAG#v}"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "version=$VER" >> "$GITHUB_OUTPUT"
-          echo "Building release $VER (tag $TAG)"
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            cmake \
+            ninja-build \
+            pkg-config \
+            g++ \
+            extra-cmake-modules \
+            debhelper-compat \
+            dpkg-dev \
+            qt6-base-dev \
+            qt6-tools-dev \
+            libdtk6core-dev \
+            libdtk6gui-dev \
+            libdtk6widget-dev \
+            libdtk6log-dev \
+            libpolkit-qt6-1-dev \
+            libgtest-dev \
+            devscripts
 
-      - name: Stamp changelog
+      - name: Build package
         run: |
-          VER="${{ steps.ver.outputs.version }}"
-          DATE=$(date -R)
-          {
-            echo "dtk-update ($VER) unstable; urgency=medium"
-            echo ""
-            echo "  * Release $VER"
-            echo ""
-            echo " -- dtk-update Maintainers <maintainer@example.com>  $DATE"
-            echo ""
-            cat debian/changelog
-          } > debian/changelog.tmp && mv debian/changelog.tmp debian/changelog
+          dpkg-buildpackage -us -uc -b
 
-      - name: Build .deb in deepin beige rootfs
-        run: bash ci/multiarch-build.sh ${{ matrix.arch }} "$PWD"
-
-      - name: Upload deb artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dtk-update-${{ matrix.arch }}
-          path: artifacts/dtk-update*.deb
-          if-no-files-found: error
+          name: dtk-update-deb
+          path: |
+            ../dtk-update_*.deb
+            ../dtk-update_*.changes
+            ../dtk-update_*.buildinfo
 
-  publish:
+  release:
+    name: Draft Release
     needs: build-deb
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: write
+    runs-on: ubuntu-latest
     steps:
-      - name: Download all architecture debs
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          path: release-assets
-          merge-multiple: true
+          name: dtk-update-deb
+          path: artifacts
 
-      - name: List release assets
-        run: ls -1 release-assets/
-
-      - name: Create GitHub Release
+      - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: dtk-update ${{ github.ref_name }}
-          draft: false
-          prerelease: false
+          files: artifacts/dtk-update_*.deb
+          draft: true
           generate_release_notes: true
-          files: |
-            release-assets/dtk-update*.deb
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

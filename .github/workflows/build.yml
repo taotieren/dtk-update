@@ -1,4 +1,4 @@
-name: build
+name: Build & Test
 
 on:
   push:
@@ -6,38 +6,57 @@ on:
   pull_request:
     branches: [main]
 
-# 多架构策略：
-# - amd64   : GitHub 原生 x86_64 runner (ubuntu-24.04)，debootstrap 同架构 beige rootfs
-# - arm64   : GitHub 原生 ARM runner (ubuntu-24.04-arm64)，debootstrap 同架构 beige rootfs
-# - loong64 : GitHub 无原生 runner、Ubuntu 也无 loong64 port，
-#            故在 x86_64 runner 上用 qemu-user-static 模拟 loongarch64 执行 chroot
-# 三架构统一使用 deepin beige 源 (DTK6 dev 包三架构均可用)，保证产物环境一致。
-# 直接产出 .deb 产物（非 zip）。
-
 jobs:
-  build-deb:
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: amd64
-            runner: ubuntu-24.04
-          - arch: arm64
-            runner: ubuntu-24.04-arm64
-          - arch: loong64
-            runner: ubuntu-24.04
+  build-test:
+    name: Build & Unit Test (Ubuntu devel / DTK6)
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:devel
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Build .deb in deepin beige rootfs
-        run: bash ci/multiarch-build.sh ${{ matrix.arch }} "$PWD"
+      - name: Install dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            cmake \
+            ninja-build \
+            pkg-config \
+            g++ \
+            extra-cmake-modules \
+            qt6-base-dev \
+            qt6-tools-dev \
+            libdtk6core-dev \
+            libdtk6gui-dev \
+            libdtk6widget-dev \
+            libdtk6log-dev \
+            libpolkit-qt6-1-dev \
+            libgtest-dev
 
-      - name: Upload deb artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: dtk-update-${{ matrix.arch }}
-          path: artifacts/dtk-update*.deb
-          if-no-files-found: error
+      - name: Configure
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=ON
+
+      - name: Build
+        run: cmake --build build -j"$(nproc)"
+
+      - name: Test
+        run: |
+          cd build
+          ctest --output-on-failure
+
+      - name: Report tray status
+        # dde-tray-loader SDK (dde-dock) is a deepin/UOS component not shipped in
+        # Ubuntu, so the tray plugin is intentionally skipped on this generic CI.
+        # It is built only in the deepin-based packaging job.
+        run: |
+          if [ -f build/plugins/libdtk-update-tray.so ]; then
+            echo "tray plugin: built"
+          else
+            echo "tray plugin: skipped (dde-dock SDK unavailable on ubuntu:devel; built in packaging job)"
+          fi

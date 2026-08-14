@@ -1,91 +1,68 @@
 #!/usr/bin/env bash
 #
-# 在 deepin beige (Debian 12 基础) rootfs 中构建 dtk-update 的 .deb 包，
-# 支持 amd64 / arm64 / loong64 三种架构。
+# dtk-update 本地构建辅助脚本
 #
-# 用法:  ci/multiarch-build.sh <arch> <source-dir>
-#   arch       : amd64 | arm64 | loong64
-#   source-dir : 已 checkout 的源码绝对路径
+# 背景：dtk-update 基于 DTK6，而 libdtk6gui-dev / libdtk6widget-dev / libdtk6log-dev
+# 在 Ubuntu 官方源中仅在开发版（stonking / devel）提供，稳定版（noble/questing 等）
+# 均不提供。因此 CI 与本地构建均统一使用 `ubuntu:devel` 容器。
 #
-# 设计说明:
-# - deepin beige 官方源提供 DTK6 dev 包 (libdtk6core/gui/widget-dev) 的
-#   amd64/arm64/loong64 三架构构建，故统一使用 beige rootfs + chroot，
-#   保证三架构产物环境一致。
-# - loong64 无 GitHub 原生 runner、Ubuntu 也无 loong64 port，故在 x86_64
-#   runner 上用 qemu-user-static 模拟 loongarch64 执行 chroot。
-# - amd64/arm64 在同架构 runner 上直接用 debootstrap 构造 rootfs (无需 QEMU)。
+# 该脚本在 ubuntu:devel 容器内可直接安装完整 DTK6 开发栈并通过 apt 构建，
+# 不再依赖 deepin 私有源、debootstrap rootfs、chroot 或 qemu 模拟。
+#
+# 注意：dde-tray-loader 的 dde-dock SDK 是 deepin/UOS 组件，未进入 Ubuntu 源，
+# 因此在 ubuntu:devel 上托盘插件会被 CMake 自动跳过（仅警告，不报错）。
+# 需要包含托盘插件的完整 .deb 时，请在 deepin 系环境下构建。
+#
+# 用法：
+#   ./ci/multiarch-build.sh            # 在当前 ubuntu:devel 容器内构建 + 测试
+#   ./ci/multiarch-build.sh --deb      # 额外产出 .deb（需 dpkg-buildpackage / devscripts）
 #
 set -euo pipefail
 
-MODE="${1:-build}"          # build | test
-ARCH="${2:-amd64}"
-SRC_DIR="${3:-$PWD}"
-MIRROR="https://community-packages.deepin.com/beige"
-ROOTFS="/tmp/dtk-update-rootfs"
+BUILD_DEB=0
+for arg in "$@"; do
+  case "$arg" in
+    --deb) BUILD_DEB=1 ;;
+    *) echo "未知参数: $arg" >&2; exit 2 ;;
+  esac
+done
 
-if [[ ! -d "$SRC_DIR/debian" ]]; then
-  echo "ERROR: source dir '$SRC_DIR' does not contain a debian/ directory" >&2
-  exit 1
+export DEBIAN_FRONTEND=noninteractive
+
+echo "==> 安装构建依赖 (ubuntu:devel + DTK6)"
+apt-get update
+apt-get install -y --no-install-recommends \
+  cmake ninja-build pkg-config g++ extra-cmake-modules \
+  qt6-base-dev qt6-tools-dev \
+  libdtk6core-dev libdtk6gui-dev libdtk6widget-dev libdtk6log-dev \
+  libpolkit-qt6-1-dev libgtest-dev
+
+if [ "$BUILD_DEB" -eq 1 ]; then
+  apt-get install -y --no-install-recommends debhelper-compat dpkg-dev devscripts
 fi
 
-echo "==> Building dtk-update for arch=$ARCH from $SRC_DIR"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
 
-# --- 1. 安装引导工具 -------------------------------------------------------
-sudo apt-get update
-sudo apt-get install -y --no-install-recommends \
-  debootstrap qemu-user-static git ca-certificates
+echo "==> 配置 (CMake + Ninja)"
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
 
-# deepin beige 没有独立 debootstrap 脚本，用 sid 脚本代替
-if [[ ! -f /usr/share/debootstrap/scripts/beige ]]; then
-  sudo cp /usr/share/debootstrap/scripts/sid /usr/share/debootstrap/scripts/beige
+echo "==> 编译"
+cmake --build build -j"$(nproc)"
+
+echo "==> 单元测试"
+cd build
+ctest --output-on-failure
+cd "$ROOT"
+
+if [ "$BUILD_DEB" -eq 1 ]; then
+  echo "==> 产出 .deb"
+  dpkg-buildpackage -us -uc -b
 fi
 
-# --- 2. 引导第一阶段 rootfs ------------------------------------------------
-sudo rm -rf "$ROOTFS"
-sudo debootstrap --arch="$ARCH" --foreign --no-check-gpg --variant=minbase \
-  beige "$ROOTFS" "$MIRROR"
-
-# loong64 需要静态模拟器才能执行 chroot 内的第二阶段
-if [[ "$ARCH" == "loong64" ]]; then
-  sudo cp /usr/bin/qemu-loongarch64-static "$ROOTFS/usr/bin/"
-fi
-
-# --- 3. 引导第二阶段 ------------------------------------------------------
-sudo chroot "$ROOTFS" /debootstrap/debootstrap --second-stage
-
-# --- 4. 配置 apt 源并安装构建依赖 -----------------------------------------
-echo "deb $MIRROR beige main community" \
-  | sudo tee "$ROOTFS/etc/apt/sources.list" >/dev/null
-sudo chroot "$ROOTFS" apt-get update
-sudo chroot "$ROOTFS" apt-get install -y --no-install-recommends \
-  build-essential dpkg-dev fakeroot cmake pkg-config \
-  qt6-base-dev qt6-tools-dev qt6-tools-dev-tools \
-  libdtk6core-dev libdtk6gui-dev libdtk6widget-dev \
-  libpolkit-qt6-1-dev libgtest-dev debhelper git
-
-# --- 5. 拷贝源码进 rootfs -------------------------------------------------
-sudo rm -rf "$ROOTFS/src"
-sudo mkdir -p "$ROOTFS/src"
-# 用 tar 避免 sudo cp 的权限/符号链接问题
-sudo tar -C "$SRC_DIR" -cf - --exclude='.git' --exclude='build' --exclude='artifacts' . \
-  | sudo tar -C "$ROOTFS/src" -xf -
-
-# --- 6. 构建 / 测试 -------------------------------------------------------
-if [[ "$MODE" == "test" ]]; then
-  # 仅编译并运行单元测试，不产出 deb
-  sudo chroot "$ROOTFS" bash -c \
-    "cd /src && cmake -B build -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release \
-     && cmake --build build -j\$(nproc) \
-     && ctest --test-dir build --output-on-failure"
+echo "==> 完成"
+if [ -f build/plugins/libdtk-update-tray.so ]; then
+  echo "托盘插件: 已构建"
 else
-  # 在 chroot 内打包 .deb
-  sudo chroot "$ROOTFS" bash -c "cd /src && dpkg-buildpackage -us -uc -b"
-
-  # --- 7. 取出产物 --------------------------------------------------------
-  mkdir -p artifacts
-  sudo cp "$ROOTFS"/dtk-update*.deb artifacts/ 2>/dev/null || true
-  sudo chmod -R a+rw artifacts || true
-
-  echo "==> Built artifacts:"
-  ls -1 artifacts/ 2>/dev/null || echo "(none)"
+  echo "托盘插件: 跳过 (ubuntu:devel 无 dde-dock SDK；在 deepin 系环境可构建)"
 fi

@@ -11,6 +11,7 @@ Build-Depends:
  libdtk6core-dev,
  libdtk6gui-dev,
  libdtk6widget-dev,
+ libdtk6log-dev,
  libgtest-dev,
  libpolkit-qt6-1-dev,
 Standards-Version: 4.6.2
@@ -25,12 +26,14 @@ Depends:
  libdtk6widget,
  libdtk6gui,
  libdtk6core,
+ libdtk6log,
 Recommends:
  apt,
  dpkg,
- deepin-security-center,
 Suggests:
  dnf,
+ linyaps,
+ deepin-security-center,
 Description: DTK tray applet for distribution-agnostic package update management
  Monitors and manages system package updates, installations, removals,
  purges and residual cleanup, with dependency resolution and security advisories.
