@@ -1,62 +1,175 @@
-name: Build & Test
+name: build
+
+# 多架构 deb 构建：amd64 / arm64 / loong64
+# 方案：debootstrap deepin beige rootfs + chroot 构建
+#   - amd64 / arm64: GitHub 原生 runner（ubuntu-24.04 / ubuntu-24.04-arm）
+#   - loong64: x86_64 runner + qemu-user-static 模拟（GitHub 无 loong64 runner）
+# 分支推送仅构建并上传 artifact；v* tag 推送额外自动发布 Release 合并三架构 deb。
 
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
 
 jobs:
-  build-test:
-    name: Build & Unit Test (Ubuntu devel / DTK6)
-    runs-on: ubuntu-latest
-    container:
-      image: ubuntu:devel
+  build:
+    name: build-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+          - arch: loong64
+            runner: ubuntu-24.04
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Install dependencies
-        env:
-          DEBIAN_FRONTEND: noninteractive
+      - name: Install cross-arch bootstrap tools
         run: |
-          apt-get update
-          apt-get install -y --no-install-recommends \
-            cmake \
-            ninja-build \
-            pkg-config \
-            g++ \
-            extra-cmake-modules \
-            qt6-base-dev \
-            qt6-tools-dev \
-            libdtk6core-dev \
-            libdtk6gui-dev \
-            libdtk6widget-dev \
-            libdtk6log-dev \
-            libpolkit-qt6-1-dev \
-            libgtest-dev
+          sudo apt-get update
+          sudo apt-get install -y debootstrap qemu-user-static
 
-      - name: Configure
+      - name: Bootstrap deepin beige rootfs (${{ matrix.arch }})
         run: |
-          cmake -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DBUILD_TESTING=ON
-
-      - name: Build
-        run: cmake --build build -j"$(nproc)"
-
-      - name: Test
-        run: |
-          cd build
-          ctest --output-on-failure
-
-      - name: Report tray status
-        # dde-tray-loader SDK (dde-dock) is a deepin/UOS component not shipped in
-        # Ubuntu, so the tray plugin is intentionally skipped on this generic CI.
-        # It is built only in the deepin-based packaging job.
-        run: |
-          if [ -f build/plugins/libdtk-update-tray.so ]; then
-            echo "tray plugin: built"
+          # deepin 不在 debootstrap 官方脚本里，用 sid 脚本代替（beige 基于 Debian 12）
+          sudo cp /usr/share/debootstrap/scripts/sid /usr/share/debootstrap/scripts/beige
+          if [ "${{ matrix.arch }}" = "loong64" ]; then
+            # 非本机架构：--foreign 二阶段 + qemu 用户态模拟
+            sudo debootstrap --arch=loong64 --foreign --no-check-gpg --variant=minbase \
+              beige /tmp/rootfs https://community-packages.deepin.com/beige
+            sudo cp /usr/bin/qemu-loongarch64-static /tmp/rootfs/usr/bin/
+            sudo chroot /tmp/rootfs /debootstrap/debootstrap --second-stage
           else
-            echo "tray plugin: skipped (dde-dock SDK unavailable on ubuntu:devel; built in packaging job)"
+            sudo debootstrap --arch=${{ matrix.arch }} --no-check-gpg --variant=minbase \
+              beige /tmp/rootfs https://community-packages.deepin.com/beige
           fi
+
+      - name: Configure apt sources + install build deps
+        run: |
+          sudo tee /tmp/rootfs/etc/apt/sources.list > /dev/null <<'EOF'
+          deb https://community-packages.deepin.com/beige beige main community
+          EOF
+          sudo chroot /tmp/rootfs apt-get update
+          sudo chroot /tmp/rootfs env DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            build-essential dpkg-dev cmake git lintian \
+            qt6-base-dev qt6-tools-dev libdtk6core-dev libdtk6gui-dev libdtk6widget-dev \
+            libdtk6log-dev libpolkit-qt6-1-dev libgtest-dev devscripts
+
+      - name: Copy source + build
+        run: |
+          sudo mkdir -p /tmp/rootfs/src
+          sudo cp -a . /tmp/rootfs/src/
+          # 排除本机 build 残留（避免污染 chroot 构建）
+          sudo rm -rf /tmp/rootfs/src/build
+          sudo chroot /tmp/rootfs bash -c \
+            'cd /src && mkdir -p build && cd build && \
+             cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON 2>&1 | tee /tmp/cmake.log && \
+             make -j$(nproc) 2>&1 | tee /tmp/make.log'
+          # 失败时输出关键日志（GitHub 日志页可见）
+          sudo bash -c 'test -f /tmp/rootfs/tmp/make.log && grep -iE "error:|fatal" /tmp/rootfs/tmp/make.log | tail -20 || true'
+
+      - name: Package deb
+        run: |
+          # 版本号：tag 触发用 tag 名（去 v 前缀），分支触发用默认 0.1.0
+          VER="${GITHUB_REF_NAME#v}"
+          case "$VER" in
+            0.*|1.*|2.*) ;;  # 形如 0.1.0 的 tag
+            *) VER="0.1.0" ;;
+          esac
+          set -x
+          sudo chroot /tmp/rootfs bash -x -c "cd /src && bash ci/package-deb.sh ${{ matrix.arch }} $VER" \
+            2>&1 | tee /tmp/pkg.log || true
+          echo "=== pkg.log tail ==="
+          tail -40 /tmp/pkg.log
+          sudo cp /tmp/pkg.log /tmp/rootfs/src/ci-pkg.log || true
+          ls -la /tmp/rootfs/src/../dtk-update_*_${{ matrix.arch }}.deb 2>/dev/null || ls -la /tmp/rootfs/dtk-update_*_${{ matrix.arch }}.deb 2>/dev/null || true
+
+      - name: Collect deb from chroot
+        run: |
+          # dpkg-buildpackage 产物在 chroot 的上级目录（/）
+          sudo mkdir -p /tmp/artifacts
+          sudo find /tmp/rootfs -maxdepth 3 -name 'dtk-update_*_${{ matrix.arch }}.deb' -exec cp {} /tmp/artifacts/ \; 2>/dev/null || true
+          sudo cp /tmp/pkg.log /tmp/artifacts/ci-pkg-${{ matrix.arch }}.log || true
+          ls -la /tmp/artifacts/ || exit 1
+
+      - name: Sanity check deb
+        run: |
+          DEB=$(ls /tmp/artifacts/dtk-update_*_${{ matrix.arch }}.deb | head -1)
+          echo "=== $DEB ==="
+          dpkg-deb --info "$DEB" | grep -E 'Package|Version|Architecture'
+          dpkg-deb --contents "$DEB" | grep -E '\.so|dtk-update|backend|\.dci' | head -8
+
+      - name: Upload artifacts (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dtk-update-deb-${{ matrix.arch }}
+          path: |
+            /tmp/artifacts/dtk-update_*_${{ matrix.arch }}.deb
+            /tmp/artifacts/ci-pkg-${{ matrix.arch }}.log
+
+  # ============ tag 触发：构建成功后自动发布 Release ============
+  release:
+    name: Publish Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all arch debs
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          pattern: dtk-update-deb-*
+          merge-multiple: false
+
+      - name: List collected debs
+        run: find dist -name '*.deb' | sort
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          REPO="${{ github.repository }}"
+          DEBS=$(find dist -name 'dtk-update_*.deb' | sort)
+          echo "发布 $TAG 资产："
+          echo "$DEBS"
+          NOTES="多架构安装包（GitHub Actions 自动构建）
+
+          * amd64 / arm64 / loong64 三个 .deb
+          * 构建方式：debootstrap deepin beige rootfs + chroot（loong64 经 QEMU 用户态模拟）
+          * 安装：sudo apt install ./dtk-update_<版本>_<架构>.deb"
+          # 确保 release 存在（已存在则复用）
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            echo "创建 Release $TAG"
+            gh release create "$TAG" --title "$TAG" --notes "$NOTES"
+          fi
+          # 上传 deb（先删同名旧资产再上传，规避 gh --clobber 的 404 bug）
+          REL_ID=$(gh api "repos/$REPO/releases/tags/$TAG" --jq '.id')
+          UPURL=$(gh api "repos/$REPO/releases/tags/$TAG" --jq '.upload_url' | sed 's/{?name,label}//')
+          echo "release id=$REL_ID"
+          for deb in $DEBS; do
+            NAME=$(basename "$deb")
+            gh api "repos/$REPO/releases/$REL_ID/assets" --paginate \
+              --jq '.[] | select(.name == "'"$NAME"'") | .id' 2>/dev/null | while read -r AID; do
+              echo "删除旧资产 $NAME (id=$AID)"
+              gh api -X DELETE "repos/$REPO/releases/assets/$AID" >/dev/null 2>&1 || true
+            done
+            echo "上传 $NAME"
+            gh api -X POST "$UPURL?name=$NAME" -H "Content-Type: application/vnd.debian.binary-package" \
+              --input "$deb" >/dev/null || { echo "FAIL 上传 $NAME"; exit 1; }
+          done
+          gh release view "$TAG" --json tagName,assets \
+            --jq '.tagName + " | assets: " + ([.assets[].name] | join(", "))'
