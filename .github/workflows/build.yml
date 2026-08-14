@@ -58,16 +58,22 @@ jobs:
           deb https://community-packages.deepin.com/beige beige main community
           EOF
           sudo chroot /tmp/rootfs apt-get update
+          # 基础工具链（apt-get build-dep 自身依赖这些，必须先装）
           sudo chroot /tmp/rootfs env DEBIAN_FRONTEND=noninteractive apt-get install -y \
-            build-essential dpkg-dev cmake git lintian \
-            qt6-base-dev qt6-tools-dev libdtk6core-dev libdtk6gui-dev libdtk6widget-dev \
-            libdtk6log-dev libpolkit-qt6-1-dev libgtest-dev devscripts
+            build-essential dpkg-dev cmake git lintian debhelper devscripts
+          # 复制源码到 chroot 后，由 dpkg-buildpackage 直接读取 debian/control，
+          # 用 build-dep 自动解析 Build-Depends（避免手动镜像依赖表导致漏装，
+          # 本次失败正是漏装了 control 里声明的 pkg-config）。
+          sudo mkdir -p /tmp/rootfs/src
+          sudo cp -a . /tmp/rootfs/src/
+          sudo rm -rf /tmp/rootfs/src/build
+          sudo chroot /tmp/rootfs env DEBIAN_FRONTEND=noninteractive \
+            apt-get build-dep -y /src
+
 
       - name: Copy source + build
         run: |
-          sudo mkdir -p /tmp/rootfs/src
-          sudo cp -a . /tmp/rootfs/src/
-          # 排除本机 build 残留（避免污染 chroot 构建）
+          # 源码与 build-dep 已在上一阶段就位；此处仅重新同步（幂等）并排除本机 build 残留
           sudo rm -rf /tmp/rootfs/src/build
           set -o pipefail
           rc=0
