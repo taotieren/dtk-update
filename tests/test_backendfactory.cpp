@@ -17,6 +17,13 @@ TEST(BackendFactoryTest, CreateById)
     EXPECT_EQ(dnf->backendId(), QStringLiteral("dnf"));
     delete dnf;
 
+    // 新增的 linyaps 后端应可经 id 创建
+    PackageBackend* linyaps = BackendFactory::createById(QStringLiteral("linyaps"));
+    ASSERT_NE(linyaps, nullptr);
+    EXPECT_EQ(linyaps->backendId(), QStringLiteral("linyaps"));
+    EXPECT_EQ(linyaps->backendType(), BackendType::Linyaps);
+    delete linyaps;
+
     // 未知 id 返回空
     EXPECT_EQ(BackendFactory::createById(QStringLiteral("nonexistent")), nullptr);
 }

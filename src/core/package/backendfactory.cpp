@@ -7,6 +7,7 @@
 #include "common/distroprobe.h"
 #include "common/presetconfig.h"
 #include "dnfbackend.h"
+#include "linyapsbackend.h"
 #include "logger.h"
 
 namespace DtkUpdate
@@ -29,33 +30,32 @@ namespace DtkUpdate
                              [](QObject* p) -> PackageBackend* { return new AptBackend(p); }},
                 BackendEntry{QStringLiteral("dnf"),
                              [](QObject* p) -> PackageBackend* { return new DnfBackend(p); }},
+                BackendEntry{QStringLiteral("linyaps"),
+                             [](QObject* p) -> PackageBackend* { return new LinyapsBackend(p); }},
             };
             return entries;
         }
 
-        // 按发行系对后端探测排序：优先探测该系预设后端，再其它。
-        // 这样在 Arch（无 apt/dnf 后端）等环境下不会错误地"自动选到"不相关后端。
+        // 按发行系对后端探测排序并裁剪：
+        //  - 若该系预设后端已实现（在 registry 中），则只探测该后端（找不到即 nullptr，
+        //    不静默回退到其它不相关后端）；
+        //  - 若该系预设后端未实现（如 Arch→pacman、Suse→zypper），ordered 为空，
+        //    createBackend 直接返回 nullptr，如实反映"无可用后端"；
+        //  - 仅当发行系未知（Unknown，预设为空）时，回退为按 registry 全部顺序自动探测。
         QVector<const BackendEntry*> orderedEntries(DistroProbe::Family family)
         {
             const QString pref = PresetConfig::defaultBackendFor(family);
-            QVector<const BackendEntry*> ordered;
             const auto& all = registry();
-            // 1) 预设后端置顶
+            QVector<const BackendEntry*> ordered;
             if (!pref.isEmpty())
             {
                 for (const auto& e : all)
-                {
                     if (e.id == pref)
                         ordered.append(&e);
-                }
+                return ordered; // 可能为空（预设后端未实现）→ 不 fallthrough 到其它后端
             }
-            // 2) 其余按原顺序补齐
             for (const auto& e : all)
-            {
-                if (ordered.contains(&e))
-                    continue;
                 ordered.append(&e);
-            }
             return ordered;
         }
 

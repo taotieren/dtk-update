@@ -3,14 +3,14 @@
 DTK tray applet for monitoring and managing system package updates across
 distributions, with correct dependency resolution, install / remove / purge /
 autoremove / cleanup operations. Package operations delegate to the system's
-package manager (apt/dpkg, dnf/rpm, …) behind a **pluggable backend abstraction**,
+package manager (apt/dpkg, dnf/rpm, linyaps/玲珑, …) behind a **pluggable backend abstraction**,
 so the project is no longer tied to a single distribution or package manager.
 
 ## Features
 
 - System tray plugin for `dde-tray-loader` (V2 interface)
 - Update / install / remove / purge / autoremove / clean operations
-- Distribution-agnostic **multi-backend** design (APT, DNF; easy to extend)
+- Distribution-agnostic **multi-backend** design (APT, DNF, Linyaps; easy to extend)
 - Dependency resolution via backend dry-run parsing
 - Residual config & cache cleanup (`rc` packages, orphan configs)
 - Optional security advisories (deepin security center D-Bus, with offline heuristic fallback)
@@ -54,7 +54,8 @@ aligned with the deepin/UOS v25 ecosystem:
 ```
 src/core      business logic (UI-agnostic, fully unit-tested)
   package/      PackageBackend(abstract interface) · AptBackend(apt/dpkg) · DnfBackend(dnf/rpm)
-                BackendFactory(auto-detect by distro) · PackageParser(pure parsing)
+                · LinyapsBackend(ll-cli/玲珑) · BackendFactory(auto-detect by distro)
+                · PackageParser(pure parsing)
   dependency/   DependencyResolver (backend dry-run parsing)
   security/     SecurityAdvisor (deepin security center D-Bus + upstream advisory fetch, optional)
   healthcheck/  PreUpdateCheck / PostUpdateCheck (pre/post update, read-only probes)
@@ -90,22 +91,30 @@ Design constraints:
 
 Adapting to a new distribution takes three steps, with no changes to UI / monitor:
 
-1. Subclass `PackageBackend` and implement all pure-virtual functions
+1. Subclass `PackageBackend` and implement the backend-specific virtuals
    (`fetchUpgradable`, `simulateInstall`, `listResidualPackages`, `cacheDirectories`,
    `install`/`remove`/`purge`/`autoremove`/`cleanCache`, `isAvailable`,
-   `backendId`/`backendName`/`backendType`). Distro commands, output parsing, and
-   availability probing are all done inside this class. **Also override the health-check
-   probes** (`checkRebootRequired`, `checkServicesNeedingRestart`,
-   `checkConfigFilesToReview`, `checkFailedUnits`) — return `false` for `support` if the
-   probe is not applicable to your distro, but do not leave them as the default no-op
-   silent "unsupported" without justification. Remember container-awareness: skip
-   reboot / service / failed-unit probes when `SystemInfo::isContainer()` is true.
+   `backendId`/`backendName`/`backendType`). Command construction, output parsing, and
+   availability probing live entirely in this class.
+   **Common infrastructure is already provided by the base class** — do **not** re-implement
+   `runQuery` / `runProbe` / `runPrivileged` / `commandExists` / `collectConfigFiles`; they
+   are shared and only differ by the privilege prefix. Override the single virtual
+   `privilegedPrefix()` (e.g. `{"pkexec","apt-get"}`) so `runPrivileged` knows how to
+   escalate for your backend.
+   **Also override the health-check probes** (`checkRebootRequired`,
+   `checkServicesNeedingRestart`, `checkConfigFilesToReview`, `checkFailedUnits`) — return
+   `false` for `support` when a probe does not apply to your package manager (e.g. a
+   sandbox-app backend like Linyaps has no kernel/service/unit concept), but never silently
+   leave them as a no-op "unsupported" without reason. Remember container-awareness:
+   skip reboot / service / failed-unit probes when `SystemInfo::isContainer()` is true.
 2. Append a `{id, ctor}` entry to `BackendFactory::registry()` to set the detection priority.
-3. Add the new implementation files to `src/core/package/CMakeLists.txt`.
+3. Add the new implementation files to `src/core/package/CMakeLists.txt`, and register the
+   `id` in `PresetConfig::knownBackendIds()` for config validation.
    If the dependency-resolution output format differs from APT, branch in
    `DependencyResolver` by `backendType()`.
 
-See `src/core/package/dnfbackend.cpp` (Fedora/RHEL family) for an example.
+See `src/core/package/dnfbackend.cpp` (Fedora/RHEL family) and
+`src/core/package/linyapsbackend.cpp` (linglong sandbox-app family) for examples.
 
 ## Build
 

@@ -10,6 +10,8 @@ set(PACKAGE_SOURCES
     aptbackend.cpp
     dnfbackend.h
     dnfbackend.cpp
+    linyapsbackend.h
+    linyapsbackend.cpp
 )
 
 add_library(dtk-update-package STATIC ${PACKAGE_SOURCES})

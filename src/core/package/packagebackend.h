@@ -6,6 +6,7 @@
 #include <QVariantMap>
 #include <functional>
 
+#include "common/systeminfo.h"
 #include "packageinfo.h"
 
 namespace DtkUpdate
@@ -23,6 +24,7 @@ namespace DtkUpdate
         Unknown = 0,
         Apt, ///< Debian/Ubuntu/Deepin/UOS 等 (apt + dpkg)
         Dnf, ///< Fedora/RHEL 等 (dnf + rpm)
+        Linyaps, ///< 玲珑 (ll-cli) 沙箱应用包管理
         // 后续可扩展：Pacman, Zypper, Portage ...
     };
     Q_ENUM_NS(BackendType)
@@ -159,6 +161,66 @@ namespace DtkUpdate
          * @return true 表示进程正常结束（无论退出码），false 表示无法启动
          */
         bool runProbe(const QStringList& args, QString& output, int& exitCode) const;
+
+        /**
+         * @brief 运行只读查询命令，仅在 exit 0 时视为成功（输出存入 output）。
+         * @return true 表示命令存在且成功执行（exit 0）；false 表示失败或命令缺失。
+         */
+        bool runQuery(const QString& command, const QStringList& args, QString& output,
+                      QString& error, int timeoutMs = 30000) const;
+
+        /** 便利重载：命令与参数打包为单个 QStringList（如 {"apt","list","--upgradable"}）。 */
+        bool runQuery(const QStringList& args, QString& output, QString& error) const
+        {
+            if (args.isEmpty())
+                return false;
+            return runQuery(args.first(), args.mid(1), output, error, 120000);
+        }
+
+        /** 判断命令是否存在于 PATH 中（静态工具方法）。 */
+        static bool commandExists(const QString& command);
+
+        /**
+         * @brief 经提权前缀执行写操作（如 pkexec apt-get / pkexec dnf）。
+         *
+         * 具体的提权命令前缀由各后端通过 privilegedPrefix() 提供；本方法负责拼接
+         * 前缀与参数、注入稳定 locale、阻塞等待并据退出码判定成败。子类无需再重复实现。
+         *
+         * @param args     命令参数（不含提权前缀与本机管理器命令）
+         * @param output   标准输出/错误回传
+         * @param timeoutMs 超时（默认 10 分钟）
+         * @param cancelled 若非空，外部置 true 时立即中止（配合 runPrivilegedAsync 取消）
+         * @return true 表示 exit 0 成功；false 表示失败或命令缺失。
+         */
+        bool runPrivileged(const QStringList& args, QString& output, int timeoutMs = 600000,
+                           bool* cancelled = nullptr) const;
+
+        /** 便利重载：args 为本机管理器参数（不含提权前缀），error 由 output 回传。 */
+        bool runPrivileged(const QStringList& args, QString& output, QString& error) const
+        {
+            Q_UNUSED(error);
+            return runPrivileged(args, output, 600000, nullptr);
+        }
+
+        /**
+         * @brief 各后端应返回的提权命令前缀（含 pkexec 与本机包管理器）。
+         *        例如 APT 返回 {"pkexec","apt-get"}，DNF 返回 {"pkexec","dnf"}。
+         *        默认回退为 {"pkexec","sudo"}，具体后端必须覆盖。
+         */
+        virtual QStringList privilegedPrefix() const
+        {
+            return {QStringLiteral("pkexec"), QStringLiteral("sudo")};
+        }
+
+        /**
+         * @brief 扫描待审阅配置文件的公共实现（被 apt/dnf 的后处理探针共用）。
+         * @param dirs     要扫描的根目录（如 /etc）
+         * @param suffixes 视为"待审阅"的后缀（如 .dpkg-new, .rpmnew）
+         * @param maxDepth 最大递归深度
+         * @return 命中路径列表
+         */
+        static QStringList collectConfigFiles(const QStringList& dirs, const QStringList& suffixes,
+                                             int maxDepth);
 
         /**
          * @brief 为 QProcess 注入稳定的 C locale 环境。

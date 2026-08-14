@@ -22,6 +22,7 @@ if(HAVE_GTEST)
     set(TEST_SOURCES
         test_aptbackend.cpp
         test_dnfbackend.cpp
+        test_linyapsbackend.cpp
         test_backendfactory.cpp
         test_dependencyresolver.cpp
         test_securityadvisor.cpp

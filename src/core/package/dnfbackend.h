@@ -48,16 +48,11 @@ namespace DtkUpdate
         bool cleanCache(QString& error) override;
 
       protected:
-        // 运行只读探针命令（无论退出码均返回输出，供健康检查判断语义）。
-        // 与基类 PackageBackend::runProbe 一致的语义；暴露为 protected 便于子类化测试。
-        bool runProbe(const QStringList& args, QString& output, int& exitCode) const;
-
-      private:
-        bool runQuery(const QStringList& args, QString& output, QString& error) const;
-        bool runPrivileged(const QStringList& dnfArgs, QString& output, QString& error) const;
-        static bool commandExists(const QString& cmd);
-        static void collectConfigFiles(const QDir& dir, const QStringList& suffixes, int depth,
-                                       int maxDepth, QStringList& out);
+        // dnf 写操作经 pkexec + dnf 提权（由基类 runPrivileged 调用）
+        QStringList privilegedPrefix() const override
+        {
+            return {QStringLiteral("pkexec"), QStringLiteral("dnf")};
+        }
     };
 
 } // namespace DtkUpdate

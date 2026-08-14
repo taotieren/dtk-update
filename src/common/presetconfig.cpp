@@ -6,7 +6,7 @@ namespace DtkUpdate
     QStringList PresetConfig::knownBackendIds()
     {
         // 与 BackendFactory::registry() 保持一致；此处仅用于配置文件合法性校验
-        return {"apt", "dnf"};
+        return {"apt", "dnf", "linyaps"};
     }
 
     QString PresetConfig::defaultBackendFor(DistroProbe::Family family)

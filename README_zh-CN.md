@@ -2,13 +2,13 @@
 
 跨发行版的 DTK 托盘小程序，用于监控系统软件包更新并管理更新操作，具备正确的依赖解析、
 安装 / 卸载 / 清除 / 自动移除 / 清理等能力。包管理操作在 **可插拔后端抽象** 之下委托给系统
-包管理器（apt/dpkg、dnf/rpm 等），因此项目不再局限于单一发行版或包管理器。
+包管理器（apt/dpkg、dnf/rpm、linyaps/玲珑 等），因此项目不再局限于单一发行版或包管理器。
 
 ## 功能特性
 
 - 面向 `dde-tray-loader` 的系统托盘插件（V2 接口）
 - 更新 / 安装 / 卸载 / 清除 / 自动移除 / 清理操作
-- 与发行版无关的 **多后端** 设计（APT、DNF，易于扩展）
+- 与发行版无关的 **多后端** 设计（APT、DNF、Linyaps，易于扩展）
 - 基于后端 dry-run 解析的依赖解析
 - 残留配置与缓存清理（`rc` 包、孤儿配置）
 - 可选的安全公告（deepin 安全中心 D-Bus，离线启发式兜底）
@@ -41,7 +41,8 @@
 ```
 src/core      业务逻辑（与 UI 无关，完整单元测试）
   package/      PackageBackend(抽象接口) · AptBackend(apt/dpkg) · DnfBackend(dnf/rpm)
-                BackendFactory(按发行版自动探测) · PackageParser(纯解析)
+                · LinyapsBackend(ll-cli/玲珑) · BackendFactory(按发行版自动探测)
+                · PackageParser(纯解析)
   dependency/   DependencyResolver (后端 dry-run 解析)
   security/     SecurityAdvisor (deepin 安全中心 D-Bus + 上游公告拉取，可选)
   healthcheck/  PreUpdateCheck / PostUpdateCheck (预检/后检，只读探测)
@@ -73,19 +74,25 @@ tests          core 层 GoogleTest 测试
 
 新增一个发行版的适配只需三步，无需改动 UI / monitor：
 
-1. 继承 `PackageBackend`，实现所有纯虚函数（`fetchUpgradable`、`simulateInstall`、
+1. 继承 `PackageBackend`，实现后端相关的虚函数（`fetchUpgradable`、`simulateInstall`、
    `listResidualPackages`、`cacheDirectories`、`install`/`remove`/`purge`/`autoremove`/
    `cleanCache`、`isAvailable`、`backendId`/`backendName`/`backendType`）。
-   发行版命令、输出解析、可用性探测均在本类内部完成。**还需覆写健康检查探针**
+   发行版命令、输出解析、可用性探测均在本类内部完成。
+   **公共基础设施已由基类提供**——请勿重新实现 `runQuery` / `runProbe` / `runPrivileged` /
+   `commandExists` / `collectConfigFiles`，它们已是共享实现，差异仅在提权前缀；覆写唯一的
+   虚函数 `privilegedPrefix()`（如 `{"pkexec","apt-get"}`）即可让 `runPrivileged` 知道如何为
+   你的后端提权。**还需覆写健康检查探针**
    （`checkRebootRequired`、`checkServicesNeedingRestart`、`checkConfigFilesToReview`、
-   `checkFailedUnits`）：若某探针不适用于该发行版，返回 `support=false` 即可，但请勿
-   直接留下默认空实现而不说明。记得容器感知：当 `SystemInfo::isContainer()` 为 true
-   时，跳过内核重启 / 服务 / 失败单元的检查。
+   `checkFailedUnits`）：若某探针不适用于该包管理器（如玲珑这类沙箱应用后端没有
+   内核/服务/单元概念），返回 `support=false` 即可，但请勿直接留下默认空实现而不说明。
+   记得容器感知：当 `SystemInfo::isContainer()` 为 true 时，跳过内核重启 / 服务 / 失败单元的检查。
 2. 在 `BackendFactory::registry()` 中追加一条 `{id, ctor}` 记录，决定探测优先级。
-3. 把新实现文件加入 `src/core/package/CMakeLists.txt`。
+3. 把新实现文件加入 `src/core/package/CMakeLists.txt`，并在 `PresetConfig::knownBackendIds()`
+   中登记该 `id` 以便配置校验。
    若依赖解析输出格式与 APT 不同，可在 `DependencyResolver` 中按 `backendType()` 分流。
 
-示例参考 `src/core/package/dnfbackend.cpp`（Fedora/RHEL 系）。
+示例参考 `src/core/package/dnfbackend.cpp`（Fedora/RHEL 系）与
+`src/core/package/linyapsbackend.cpp`（玲珑沙箱应用系）。
 
 ## 构建
 

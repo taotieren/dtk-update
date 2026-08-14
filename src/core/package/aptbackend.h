@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QStringList>
 
+#include "common/systeminfo.h"
 #include "packagebackend.h"
 
 namespace DtkUpdate
@@ -52,20 +53,13 @@ namespace DtkUpdate
         bool checkFailedUnits(QStringList& units, QString& error) override;
 
       protected:
-        // 运行探针命令（无论退出码均返回输出，供健康检查判断语义）。
-        // 与基类 PackageBackend::runProbe 一致的语义；暴露为 protected 便于子类化测试。
-        bool runProbe(const QStringList& args, QString& output, int& exitCode) const;
+        bool isContainer() const { return SystemInfo::isContainer(); }
 
       private:
-        // 普通用户权限执行查询命令（捕获 stdout，失败填 stderr）
-        bool runQuery(const QStringList& args, QString& output, QString& error) const;
-        // 以 pkexec 提权执行 apt-get 写操作
-        bool runPrivileged(const QStringList& aptArgs, QString& output, QString& error) const;
-        // 探测关键命令是否存在
-        static bool commandExists(const QString& cmd);
-        // 递归扫描 /etc 下待审阅配置文件（*.dpkg-new 等）
-        static void collectConfigFiles(const QDir& dir, const QStringList& suffixes, int depth,
-                                       int maxDepth, QStringList& out);
+        bool runUpdate(bool* cancelled);
+        bool runUpgrade(bool* cancelled);
+        bool runInstall(const QStringList& packages, bool* cancelled);
+        bool runRemove(const QStringList& packages, bool purge, bool* cancelled);
     };
 
 } // namespace DtkUpdate

@@ -17,11 +17,6 @@ namespace DtkUpdate
 
     AptBackend::AptBackend(QObject* parent) : PackageBackend(parent) {}
 
-    bool AptBackend::commandExists(const QString& cmd)
-    {
-        return !QStandardPaths::findExecutable(cmd).isEmpty();
-    }
-
     bool AptBackend::isAvailable() const
     {
         // 探测 apt 系关键命令是否齐全。部分环境（如 Arch 上的 tinyget 仿真）
@@ -44,70 +39,6 @@ namespace DtkUpdate
                       err))
             return false;
         return true;
-    }
-
-    bool AptBackend::runQuery(const QStringList& args, QString& output, QString& error) const
-    {
-        QProcess proc;
-        applyStableLocale(proc);
-        proc.start(args.first(), args.mid(1));
-        if (!proc.waitForStarted(8000))
-        {
-            error = proc.errorString();
-            return false;
-        }
-        proc.waitForFinished(-1);
-        output = QString::fromLocal8Bit(proc.readAllStandardOutput());
-        if (proc.exitStatus() != QProcess::NormalExit || proc.exitCode() != 0)
-        {
-            error = QString::fromLocal8Bit(proc.readAllStandardError());
-            return false;
-        }
-        return true;
-    }
-
-    bool AptBackend::runPrivileged(const QStringList& aptArgs, QString& output,
-                                   QString& error) const
-    {
-        QStringList args{QStringLiteral("pkexec"), QStringLiteral("apt-get")};
-        args.append(aptArgs);
-        QProcess proc;
-        proc.setProcessChannelMode(QProcess::MergedChannels);
-        proc.start(QStringLiteral("pkexec"), args);
-        if (!proc.waitForStarted(8000))
-        {
-            error = proc.errorString();
-            return false;
-        }
-        proc.waitForFinished(-1);
-        output = QString::fromLocal8Bit(proc.readAllStandardOutput());
-        const int code = proc.exitCode();
-        if (proc.exitStatus() != QProcess::NormalExit || code != 0)
-        {
-            error = output;
-            return false;
-        }
-        return true;
-    }
-
-    bool AptBackend::runProbe(const QStringList& args, QString& output, int& exitCode) const
-    {
-        exitCode = -1;
-        QProcess proc;
-        applyStableLocale(proc);
-        proc.start(args.first(), args.mid(1));
-        if (!proc.waitForStarted(8000))
-        {
-            exitCode = -1;
-            return false;
-        }
-        proc.waitForFinished(-1);
-        output = QString::fromLocal8Bit(proc.readAllStandardOutput());
-        if (proc.exitStatus() == QProcess::NormalExit)
-            exitCode = proc.exitCode();
-        else
-            exitCode = -1;
-        return true; // 进程已正常结束（无论退出码），交由调用方解释语义
     }
 
     bool AptBackend::fetchUpgradable(PackageList& out, QString& error)
@@ -339,10 +270,7 @@ namespace DtkUpdate
         const QStringList suffixes = {QStringLiteral(".dpkg-new"), QStringLiteral(".dpkg-dist"),
                                       QStringLiteral(".ucf-dist"), QStringLiteral(".dpkg-old"),
                                       QStringLiteral(".dpkg-bak")};
-        QDir etc(QStringLiteral("/etc"));
-        if (!etc.exists())
-            return true;
-        collectConfigFiles(etc, suffixes, 0, 3, paths);
+        paths = collectConfigFiles({QStringLiteral("/etc")}, suffixes, 3);
         return true;
     }
 
@@ -370,31 +298,6 @@ namespace DtkUpdate
                 units.append(unit);
         }
         return true;
-    }
-
-    void AptBackend::collectConfigFiles(const QDir& dir, const QStringList& suffixes, int depth,
-                                        int maxDepth, QStringList& out)
-    {
-        if (depth > maxDepth)
-            return;
-        const QFileInfoList entries =
-            dir.entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden);
-        for (const QFileInfo& fi : entries)
-        {
-            if (fi.isDir())
-            {
-                collectConfigFiles(QDir(fi.filePath()), suffixes, depth + 1, maxDepth, out);
-            }
-            else
-            {
-                for (const QString& suf : suffixes)
-                    if (fi.fileName().endsWith(suf))
-                    {
-                        out.append(fi.filePath());
-                        break;
-                    }
-            }
-        }
     }
 
 } // namespace DtkUpdate
