@@ -139,6 +139,32 @@ tests          core 层 GoogleTest 测试
 
 ## 构建
 
+先安装编译依赖。Debian/Ubuntu/Deepin/UOS 下（完整列表与 `debian/control` 的 `Build-Depends` 一致）：
+
+```bash
+sudo apt-get install -y \
+  cmake debhelper-compat pkg-config \
+  qt6-base-dev qt6-tools-dev \
+  libdtk6core-dev libdtk6gui-dev libdtk6widget-dev libdtk6log-dev \
+  libgtest-dev libpolkit-qt6-1-dev \
+  libxkbcommon-dev          # 提供 libxkbcommon（CMake 的 'XKB' 检查项）；Qt6 GUI 需要它
+```
+
+> 若 CMake 打印 `Could NOT find XKB`，安装 `libxkbcommon-dev` 即可。它通常随
+> `qt6-base-dev` 带入，但精简容器可能缺失。
+
+要同时构建 **dde-tray** Dock 插件（默认在缺少 SDK 时跳过），需安装 deepin Dock 插件 SDK：
+
+```bash
+sudo apt-get install -y dde-dock-dev   # 提供 /usr/include/dde-dock/pluginsiteminterface.h
+```
+
+不装 `dde-dock-dev` 时构建依然成功，会产出其余所有 target（通用托盘、GUI、守护进程、
+核心 + 测试）；仅 `src/tray`（dde-dock 插件）会被跳过，并提示
+`dde-dock SDK not found, skip building tray plugin`。
+
+然后配置并编译：
+
 ```bash
 mkdir build && cd build
 cmake ..

@@ -161,6 +161,24 @@ ctest --output-on-failure        # 预期 66 passed + 3 skipped（非 debian 开
 这是预期，不是回归。deepin Dock 托盘（`src/tray`）本地被跳过（无 `dde-dock` SDK），
 在 CI 中构建。
 
+### deepin 容器内从源码编译的依赖提示
+
+在 deepin 容器（非完整桌面环境）里编译时，常遇到两个 CMake 警告，按如下补齐依赖即可：
+
+- **`Could NOT find XKB`**：缺 `libxkbcommon-dev`（提供 libxkbcommon，Qt6 GUI 需要）。
+  通常随 `qt6-base-dev` 带入，但精简容器会缺失。安装：`apt-get install -y libxkbcommon-dev`。
+  该警告本身**不阻断编译**，但装上更干净、避免后续 xcb 平台插件问题。
+- **`dde-dock SDK not found, skip building tray plugin`**：缺 deepin Dock 插件 SDK
+  `dde-dock-dev`（提供 `/usr/include/dde-dock/pluginsiteminterface.h`，即
+  `PluginsItemInterfaceV2`）。安装：`apt-get install -y dde-dock-dev`。
+  不装也能编译，只是跳过 `src/tray`（dde-dock 插件），其余 target（通用托盘、GUI、daemon、
+  核心 + 测试）照常产出——这是设计内的优雅降级，非错误。
+
+完整依赖（与 `debian/control` 的 `Build-Depends` 一致，另加上面两个易缺项）：
+`cmake pkg-config qt6-base-dev qt6-tools-dev libdtk6core-dev libdtk6gui-dev
+libdtk6widget-dev libdtk6log-dev libgtest-dev libpolkit-qt6-1-dev libxkbcommon-dev
+[+ dde-dock-dev 启用 dde-tray]`。详见 README 的 `## Build` / `## 构建` 章节。
+
 ## 长任务后检查清单（防遗漏 / 未实现 / 死代码）
 
 任何跨多文件、多轮次的重构或功能开发收尾时，必须逐项核对，避免“文档写了但代码没做”

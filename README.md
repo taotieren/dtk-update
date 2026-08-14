@@ -175,6 +175,34 @@ manager: it is available on deepin, Fedora, Ubuntu, Arch, and more whenever the
 
 ## Build
 
+Install build dependencies first. On Debian/Ubuntu/Deepin/UOS (the full list mirrors
+`debian/control` `Build-Depends`):
+
+```bash
+sudo apt-get install -y \
+  cmake debhelper-compat pkg-config \
+  qt6-base-dev qt6-tools-dev \
+  libdtk6core-dev libdtk6gui-dev libdtk6widget-dev libdtk6log-dev \
+  libgtest-dev libpolkit-qt6-1-dev \
+  libxkbcommon-dev          # provides libxkbcommon (CMake 'XKB' check); Qt6 GUI needs it
+```
+
+> If CMake prints `Could NOT find XKB`, install `libxkbcommon-dev`. It is normally
+> pulled in by `qt6-base-dev` but a minimal container may miss it.
+
+To also build the **dde-tray** Dock plugin (skipped by default when the SDK is absent),
+install the deepin Dock plugin SDK:
+
+```bash
+sudo apt-get install -y dde-dock-dev   # provides /usr/include/dde-dock/pluginsiteminterface.h
+```
+
+Without `dde-dock-dev` the build still succeeds and produces every other target
+(generic tray, GUI, daemon, core + tests); only `src/tray` (the dde-dock plugin) is
+skipped with the warning `dde-dock SDK not found, skip building tray plugin`.
+
+Then configure and build:
+
 ```bash
 mkdir build && cd build
 cmake ..
