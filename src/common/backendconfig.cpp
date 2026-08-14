@@ -76,16 +76,6 @@ namespace DtkUpdate
         }
     }
 
-    QString BackendConfig::preferredBackend() const
-    {
-        return m_preferred;
-    }
-
-    QVariantMap BackendConfig::globalOptions() const
-    {
-        return toVariantMap(m_globals);
-    }
-
     QVariantMap BackendConfig::optionsFor(const QString& backendId) const
     {
         QVariantMap result = toVariantMap(m_globals);

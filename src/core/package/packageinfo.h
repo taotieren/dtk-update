@@ -15,9 +15,6 @@ namespace DtkUpdate
         QString currentVersion;   // 已安装版本（未安装为空）
         QString candidateVersion; // 可升级候选版本
         QString architecture;     // amd64 / all ...
-        QString repository;       // 来源仓库（如 main, community）
-        qint64 size = 0;          // 下载/占用字节
-        QString priority;         // required/important/optional/...
         QString section;          // admin/utils/...
         bool isInstalled = false;
         bool isUpgradable = false;

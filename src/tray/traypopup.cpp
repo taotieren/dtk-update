@@ -10,8 +10,6 @@
 #include <QStandardItemModel>
 #include <QVBoxLayout>
 
-#include "logger.h"
-
 DWIDGET_USE_NAMESPACE
 DGUI_USE_NAMESPACE
 

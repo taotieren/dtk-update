@@ -21,16 +21,6 @@ namespace
     }
 } // namespace
 
-TEST(BackendConfigTest, PreferredBackendFromConfig)
-{
-    QTemporaryDir dir;
-    QString p = dir.path() + "/backend.conf";
-    writeConf(p, "PreferredBackend = dnf\n");
-    BackendConfig cfg;
-    ASSERT_TRUE(cfg.loadFrom({p}));
-    EXPECT_EQ(cfg.preferredBackend().toStdString(), "dnf");
-}
-
 TEST(BackendConfigTest, EffectiveBackendFallsToPreset)
 {
     QTemporaryDir dir;

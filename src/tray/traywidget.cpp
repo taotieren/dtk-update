@@ -3,8 +3,6 @@
 #include <QMouseEvent>
 #include <QPainter>
 
-#include "logger.h"
-
 namespace DtkUpdate
 {
 
@@ -30,7 +28,7 @@ namespace DtkUpdate
     {
         Q_UNUSED(event)
         QPainter p(this);
-        // 阶段 6 实现：绘制 deepin 风格图标 + 红点角标
+        // 有可升级包时绘制红色角标，否则灰色
         p.setPen(Qt::NoPen);
         p.setBrush(m_updatable > 0 ? Qt::red : Qt::gray);
         p.drawEllipse(2, 2, 12, 12);

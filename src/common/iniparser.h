@@ -42,8 +42,6 @@ namespace DtkUpdate
         QString sectionValue(const QString& section, const QString& key,
                              const QString& def = QString()) const;
 
-        bool hasKey(const QString& key) const { return !value(key).isNull(); }
-
         const SectionMap& globals() const { return m_globals; }
         const QMap<QString, SectionMap>& sections() const { return m_sections; }
 

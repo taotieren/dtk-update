@@ -43,8 +43,6 @@ namespace DtkUpdate
         // 从指定文件列表加载（用于测试/自定义）
         bool loadFrom(const QStringList& paths);
 
-        QString preferredBackend() const;
-        QVariantMap globalOptions() const;
         QVariantMap optionsFor(const QString& backendId) const;
 
         // 解析出最终生效的后端 id：配置 > 发行版预设（预设由调用方在 PresetConfig 处理）

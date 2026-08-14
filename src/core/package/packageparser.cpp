@@ -15,7 +15,6 @@ namespace DtkUpdate
             return false;
 
         out.name = m.captured(1);
-        out.repository = m.captured(2);
         out.candidateVersion = m.captured(3);
         out.architecture = m.captured(4);
         out.currentVersion = m.captured(5);

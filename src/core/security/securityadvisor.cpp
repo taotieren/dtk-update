@@ -141,14 +141,12 @@ namespace DtkUpdate
     QString SecurityAdvisor::upstreamFeedUrl(const QString& distroId)
     {
         // 仅列出有明确公开、稳定安全公告 RSS/页面源的发行版；不存在则返回空（不抓取）。
+        // Fedora 没有稳定可机读的官方安全公告源，故不列出（避免指向无关的通用邮件列表）。
         static const QMap<QString, QString> feeds = {
             // Debian 安全公告（DSA）RSS
             {QStringLiteral("debian"), QStringLiteral("https://www.debian.org/security/dsa")},
             // Ubuntu 安全公告（USN）RSS
             {QStringLiteral("ubuntu"), QStringLiteral("https://ubuntu.com/security/notices")},
-            // Fedora 安全公告
-            {QStringLiteral("fedora"),
-             QStringLiteral("https://www.openwall.com/lists/oss-security/")},
         };
         return feeds.value(distroId.toLower());
     }
