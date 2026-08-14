@@ -72,8 +72,13 @@ jobs:
           sudo cp -a . /tmp/rootfs/src/
           sudo rm -rf /tmp/rootfs/src/build
           sudo chroot /tmp/rootfs env DEBIAN_FRONTEND=noninteractive \
-            apt-get build-dep -y /src
-
+            apt-get build-dep -y /src 2>&1 | tee /tmp/apt.log
+          # build-dep 失败必须立刻红掉，并把日志留存供排查
+          if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+            echo "::error::apt-get build-dep 失败，详见末尾日志"
+            tail -40 /tmp/apt.log
+            exit 1
+          fi
 
       - name: Package deb
         id: pkg
@@ -113,6 +118,23 @@ jobs:
             sudo ls -la /tmp/rootfs/ | head -40
             exit 1
           fi
+
+      - name: Surface failure logs
+        if: ${{ failure() }}
+        run: |
+          {
+            echo "## dtk-update CI build failure (arch=${{ matrix.arch }})"
+            echo
+            echo '### apt-get build-dep log'
+            echo '```'
+            tail -50 /tmp/apt.log 2>/dev/null || echo "(no apt.log)"
+            echo '```'
+            echo
+            echo '### dpkg-buildpackage log (tail)'
+            echo '```'
+            tail -50 /tmp/pkg.log 2>/dev/null || echo "(no pkg.log)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Sanity check deb
         run: |
