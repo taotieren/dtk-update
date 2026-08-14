@@ -6,24 +6,30 @@ on:
   pull_request:
     branches: [main]
 
-# 多架构单元测试：amd64/arm64 走原生 runner，loong64 走 QEMU 模拟，
-# 均在 deepin beige rootfs 中编译并运行 ctest。
+# 多架构单元测试：amd64 / arm64 走原生 runner（Ubuntu 提供 DTK6 开发栈），
+# loong64 在纯 Ubuntu 环境缺少 DTK6 包，标记为 best-effort（失败不阻塞其余架构）。
 jobs:
   unit-test:
     runs-on: ${{ matrix.runner }}
+    container:
+      image: ubuntu:devel
     strategy:
       fail-fast: false
       matrix:
         include:
           - arch: amd64
             runner: ubuntu-24.04
+            best-effort: false
           - arch: arm64
             runner: ubuntu-24.04-arm64
+            best-effort: false
           - arch: loong64
             runner: ubuntu-24.04
+            best-effort: true
+    continue-on-error: ${{ matrix.best-effort }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Build & run tests in deepin beige rootfs
-        run: bash ci/multiarch-build.sh test ${{ matrix.arch }} "$PWD"
+      - name: Build & run tests
+        run: bash ci/multiarch-build.sh test ${{ matrix.arch }}

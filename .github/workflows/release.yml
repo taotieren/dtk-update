@@ -10,66 +10,65 @@ permissions:
 
 jobs:
   build-deb:
-    name: Build .deb (Ubuntu devel / DTK6)
-    runs-on: ubuntu-latest
+    name: Build .deb (${{ matrix.arch }} / DTK6)
+    runs-on: ${{ matrix.runner }}
     container:
       image: ubuntu:devel
+    strategy:
+      fail-fast: false
+      matrix:
+        # amd64 / arm64 在对应原生 runner 上直接构建（Ubuntu 提供 DTK6 开发栈）。
+        # loong64 在纯 Ubuntu 环境缺少 DTK6 包与官方 runner，标记为 best-effort，
+        # 失败不阻塞其余架构的发布。
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+            best-effort: false
+          - arch: arm64
+            runner: ubuntu-24.04-arm64
+            best-effort: false
+          - arch: loong64
+            runner: ubuntu-24.04
+            best-effort: true
+    continue-on-error: ${{ matrix.best-effort }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Install build dependencies
-        env:
-          DEBIAN_FRONTEND: noninteractive
-        run: |
-          apt-get update
-          apt-get install -y --no-install-recommends \
-            cmake \
-            ninja-build \
-            pkg-config \
-            g++ \
-            extra-cmake-modules \
-            debhelper-compat \
-            dpkg-dev \
-            qt6-base-dev \
-            qt6-tools-dev \
-            libdtk6core-dev \
-            libdtk6gui-dev \
-            libdtk6widget-dev \
-            libdtk6log-dev \
-            libpolkit-qt6-1-dev \
-            libgtest-dev \
-            devscripts
-
-      - name: Build package
-        run: |
-          dpkg-buildpackage -us -uc -b
+      - name: Build .deb
+        run: bash ci/multiarch-build.sh deb ${{ matrix.arch }}
 
       - name: Upload artifacts
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: dtk-update-deb
+          name: dtk-update-deb-${{ matrix.arch }}
           path: |
             ../dtk-update_*.deb
             ../dtk-update_*.changes
             ../dtk-update_*.buildinfo
+          if-no-files-found: warn
 
   release:
     name: Draft Release
     needs: build-deb
     runs-on: ubuntu-latest
     steps:
-      - name: Download artifacts
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          name: dtk-update-deb
           path: artifacts
+          pattern: dtk-update-deb-*
+          merge-multiple: false
+
+      - name: List artifacts
+        run: find artifacts -type f -name '*.deb' -exec ls -l {} \;
 
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/dtk-update_*.deb
+          files: artifacts/**/dtk-update_*.deb
           draft: true
           generate_release_notes: true
