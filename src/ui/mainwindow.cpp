@@ -20,6 +20,7 @@
 
 #include "core/dependency/dependencyresolver.h"
 #include "core/package/backendfactory.h"
+#include "indicator/updatedialogs.h"
 #include "logger.h"
 
 DWIDGET_USE_NAMESPACE
@@ -83,6 +84,10 @@ namespace DtkUpdate
         connect(m_monitor, &UpdateMonitor::updatesAvailable, this, &MainWindow::onUpdatesAvailable);
         connect(m_monitor, &UpdateMonitor::securityPrompt, this, &MainWindow::onSecurityPrompt);
         connect(m_monitor, &UpdateMonitor::postCheck, this, &MainWindow::onPostCheck);
+        if (m_advisor)
+            connect(m_advisor, &SecurityAdvisor::distroNoticesReady, this,
+                    [](const QList<SecurityAdvisor::Notice>& notices)
+                    { UpdateDialogs::showDistroNotices(notices); });
         connect(m_monitor, &UpdateMonitor::upgradeProgress, this, &MainWindow::onUpgradeProgress);
         connect(m_monitor, &UpdateMonitor::upgradeFinished, this, &MainWindow::onUpgradeFinished);
 

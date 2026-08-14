@@ -4,13 +4,13 @@
 #include <QDBusConnectionInterface>
 #include <QDBusInterface>
 #include <QDBusReply>
-#include <QEventLoop>
 #include <QMap>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QRegularExpression>
 #include <QTimer>
+#include <functional>
 
 #include "distroprobe.h"
 #include "logger.h"
@@ -25,7 +25,7 @@ namespace DtkUpdate
         const QString kPath = QStringLiteral("/com/deepin/SecurityCenter");
         const QString kIface = QStringLiteral("com.deepin.SecurityCenter");
 
-        constexpr int kUpstreamTimeoutMs = 3000; // 上游网络访问超时，避免阻塞更新流程
+        constexpr int kUpstreamTimeoutMs = 5000; // 上游网络访问超时，避免长期挂起
 
         int severityWeight(const QString& sev)
         {
@@ -70,55 +70,93 @@ namespace DtkUpdate
             return QStringLiteral("none");
         }
 
-        // 解析上游 RSS/Atom 条目里出现的包名（宽松匹配），返回命中的 (包, 标题, 链接, 描述)
-        QList<SecurityAdvisor::Advisory> parseUpstreamFeed(const QByteArray& data,
-                                                           const QStringList& packages)
+        // 去除常见 XML 实体，便于文本匹配
+        QString decodeEntities(QString text)
         {
-            QList<SecurityAdvisor::Advisory> result;
-            // 用简单文本扫描：匹配 <title>...</title> 与 <link>...</link>（兼容 RSS/Atom）
-            QString text = QString::fromUtf8(data);
-            // 转义处理（去除常见 XML 实体）
-            text.replace(QStringLiteral("&lt;"), QStringLiteral("<"))
+            return text.replace(QStringLiteral("&lt;"), QStringLiteral("<"))
                 .replace(QStringLiteral("&gt;"), QStringLiteral(">"))
                 .replace(QStringLiteral("&amp;"), QStringLiteral("&"))
                 .replace(QStringLiteral("&quot;"), QStringLiteral("\""))
                 .replace(QStringLiteral("&#39;"), QStringLiteral("'"));
+        }
 
-            const QStringList items =
-                text.split(QRegularExpression(QStringLiteral("<item[ >]")), Qt::SkipEmptyParts);
-            for (const QString& rawItem : items)
+        // 把一个 RSS <item>/Atom <entry> 片段里的字段取出来
+        struct FeedItem
+        {
+            QString title;
+            QString link;
+            QString desc; // description 或 summary
+            QString date; // pubDate / updated
+        };
+
+        FeedItem grabItem(const QString& raw)
+        {
+            FeedItem it;
+            const QString item = raw.section(QStringLiteral("</item>"), 0, 0)
+                                     .section(QStringLiteral("</entry>"), 0, 0);
+            const auto grab = [&](const QString& tag) -> QString
             {
-                const QString item = rawItem.section(QStringLiteral("</item>"), 0, 0);
-                const auto grab = [&](const QString& tag) -> QString
-                {
-                    const QRegularExpression re(tag + QStringLiteral(">([^<]*)</") + tag);
-                    const QRegularExpressionMatch m = re.match(item);
-                    return m.hasMatch() ? m.captured(1).trimmed() : QString();
-                };
-                // Atom 用 <entry>/<title>/<link href="...">
-                const QString title = grab(QStringLiteral("title"));
-                QString link = grab(QStringLiteral("link"));
-                if (link.isEmpty())
-                {
-                    const QRegularExpression reLink(QStringLiteral("<link[^>]*href=\"([^\"]+)\""));
-                    const QRegularExpressionMatch m = reLink.match(item);
-                    if (m.hasMatch())
-                        link = m.captured(1);
-                }
-                const QString desc = grab(QStringLiteral("description"));
+                const QRegularExpression re(tag + QStringLiteral(">([^<]*)</") + tag);
+                const QRegularExpressionMatch m = re.match(item);
+                return m.hasMatch() ? m.captured(1).trimmed() : QString();
+            };
+            it.title = grab(QStringLiteral("title"));
+            it.desc = grab(QStringLiteral("description"));
+            if (it.desc.isEmpty())
+                it.desc = grab(QStringLiteral("summary"));
+            it.date = grab(QStringLiteral("pubDate"));
+            if (it.date.isEmpty())
+                it.date = grab(QStringLiteral("updated"));
+            it.link = grab(QStringLiteral("link"));
+            if (it.link.isEmpty())
+            {
+                // Atom 形式：<link href="..."/>
+                const QRegularExpression reLink(QStringLiteral("<link[^>]*href=\"([^\"]+)\""));
+                const QRegularExpressionMatch m = reLink.match(item);
+                if (m.hasMatch())
+                    it.link = m.captured(1);
+            }
+            return it;
+        }
 
-                // 命中规则：标题或描述包含某个待查包名
+        // 把整段流切成 item/entry 片段列表
+        QStringList splitItems(const QString& text)
+        {
+            QStringList items =
+                text.split(QRegularExpression(QStringLiteral("<item[ >]")), Qt::SkipEmptyParts);
+            // 去掉第一段里 channel 之前的无关内容
+            if (!items.isEmpty())
+                items.removeFirst();
+            const QStringList entries =
+                text.split(QRegularExpression(QStringLiteral("<entry[ >]")), Qt::SkipEmptyParts);
+            for (const QString& e : entries)
+            {
+                if (!e.isEmpty())
+                    items.append(e);
+            }
+            return items;
+        }
+
+        // 解析上游安全公告流（命中 packages 的条目）
+        QList<SecurityAdvisor::Advisory> parseAdvisoryFeed(const QByteArray& data,
+                                                           const QStringList& packages)
+        {
+            QList<SecurityAdvisor::Advisory> result;
+            const QString text = decodeEntities(QString::fromUtf8(data));
+            for (const QString& raw : splitItems(text))
+            {
+                const FeedItem it = grabItem(raw);
                 for (const QString& pkg : packages)
                 {
-                    if (!pkg.isEmpty() && (title.contains(pkg, Qt::CaseInsensitive) ||
-                                           desc.contains(pkg, Qt::CaseInsensitive)))
+                    if (!pkg.isEmpty() && (it.title.contains(pkg, Qt::CaseInsensitive) ||
+                                           it.desc.contains(pkg, Qt::CaseInsensitive)))
                     {
                         SecurityAdvisor::Advisory a;
                         a.package = pkg;
                         a.severity = QStringLiteral("high"); // 上游公告默认高关注度
-                        a.title = title.isEmpty() ? pkg : title;
-                        a.url = link;
-                        a.description = desc;
+                        a.title = it.title.isEmpty() ? pkg : it.title;
+                        a.url = it.link;
+                        a.description = it.desc;
                         a.source = QStringLiteral("upstream");
                         result.append(a);
                         break;
@@ -126,6 +164,64 @@ namespace DtkUpdate
                 }
             }
             return result;
+        }
+
+        // 解析发行版「最近新闻 / 通知」流（与包名无关）
+        QList<SecurityAdvisor::Notice> parseNoticeFeed(const QByteArray& data,
+                                                       const QString& source)
+        {
+            QList<SecurityAdvisor::Notice> result;
+            const QString text = decodeEntities(QString::fromUtf8(data));
+            for (const QString& raw : splitItems(text))
+            {
+                const FeedItem it = grabItem(raw);
+                if (it.title.isEmpty())
+                    continue;
+                SecurityAdvisor::Notice n;
+                n.title = it.title;
+                n.url = it.link;
+                n.date = it.date;
+                n.summary = it.desc;
+                n.source = source;
+                result.append(n);
+            }
+            return result;
+        }
+
+        // 异步 GET（带超时）：完成/超时后 safeDelete，回调通过 functor 投递
+        void asyncGet(const QString& url, int timeoutMs,
+                      std::function<void(const QByteArray&, bool ok)> onDone)
+        {
+            auto* nam = new QNetworkAccessManager;
+            QNetworkRequest req{QUrl(url)};
+            req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                             QNetworkRequest::NoLessSafeRedirectPolicy);
+            req.setHeader(QNetworkRequest::UserAgentHeader,
+                          QStringLiteral("dtk-update/1.0 (advisory-fetch)"));
+            QNetworkReply* reply = nam->get(req);
+
+            auto* timer = new QTimer(nam);
+            timer->setSingleShot(true);
+            QObject::connect(timer, &QTimer::timeout, nam,
+                             [reply]()
+                             {
+                                 if (!reply->isFinished())
+                                     reply->abort();
+                             });
+            QObject::connect(reply, &QNetworkReply::finished, nam,
+                             [=]() mutable
+                             {
+                                 timer->stop();
+                                 const bool ok = reply->error() == QNetworkReply::NoError;
+                                 const QByteArray data = ok ? reply->readAll() : QByteArray();
+                                 if (!ok)
+                                     qCWarning(dtkUpdateCore)
+                                         << "advisory fetch failed:" << url << reply->errorString();
+                                 reply->deleteLater();
+                                 nam->deleteLater();
+                                 onDone(data, ok);
+                             });
+            timer->start(timeoutMs);
         }
     } // namespace
 
@@ -137,68 +233,93 @@ namespace DtkUpdate
                 << "deepin security center D-Bus unavailable, fallback to offline heuristic";
     }
 
+    // 各发行系官方可机读安全公告源（均已核实可访问，返回 RSS/RDF/Atom）。
+    // 若无稳定官方源则留空（静默跳过），绝不指向无关或失效地址。
     QString SecurityAdvisor::upstreamFeedUrl(const QString& distroId)
     {
-        // 仅列出有明确公开、稳定安全公告 RSS/页面源的发行版；不存在则返回空（不抓取）。
-        // Fedora 没有稳定可机读的官方安全公告源，故不列出（避免指向无关的通用邮件列表）。
-        static const QMap<QString, QString> feeds = {
-            // Debian 安全公告（DSA）RSS
-            {QStringLiteral("debian"), QStringLiteral("https://www.debian.org/security/dsa")},
-            // Ubuntu 安全公告（USN）RSS
-            {QStringLiteral("ubuntu"), QStringLiteral("https://ubuntu.com/security/notices")},
-        };
-        return feeds.value(distroId.toLower());
+        const DistroProbe::Family fam = DistroProbe::detectFamily();
+        Q_UNUSED(distroId)
+        switch (fam)
+        {
+        case DistroProbe::Family::Debian: // 含 Ubuntu / deepin / UOS 等衍生
+            // Ubuntu 用 USN RSS；其余 Debian 系用 DSA RDF
+            if (DistroProbe::detectId() == QStringLiteral("ubuntu"))
+                return QStringLiteral("https://ubuntu.com/security/notices/rss.xml");
+            return QStringLiteral("https://www.debian.org/security/dsa.rdf");
+        case DistroProbe::Family::Suse:
+            return QStringLiteral("https://lists.opensuse.org/archives/list/"
+                                  "security-announce@lists.opensuse.org/feed");
+        case DistroProbe::Family::Arch:
+            // Arch 无官方安全公告 RSS；取官方新闻流作最近通知/手动干预提示
+            return QStringLiteral("https://archlinux.org/feeds/news/");
+        case DistroProbe::Family::Fedora:
+            // Fedora 无稳定官方安全公告 RSS，留空跳过（不指向失效地址）
+            return QString();
+        case DistroProbe::Family::Unknown:
+        default:
+            return QString();
+        }
     }
 
-    QList<SecurityAdvisor::Advisory> SecurityAdvisor::fetchUpstreamFor(const QString& distroId,
-                                                                       const QStringList& packages)
+    // 各发行系官方「最近新闻 / 通知」feed（与包名无关，仅展示）
+    QString SecurityAdvisor::distroNoticeUrl(const QString& distroId)
     {
-        QList<Advisory> result;
-        if (!m_fetchUpstream || packages.isEmpty())
-            return result;
+        const DistroProbe::Family fam = DistroProbe::detectFamily();
+        Q_UNUSED(distroId)
+        switch (fam)
+        {
+        case DistroProbe::Family::Debian:
+            if (DistroProbe::detectId() == QStringLiteral("ubuntu"))
+                return QStringLiteral("https://ubuntu.com/blog/rss");
+            return QStringLiteral("https://www.debian.org/News/news");
+        case DistroProbe::Family::Suse:
+            return QStringLiteral("https://news.opensuse.org/feed/");
+        case DistroProbe::Family::Arch:
+            return QStringLiteral("https://archlinux.org/feeds/news/");
+        case DistroProbe::Family::Fedora:
+            return QStringLiteral("https://fedoramagazine.org/feed/");
+        case DistroProbe::Family::Unknown:
+        default:
+            return QString();
+        }
+    }
 
+    void SecurityAdvisor::prefetchUpstream(const QString& distroId, const QStringList& packages)
+    {
+        m_upstreamCache.clear();
+        if (!m_fetchUpstream || packages.isEmpty())
+        {
+            emit upstreamAdvisoriesReady(m_upstreamCache);
+            return;
+        }
         const QString feedUrl = upstreamFeedUrl(distroId);
         if (feedUrl.isEmpty())
         {
-            qCInfo(dtkUpdateCore) << "no upstream advisory feed for distro:" << distroId
-                                  << ", skip";
-            return result;
+            qCInfo(dtkUpdateCore) << "no upstream advisory feed for distro, skip";
+            emit upstreamAdvisoriesReady(m_upstreamCache);
+            return;
         }
+        asyncGet(feedUrl, kUpstreamTimeoutMs,
+                 [this, packages](const QByteArray& data, bool ok)
+                 {
+                     if (ok)
+                         m_upstreamCache = parseAdvisoryFeed(data, packages);
+                     emit upstreamAdvisoriesReady(m_upstreamCache);
+                 });
+    }
 
-        // 同步网络访问（带超时）：仅在 daemon/非交互密集场景调用，且超时很短。
-        QNetworkAccessManager nam;
-        QNetworkRequest req{QUrl(feedUrl)};
-        req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
-                         QNetworkRequest::NoLessSafeRedirectPolicy);
-        req.setHeader(QNetworkRequest::UserAgentHeader,
-                      QStringLiteral("dtk-update/1.0 (advisory-fetch)"));
-
-        QEventLoop loop;
-        QTimer timer;
-        timer.setSingleShot(true);
-        QNetworkReply* reply = nam.get(req);
-        QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-        QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
-
-        timer.start(kUpstreamTimeoutMs);
-        loop.exec();
-        if (!reply->isFinished())
+    void SecurityAdvisor::fetchDistroNotices(const QString& distroId)
+    {
+        const QString feedUrl = distroNoticeUrl(distroId);
+        if (feedUrl.isEmpty())
         {
-            reply->abort();
-            qCWarning(dtkUpdateCore) << "upstream advisory fetch timeout:" << distroId;
-            reply->deleteLater();
-            return result; // 静默降级
+            emit distroNoticesReady(QList<Notice>());
+            return;
         }
-        if (reply->error() != QNetworkReply::NoError)
-        {
-            qCWarning(dtkUpdateCore) << "upstream advisory fetch failed:" << reply->errorString();
-            reply->deleteLater();
-            return result; // 静默降级
-        }
-        const QByteArray data = reply->readAll();
-        reply->deleteLater();
-        result = parseUpstreamFeed(data, packages);
-        return result;
+        const QString source = DistroProbe::familyName(DistroProbe::detectFamily());
+        asyncGet(
+            feedUrl, kUpstreamTimeoutMs, [this, source](const QByteArray& data, bool ok)
+            { emit distroNoticesReady(ok ? parseNoticeFeed(data, source) : QList<Notice>()); });
     }
 
     bool SecurityAdvisor::fetchAdvisories(const QStringList& packages, QList<Advisory>& out)
@@ -238,14 +359,9 @@ namespace DtkUpdate
             }
         }
 
-        // 2) 上游官方公告（可选，开启且可用才抓取；失败静默降级）
-        if (m_fetchUpstream)
-        {
-            const QString distro = DistroProbe::detectId();
-            const QList<Advisory> ups = fetchUpstreamFor(distro, packages);
-            for (const auto& a : ups)
-                out.append(a);
-        }
+        // 2) 合并已异步预取的上游公告缓存（若开启且已就绪）
+        for (const auto& a : m_upstreamCache)
+            out.append(a);
 
         // 3) 离线兜底：基于包名启发式给出基础风险提示（始终可用）
         for (const auto& pkg : packages)

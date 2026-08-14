@@ -104,4 +104,11 @@ namespace DtkUpdate
         UpdateDialogs::showPostCheck(report);
     }
 
+    void GenericIndicator::onDistroNotices(const QList<SecurityAdvisor::Notice>& notices)
+    {
+        if (notices.isEmpty())
+            return;
+        UpdateDialogs::showDistroNotices(notices);
+    }
+
 } // namespace DtkUpdate

@@ -40,6 +40,9 @@ namespace DtkUpdate
 
         /// 升级后后检提示（重启/配置/残留等），仅信息展示，不自动执行。
         static void showPostCheck(const PostCheckReport& report);
+
+        /// 发行版官方「最近新闻 / 通知」展示（与包名无关，纯信息，非阻塞）。
+        static void showDistroNotices(const QList<SecurityAdvisor::Notice>& notices);
     };
 
 } // namespace DtkUpdate

@@ -40,6 +40,12 @@ namespace DtkUpdate
                        const PreCheckReport& pre) { onSecurityPrompt(sev, advs, pre); });
         connect(m_monitor, &UpdateMonitor::postCheck, this,
                 [this](const PostCheckReport& rep) { onPostCheck(rep); });
+        connect(m_advisor, &SecurityAdvisor::distroNoticesReady, this,
+                [this](const QList<SecurityAdvisor::Notice>& notices)
+                {
+                    emit distroNoticesReady(notices);
+                    onDistroNotices(notices);
+                });
         connect(m_monitor, &UpdateMonitor::stateChanged, this,
                 [this]
                 {

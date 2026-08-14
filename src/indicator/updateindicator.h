@@ -37,6 +37,8 @@ namespace DtkUpdate
       signals:
         // 供前端刷新图标的轻量通知
         void stateChanged();
+        // 发行版官方「最近新闻 / 通知」拉取完成（与包名无关，供前端弹出通知）
+        void distroNoticesReady(const QList<SecurityAdvisor::Notice>& notices);
 
       protected:
         // 前端钩子：由子类实现具体 UI 表现
@@ -46,6 +48,7 @@ namespace DtkUpdate
                                       const QList<SecurityAdvisor::Advisory>& advs,
                                       const PreCheckReport& pre) = 0;
         virtual void onPostCheck(const PostCheckReport& report) = 0;
+        virtual void onDistroNotices(const QList<SecurityAdvisor::Notice>& notices) = 0;
 
         void setupBackend();
 

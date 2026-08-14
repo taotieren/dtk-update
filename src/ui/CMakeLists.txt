@@ -13,6 +13,7 @@ target_include_directories(dtk-update-gui PRIVATE
 
 target_link_libraries(dtk-update-gui PRIVATE
     dtk-update-core
+    dtk-update-indicator
     Qt${QT_VERSION_MAJOR}::Widgets
     Dtk${DTK_SUFFIX}::Widget
     Dtk${DTK_SUFFIX}::Gui

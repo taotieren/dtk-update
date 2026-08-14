@@ -1,3 +1,5 @@
+#include <QSignalSpy>
+
 #include "core/security/securityadvisor.h"
 
 #include <gtest/gtest.h>
@@ -61,14 +63,16 @@ TEST(SecurityAdvisorTest, UpstreamDisabledByDefault)
     EXPECT_FALSE(advisor.fetchUpstream());
 }
 
-TEST(SecurityAdvisorTest, UpstreamUnknownDistroReturnsEmpty)
+TEST(SecurityAdvisorTest, UpstreamPrefetchAsyncSignals)
 {
-    // 未知发行版没有映射的上游源 -> 应静默返回空列表，不崩溃/不阻塞
+    // prefetchUpstream 是异步的：调用后应在超时内收到 upstreamAdvisoriesReady 信号，
+    // 不崩溃、不阻塞调用线程。未知发行系可能无源，结果可空，但不应无信号。
     SecurityAdvisor advisor;
     advisor.setFetchUpstream(true);
-    QList<SecurityAdvisor::Advisory> ups =
-        advisor.fetchUpstreamFor(QStringLiteral("unknown-distro-xyz"), {QStringLiteral("apt")});
-    EXPECT_TRUE(ups.isEmpty());
+    QSignalSpy spy(&advisor, &SecurityAdvisor::upstreamAdvisoriesReady);
+    advisor.prefetchUpstream(QStringLiteral("unknown-distro-xyz"), {QStringLiteral("apt")});
+    EXPECT_TRUE(spy.wait(5000)); // 超时前必收到信号（空或含条目）
+    EXPECT_EQ(spy.count(), 1);
 }
 
 TEST(SecurityAdvisorTest, AdvisoryHasSourceField)

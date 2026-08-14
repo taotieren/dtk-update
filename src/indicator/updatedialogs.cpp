@@ -106,4 +106,31 @@ namespace DtkUpdate
         dlg->deleteLater();
     }
 
+    void UpdateDialogs::showDistroNotices(const QList<SecurityAdvisor::Notice>& notices)
+    {
+        if (notices.isEmpty())
+            return; // 无通知（离线/无源）时静默，不弹窗打扰
+        DDialog* dlg = buildBaseDialog(tr("Recent release notes & notices"),
+                                       QStringLiteral("dialog-information"));
+        // 仅展示最近若干条，避免过长
+        const int shown = qMin(notices.size(), 8);
+        QString body;
+        for (int i = 0; i < shown; ++i)
+        {
+            const auto& n = notices.at(i);
+            body += QStringLiteral("• %1").arg(n.title);
+            if (!n.date.isEmpty())
+                body += QStringLiteral("  (%1)").arg(n.date);
+            body += QLatin1Char('\n');
+            if (!n.url.isEmpty())
+                body += QStringLiteral("   %1\n").arg(n.url);
+        }
+        if (notices.size() > shown)
+            body += QStringLiteral("\n… (%1 more)").arg(notices.size() - shown);
+        dlg->setMessage(body);
+        dlg->addButton(tr("OK"), true, DDialog::ButtonRecommend);
+        dlg->exec();
+        dlg->deleteLater();
+    }
+
 } // namespace DtkUpdate
