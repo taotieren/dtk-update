@@ -269,9 +269,9 @@ namespace DtkUpdate
         switch (fam)
         {
         case DistroProbe::Family::Debian:
-            if (DistroProbe::detectId() == QStringLiteral("ubuntu"))
-                return QStringLiteral("https://ubuntu.com/blog/rss");
-            return QStringLiteral("https://www.debian.org/News/news");
+            // Debian/Ubuntu 无可靠官方「最近新闻」RSS：Debian 官网新闻页返回 HTML（非标准
+            // feed），Ubuntu 官方 blog RSS 已失效（404）。按约束保持返回空、不指向失效地址。
+            return QString();
         case DistroProbe::Family::Suse:
             return QStringLiteral("https://news.opensuse.org/feed/");
         case DistroProbe::Family::Arch:
