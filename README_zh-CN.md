@@ -50,7 +50,7 @@ src/core      业务逻辑（与 UI 无关，完整单元测试）
   dependency/   DependencyResolver (后端 dry-run 解析)
   security/     SecurityAdvisor (deepin 安全中心 D-Bus + 发行版上游公告 + 最近通知抓取，可选)
   healthcheck/  PreUpdateCheck / PostUpdateCheck (预检/后检，只读探测)
-  monitor/      UpdateMonitor (状态机 + 定时调度)
+  monitor/      UpdateMonitor (状态机 + 定时调度，聚合 Linyaps)
 src/indicator  UpdateIndicator (与桌面环境解耦的共享核心，供两个托盘复用：构建后端 /
                monitor / advisor / linyaps，向具体前端暴露钩子)
                UpdateDialogs (共享 DDialog 构建器：玲珑不可用提示、安全公告确认、

@@ -1,3 +1,19 @@
+dtk-update (0.1.2) unstable; urgency=medium
+
+  * feat: implement distro upstream security advisories + recent notices fetching.
+    SecurityAdvisor now pulls per-family feeds (Debian DSA RDF, Ubuntu USN RSS,
+    openSUSE security-announce, Arch news) for upstream advisories matched to
+    upgradable packages, plus optional per-distro "recent news/notices" feeds.
+  * fix: make all SecurityAdvisor network access asynchronous (QNetworkAccessManager
+    + QTimer::singleShot timeout), removing QEventLoop::exec() blocking of the host
+    thread; prefetchUpstream caches and applyUpdates merges synchronously with no
+    network call.
+  * fix: drop redundant m_available snapshot in favor of live
+    QDBusConnection::systemBus().interface()->isServiceRegistered() probing.
+  * docs: expand README (en/zh-CN) with per-distro upstream feed and recent
+    notices behavior; update AGENTS.md security/advisor description and add the
+    "verify upstream feed URLs for staleness" long-task checklist item.
+
 dtk-update (0.1.0) unstable; urgency=medium
 
   * refactor: centralize Linyaps backend wiring in BackendFactory::attachLinyaps,
