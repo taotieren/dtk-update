@@ -6,51 +6,38 @@ on:
   pull_request:
     branches: [main]
 
-# 说明：
-# - DTK6 官方 dev 包（libdtk6core/gui/widget/declarative-dev）仅在 Ubuntu 开发版
-#   （ubuntu:devel，对应 stonking 套件）提供，LTS(24.04/26.04) 与 25.10 均缺 widget/declarative。
-#   故构建容器统一使用 ubuntu:devel。
-# - Ubuntu 官方源无任何 DTK5 包（libdtk5* 不存在），DTK5/Qt5 兼容验证依赖 deepin
-#   私有环境，无法在纯 Ubuntu CI 中构建，故此处仅保留 DTK6 矩阵。
+# 多架构策略：
+# - amd64   : GitHub 原生 x86_64 runner (ubuntu-24.04)，debootstrap 同架构 beige rootfs
+# - arm64   : GitHub 原生 ARM runner (ubuntu-24.04-arm64)，debootstrap 同架构 beige rootfs
+# - loong64 : GitHub 无原生 runner、Ubuntu 也无 loong64 port，
+#            故在 x86_64 runner 上用 qemu-user-static 模拟 loongarch64 执行 chroot
+# 三架构统一使用 deepin beige 源 (DTK6 dev 包三架构均可用)，保证产物环境一致。
+# 直接产出 .deb 产物（非 zip）。
 
 jobs:
-  # 主构建：DTK6 / Qt6，产出 .deb 产物
   build-deb:
-    runs-on: ubuntu-latest
-    container:
-      image: ubuntu:devel
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm64
+          - arch: loong64
+            runner: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Install build dependencies
-        run: |
-          apt-get update
-          apt-get install -y --no-install-recommends \
-            cmake g++ build-essential pkg-config \
-            qt6-base-dev qt6-tools-dev qt6-tools-dev-tools \
-            libdtk6core-dev libdtk6gui-dev libdtk6widget-dev \
-            libgtest-dev libpolkit-qt6-1-dev debhelper
-
-      - name: Configure
-        env:
-          CC: /usr/bin/gcc
-          CXX: /usr/bin/g++
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
-
-      - name: Build
-        run: cmake --build build -j"$(nproc)"
-
-      - name: Test
-        run: ctest --test-dir build --output-on-failure || true
-
-      - name: Package deb
-        run: |
-          dpkg-buildpackage -us -uc -b
-          mkdir -p artifacts
-          cp ../*.deb artifacts/
+      - name: Build .deb in deepin beige rootfs
+        run: bash ci/multiarch-build.sh ${{ matrix.arch }} "$PWD"
 
       - name: Upload deb artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dtk-update-deb
-          path: artifacts/
+          name: dtk-update-${{ matrix.arch }}
+          path: artifacts/dtk-update*.deb
+          if-no-files-found: error

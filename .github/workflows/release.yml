@@ -1,6 +1,7 @@
 name: release
 
-# 仅在推送 tag（形如 v1.2.3 或 1.2.3）时触发，构建 .deb 并发布到 GitHub Release
+# 仅在推送 tag（形如 v1.2.3 或 1.2.3）时触发，为 x86_64/arm64/loong64
+# 三架构构建 .deb 并汇总上传到 GitHub Release。
 on:
   push:
     tags:
@@ -11,30 +12,28 @@ permissions:
   contents: write
 
 jobs:
-  release-deb:
-    runs-on: ubuntu-latest
-    container:
-      image: ubuntu:devel
+  build-deb:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm64
+          - arch: loong64
+            runner: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Install build dependencies
-        run: |
-          apt-get update
-          apt-get install -y --no-install-recommends \
-            cmake g++ build-essential debhelper pkg-config \
-            qt6-base-dev qt6-tools-dev qt6-tools-dev-tools \
-            libdtk6core-dev libdtk6gui-dev libdtk6widget-dev \
-            libgtest-dev libpolkit-qt6-1-dev
-
       - name: Determine version from tag
         id: ver
         run: |
           TAG="${GITHUB_REF_NAME}"
-          # 去掉可能的 v 前缀
           VER="${TAG#v}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VER" >> "$GITHUB_OUTPUT"
@@ -49,30 +48,45 @@ jobs:
             echo ""
             echo "  * Release $VER"
             echo ""
-            echo " -- $(dpkg-parsechangelog -S Maintainer)  $DATE"
+            echo " -- dtk-update Maintainers <maintainer@example.com>  $DATE"
             echo ""
             cat debian/changelog
           } > debian/changelog.tmp && mv debian/changelog.tmp debian/changelog
 
-      - name: Build & package deb
-        env:
-          CC: /usr/bin/gcc
-          CXX: /usr/bin/g++
-        run: dpkg-buildpackage -us -uc -b
+      - name: Build .deb in deepin beige rootfs
+        run: bash ci/multiarch-build.sh ${{ matrix.arch }} "$PWD"
 
-      - name: List artifacts
-        run: ls -1 ../*.deb ../*.changes ../*.dsc 2>/dev/null || true
+      - name: Upload deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dtk-update-${{ matrix.arch }}
+          path: artifacts/dtk-update*.deb
+          if-no-files-found: error
+
+  publish:
+    needs: build-deb
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download all architecture debs
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: List release assets
+        run: ls -1 release-assets/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.ver.outputs.tag }}
-          name: dtk-update ${{ steps.ver.outputs.version }}
+          tag_name: ${{ github.ref_name }}
+          name: dtk-update ${{ github.ref_name }}
           draft: false
           prerelease: false
           generate_release_notes: true
           files: |
-            ../*.deb
-            ../*.changes
+            release-assets/dtk-update*.deb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
