@@ -167,6 +167,17 @@ namespace DtkUpdate
         m_lastCheck = QDateTime::currentDateTime();
         setState(list.isEmpty() ? State::Idle : State::HasUpdates);
         emit updatesAvailable(list);
+
+        // 拿到可升级列表后，异步预取上游官方安全公告与发行版最近通知（不阻塞 UI）。
+        // 结果在用户点击「更新」时由 SecurityAdvisor::fetchAdvisories 合并缓存使用。
+        if (!list.isEmpty() && m_advisor)
+        {
+            QStringList names;
+            for (const auto& p : list)
+                names.append(p.name);
+            m_advisor->prefetchUpstream(DistroProbe::detectId(), names);
+            m_advisor->fetchDistroNotices(DistroProbe::detectId());
+        }
     }
 
     void UpdateMonitor::applyUpdates()
