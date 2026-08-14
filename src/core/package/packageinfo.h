@@ -16,6 +16,7 @@ namespace DtkUpdate
         QString candidateVersion; // 可升级候选版本
         QString architecture;     // amd64 / all ...
         QString section;          // admin/utils/...
+        QString backendId;        // 来源后端 id（"apt"/"dnf"/"linyaps"），用于多后端聚合区分
         bool isInstalled = false;
         bool isUpgradable = false;
 

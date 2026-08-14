@@ -1,3 +1,4 @@
+#include "core/package/backendfactory.h"
 #include "core/package/linyapsbackend.h"
 
 #include <QStandardPaths>
@@ -57,5 +58,20 @@ TEST(LinyapsBackendTest, NotAvailableWithoutLlCli)
     if (!QStandardPaths::findExecutable(QStringLiteral("ll-cli")).isEmpty())
         GTEST_SKIP() << "real linyaps environment, skip negative assertion";
     EXPECT_FALSE(avail) << "linyaps backend must NOT report available when ll-cli is missing";
+    // 不可用时必须给出可执行的诊断原因，便于 UI 提示用户（而非笼统"不可用"）
+    EXPECT_FALSE(backend.availabilityError().isEmpty())
+        << "availabilityError() must explain WHY linyaps is unavailable";
 #endif
 }
+
+// linyaps 是跨发行版的沙箱应用后端：无论发行系为何都可经 id 创建，
+// 工厂不应对其施加发行系限制（关键回归点）。
+TEST(LinyapsBackendTest, CrossDistroIndependentOfFamily)
+{
+    // 直接按 id 创建不应依赖发行系探测；在 Arch/Unknown 等系下同样可得。
+    PackageBackend* b = BackendFactory::createById(QStringLiteral("linyaps"));
+    ASSERT_NE(b, nullptr);
+    EXPECT_EQ(b->backendId(), QStringLiteral("linyaps"));
+    delete b;
+}
+

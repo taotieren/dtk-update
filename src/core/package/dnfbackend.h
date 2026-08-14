@@ -37,17 +37,12 @@ namespace DtkUpdate
 
         // 预检/后检探针（dnf/rpm 系）
         bool checkRebootRequired(bool& required, QString& error) override;
-        bool checkServicesNeedingRestart(QStringList& services, QString& error) override;
         bool checkConfigFilesToReview(QStringList& paths, QString& error) override;
-        bool checkFailedUnits(QStringList& units, QString& error) override;
-
-        bool install(const QStringList& packages, QString& error) override;
-        bool remove(const QStringList& packages, QString& error) override;
-        bool purge(const QStringList& packages, QString& error) override;
-        bool autoremove(QString& error) override;
-        bool cleanCache(QString& error) override;
 
       protected:
+        // 写操作经基类 runWriteOperation 模板执行，本类仅描述"操作→参数"
+        QStringList operationArgs(Op op, const QStringList& packages, QString& error) override;
+
         // dnf 写操作经 pkexec + dnf 提权（由基类 runPrivileged 调用）
         QStringList privilegedPrefix() const override
         {

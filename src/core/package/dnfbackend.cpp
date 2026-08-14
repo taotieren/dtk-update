@@ -75,6 +75,9 @@ namespace DtkUpdate
             info.candidateVersion = cols.at(1);
             out.append(info);
         }
+        // 标记来源后端，供多后端聚合时区分（如与 linyaps 并存）
+        for (PackageInfo& info : out)
+            info.backendId = backendId();
         qCInfo(dtkUpdateCore) << "fetched" << out.size() << "upgradable packages (dnf)";
         return true;
     }
@@ -124,68 +127,37 @@ namespace DtkUpdate
         return true;
     }
 
-    bool DnfBackend::install(const QStringList& packages, QString& error)
+    QStringList DnfBackend::operationArgs(Op op, const QStringList& packages, QString& error)
     {
         Q_UNUSED(error);
-        if (packages.isEmpty())
-            return true;
-        emit operationProgress(tr("Installing"), 0);
-        QStringList args{QStringLiteral("install"), QStringLiteral("-y")};
-        args.append(packages);
-        // 后台线程执行，避免阻塞 GUI/tray 主线程；结果经 operationFinished 回传。
-        runPrivilegedAsync([this, args](QString& out, QString& err)
-                           { return runPrivileged(args, out, err); });
-        return true;
+        switch (op)
+        {
+            case Op::Install:
+            {
+                QStringList args{QStringLiteral("install"), QStringLiteral("-y")};
+                args.append(packages);
+                return args;
+            }
+            case Op::Remove:
+            case Op::Purge: // rpm/dnf 无独立 purge；remove 已同时删除配置（%postun 处理）
+            {
+                QStringList args{QStringLiteral("remove"), QStringLiteral("-y")};
+                args.append(packages);
+                return args;
+            }
+            case Op::Autoremove:
+                return {QStringLiteral("autoremove"), QStringLiteral("-y")};
+            case Op::CleanCache:
+                return {QStringLiteral("clean"), QStringLiteral("all")};
+        }
+        return {};
     }
 
     QVariantMap DnfBackend::backendOptions() const
     {
-        QVariantMap opts;
-        if (m_config)
-        {
-            opts.insert(QStringLiteral("autoRemoveOrphans"), m_config->autoRemoveOrphans());
-            opts.insert(QStringLiteral("autoCleanCache"), m_config->autoCleanCache());
-        }
+        QVariantMap opts = defaultBackendOptions();
+        opts.remove(QStringLiteral("noInstallRecommends")); // dnf/rpm 无此概念
         return opts;
-    }
-
-    bool DnfBackend::remove(const QStringList& packages, QString& error)
-    {
-        Q_UNUSED(error);
-        if (packages.isEmpty())
-            return true;
-        QStringList args{QStringLiteral("remove"), QStringLiteral("-y")};
-        args.append(packages);
-        runPrivilegedAsync([this, args](QString& out, QString& err)
-                           { return runPrivileged(args, out, err); });
-        return true;
-    }
-
-    bool DnfBackend::purge(const QStringList& packages, QString& error)
-    {
-        // rpm/dnf 没有独立的 "purge"；remove 已同时删除配置（由包 %postun 处理）
-        return remove(packages, error);
-    }
-
-    bool DnfBackend::autoremove(QString& error)
-    {
-        Q_UNUSED(error);
-        runPrivilegedAsync(
-            [this](QString& out, QString& err)
-            {
-                return runPrivileged({QStringLiteral("autoremove"), QStringLiteral("-y")}, out,
-                                     err);
-            });
-        return true;
-    }
-
-    bool DnfBackend::cleanCache(QString& error)
-    {
-        Q_UNUSED(error);
-        runPrivilegedAsync(
-            [this](QString& out, QString& err)
-            { return runPrivileged({QStringLiteral("clean"), QStringLiteral("all")}, out, err); });
-        return true;
     }
 
     QStringList DnfBackend::cacheDirectories() const
@@ -231,33 +203,6 @@ namespace DtkUpdate
         return false; // 无可靠探测手段，视为不支持
     }
 
-    bool DnfBackend::checkServicesNeedingRestart(QStringList& services, QString& error)
-    {
-        services.clear();
-        if (!SystemInfo::hasSystemd() || SystemInfo::isContainer())
-            return false;
-        // needs-restarting -s 列出因更新需重启的服务（Fedora 系）。
-        // 注意：有服务需重启时退出码为 1，故用 runProbe 读取输出，避免漏报。
-        if (!commandExists(QStringLiteral("needs-restarting")))
-            return false;
-        QString raw;
-        int exitCode = -1;
-        if (!runProbe({QStringLiteral("needs-restarting"), QStringLiteral("-s")}, raw, exitCode))
-            return false;
-        if (exitCode == 0 && raw.trimmed().isEmpty())
-            return true; // 无服务需重启
-        QTextStream stream(&raw);
-        QString line;
-        while (stream.readLineInto(&line))
-        {
-            const QString s = line.trimmed();
-            if (s.isEmpty())
-                continue;
-            services.append(s.endsWith(QStringLiteral(".service")) ? s.chopped(8) : s);
-        }
-        return true;
-    }
-
     bool DnfBackend::checkConfigFilesToReview(QStringList& paths, QString& error)
     {
         paths.clear();
@@ -270,30 +215,6 @@ namespace DtkUpdate
         if (!etc.exists())
             return true;
         paths = collectConfigFiles({QStringLiteral("/etc")}, suffixes, 3);
-        return true;
-    }
-
-    bool DnfBackend::checkFailedUnits(QStringList& units, QString& error)
-    {
-        units.clear();
-        if (!SystemInfo::hasSystemd() || SystemInfo::isContainer())
-            return false;
-        QString raw;
-        if (!runQuery({QStringLiteral("systemctl"), QStringLiteral("--failed"),
-                       QStringLiteral("--no-legend"), QStringLiteral("--no-pager")},
-                      raw, error))
-            return false;
-        QTextStream stream(&raw);
-        QString line;
-        while (stream.readLineInto(&line))
-        {
-            const QString s = line.trimmed();
-            if (s.isEmpty())
-                continue;
-            const QString unit = s.split(QStringLiteral(" "), Qt::SkipEmptyParts).first();
-            if (!unit.isEmpty())
-                units.append(unit);
-        }
         return true;
     }
 

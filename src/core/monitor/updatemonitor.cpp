@@ -94,6 +94,25 @@ namespace DtkUpdate
 
     UpdateMonitor::~UpdateMonitor() = default;
 
+    void UpdateMonitor::setLinyapsBackend(PackageBackend* backend)
+    {
+        if (m_linyaps)
+        {
+            disconnect(m_linyaps, &PackageBackend::operationProgress, this,
+                       &UpdateMonitor::onBackendProgress);
+            disconnect(m_linyaps, &PackageBackend::operationFinished, this,
+                       &UpdateMonitor::onBackendFinished);
+        }
+        m_linyaps = backend;
+        if (m_linyaps)
+        {
+            connect(m_linyaps, &PackageBackend::operationProgress, this,
+                    &UpdateMonitor::onBackendProgress);
+            connect(m_linyaps, &PackageBackend::operationFinished, this,
+                    &UpdateMonitor::onBackendFinished);
+        }
+    }
+
     void UpdateMonitor::applyConfigInterval()
     {
         const int minutes = m_config ? m_config->checkIntervalMinutes() : 360;
@@ -125,6 +144,26 @@ namespace DtkUpdate
             setState(State::Error);
             emit checkFailed(error);
             return;
+        }
+        // 聚合可选的玲珑(linyaps)沙箱应用更新：跨发行版，与系统后端正交。
+        // 无论当前发行系如何都尝试；若 linyaps 运行环境异常，发出诊断提示而非静默忽略。
+        if (m_linyaps)
+        {
+            PackageList linglong;
+            QString llErr;
+            if (m_linyaps->isAvailable())
+            {
+                if (m_linyaps->fetchUpgradable(linglong, llErr))
+                    list.append(linglong);
+                else
+                    emit backendUnavailable(QStringLiteral("linyaps"), llErr);
+            }
+            else
+            {
+                // ll-cli 存在但环境异常 / 未安装：把具体原因交给 UI 提示用户处理
+                emit backendUnavailable(QStringLiteral("linyaps"),
+                                       m_linyaps->availabilityError());
+            }
         }
         m_upgradable = list;
         m_lastCheck = QDateTime::currentDateTime();
@@ -184,14 +223,31 @@ namespace DtkUpdate
 
         setState(State::Updating);
         m_cancelled = false; // 新一次升级开始，清除上一次取消标志
-        QStringList pkgs;
+        // 按来源后端分组：系统包走 m_backend，玲珑沙箱应用走 m_linyaps。
+        QStringList sysPkgs, llPkgs;
         for (const auto& p : m_upgradable)
-            pkgs.append(p.name);
+        {
+            if (p.backendId == QStringLiteral("linyaps"))
+                llPkgs.append(p.name);
+            else
+                sysPkgs.append(p.name);
+        }
         // install 为异步后台执行，成功后经 operationFinished 信号回传 onBackendFinished。
         // 此处不再阻塞主线程，故无需同步兜底。
         QString error;
-        if (m_backend)
-            m_backend->install(pkgs, error);
+        if (m_backend && !sysPkgs.isEmpty())
+            m_backend->install(sysPkgs, error);
+        if (m_linyaps && !llPkgs.isEmpty())
+            m_linyaps->install(llPkgs, error);
+        // 若本次没有可安装包（理论上不会发生，因 m_upgradable 非空才进入），
+        // 主动结束更新态避免卡在 Updating。
+        if (sysPkgs.isEmpty() && llPkgs.isEmpty())
+        {
+            setState(State::Idle);
+            if (m_lock && m_lock->isLocked())
+                m_lock->unlock();
+            emit upgradeFinished(true, QString());
+        }
     }
 
     void UpdateMonitor::cancelUpdate()

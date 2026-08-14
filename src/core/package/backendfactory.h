@@ -35,13 +35,35 @@ namespace DtkUpdate
                                              const QString& preferredId = QString());
 
         /**
+         * @brief 创建当前系统所有可用后端（多后端）。
+         *
+         * 与 createBackend() 不同，此方法返回"系统后端 + 可选玲珑(linyaps)"的组合，
+         * 而非只选一个：玲珑是跨发行版的沙箱应用层包管理器，与系统包管理器(apt/dnf)正交，
+         * 无论发行系为何都会被独立探测——只要 ll-cli 运行环境健康就会加入结果。
+         *
+         * 上层（如更新管理器 UI）可据此同时展示系统包与玲珑沙箱应用的更新。
+         *
+         * @return 可用后端列表（至少含一个系统后端，可能额外含 linyaps）；都不可用则空列表
+         */
+        static QList<PackageBackend*> createBackends(QObject* parent = nullptr,
+                                                     const QString& preferredId = QString());
+
+        /**
+         * @brief 同上，但显式传入发行系（避免重复探测 / 测试可控）
+         */
+        static QList<PackageBackend*> createBackends(DistroProbe::Family family,
+                                                    QObject* parent = nullptr,
+                                                    const QString& preferredId = QString());
+
+        /**
          * @brief 按 backendId 强制创建指定后端（用于测试或手动选择）
-         * @param id 如 "apt" / "dnf"
+         * @param id 如 "apt" / "dnf" / "linyaps"
          */
         static PackageBackend* createById(const QString& id, QObject* parent = nullptr);
 
         /**
          * @brief 列出当前系统所有可用的后端 id（调试/UI 展示用）
+         * @note 包含跨发行系的 linyaps（若 ll-cli 环境健康）
          */
         static QStringList availableBackendIds();
     };

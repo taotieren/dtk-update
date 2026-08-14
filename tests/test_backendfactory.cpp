@@ -1,5 +1,7 @@
 #include "core/package/backendfactory.h"
 
+#include <QStandardPaths>
+
 #include <gtest/gtest.h>
 
 using namespace DtkUpdate;
@@ -58,4 +60,22 @@ TEST(BackendFactoryTest, AutoDetectRespectsFamily)
         BackendFactory::createBackend(DistroProbe::Family::Arch, nullptr, QString());
     EXPECT_EQ(b, nullptr);
     delete b;
+}
+
+// 关键回归：玲珑(linyaps) 是跨发行版后端，createBackends 必须对其进行
+// 独立于发行系的探测——即便当前是 Debian/Fedora 等预设了 apt/dnf 的系，
+// 只要 ll-cli 环境健康，结果中也应当包含 linyaps，绝不被发行系限制。
+TEST(BackendFactoryTest, LinyapsProbedCrossDistro)
+{
+    const QList<PackageBackend*> all =
+        BackendFactory::createBackends(DistroProbe::Family::Debian, nullptr);
+    // 找到 linyaps 实例（若存在可用环境）
+    PackageBackend* ll = nullptr;
+    for (PackageBackend* b : all)
+        if (b->backendId() == QStringLiteral("linyaps"))
+            ll = b;
+    if (QStandardPaths::findExecutable(QStringLiteral("ll-cli")).isEmpty())
+        GTEST_SKIP() << "no ll-cli on this host; linyaps legitimately absent";
+    ASSERT_NE(ll, nullptr) << "linyaps must be probed on any distro when ll-cli is present";
+    qDeleteAll(all);
 }

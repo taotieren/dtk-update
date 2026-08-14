@@ -36,12 +36,16 @@ namespace DtkUpdate
             return entries;
         }
 
-        // 按发行系对后端探测排序并裁剪：
+        // 按发行系对"系统级"后端探测排序并裁剪：
         //  - 若该系预设后端已实现（在 registry 中），则只探测该后端（找不到即 nullptr，
         //    不静默回退到其它不相关后端）；
         //  - 若该系预设后端未实现（如 Arch→pacman、Suse→zypper），ordered 为空，
         //    createBackend 直接返回 nullptr，如实反映"无可用后端"；
         //  - 仅当发行系未知（Unknown，预设为空）时，回退为按 registry 全部顺序自动探测。
+        //
+        // 注意：玲珑(linyaps) 是跨发行版的沙箱应用层包管理器，与系统包管理器(apt/dnf)正交，
+        // 不在此排序内——它由 createBackends()/availableBackendIds() 单独、无条件探测，
+        // 无论当前是什么发行系，只要 ll-cli 运行环境健康即可启用，绝不受发行系限制。
         QVector<const BackendEntry*> orderedEntries(DistroProbe::Family family)
         {
             const QString pref = PresetConfig::defaultBackendFor(family);
@@ -59,46 +63,112 @@ namespace DtkUpdate
             return ordered;
         }
 
-    } // namespace
-
-    PackageBackend* BackendFactory::createBackend(QObject* parent, const QString& preferredId)
-    {
-        return createBackend(DistroProbe::detectFamily(), parent, preferredId);
-    }
-
-    PackageBackend* BackendFactory::createBackend(DistroProbe::Family family, QObject* parent,
-                                                  const QString& preferredId)
-    {
-        // 1) 若指定了首选后端且可用，优先使用
-        if (!preferredId.isEmpty())
+        // 返回 linyaps 注册项（跨发行系，独立于 orderedEntries 探测）
+        const BackendEntry* linyapsEntry()
         {
-            PackageBackend* forced = createById(preferredId, parent);
-            if (forced && forced->isAvailable())
-                return forced;
-            if (forced)
-                delete forced;
-            qCWarning(dtkUpdateCore) << "preferred backend unavailable:" << preferredId
-                                     << ", fall back to auto detection";
+            for (const auto& e : registry())
+                if (e.id == QStringLiteral("linyaps"))
+                    return &e;
+            return nullptr;
         }
-        // 2) 否则按「发行系预设优先」的顺序自动探测。
-        //    关键：若发行系对应的预设后端不存在（如 Arch/Suse 尚未实现 pacman/zypper），
-        //    探测会如实失败并返回 nullptr，而不会静默回退到 apt/dnf 造成虚假可用。
-        for (const auto* e : orderedEntries(family))
+
+        } // namespace
+
+        PackageBackend* BackendFactory::createBackend(QObject* parent, const QString& preferredId)
         {
-            QPointer<PackageBackend> probe(e->ctor(nullptr));
-            if (probe && probe->isAvailable())
+            return createBackend(DistroProbe::detectFamily(), parent, preferredId);
+        }
+
+        PackageBackend* BackendFactory::createBackend(DistroProbe::Family family, QObject* parent,
+                                                      const QString& preferredId)
+        {
+            // 1) 若指定了首选后端且可用，优先使用（首选也可以是 linyaps）
+            if (!preferredId.isEmpty())
             {
-                qCInfo(dtkUpdateCore) << "selected package backend:" << probe->backendName();
-                delete probe;
-                return e->ctor(parent);
+                PackageBackend* forced = createById(preferredId, parent);
+                if (forced && forced->isAvailable())
+                    return forced;
+                if (forced)
+                    delete forced;
+                qCWarning(dtkUpdateCore) << "preferred backend unavailable:" << preferredId
+                                         << ", fall back to auto detection";
             }
-            if (probe)
-                delete probe;
+            // 2) 否则按「发行系预设优先」的顺序自动探测系统级后端。
+            //    关键：若发行系对应的预设后端不存在（如 Arch/Suse 尚未实现 pacman/zypper），
+            //    探测会如实失败并返回 nullptr，而不会静默回退到 apt/dnf 造成虚假可用。
+            for (const auto* e : orderedEntries(family))
+            {
+                QPointer<PackageBackend> probe(e->ctor(nullptr));
+                if (probe && probe->isAvailable())
+                {
+                    qCInfo(dtkUpdateCore) << "selected package backend:" << probe->backendName();
+                    delete probe;
+                    return e->ctor(parent);
+                }
+                if (probe)
+                    delete probe;
+            }
+            qCWarning(dtkUpdateCore) << "no available system package backend found for family"
+                                     << static_cast<int>(family);
+            return nullptr;
         }
-        qCWarning(dtkUpdateCore) << "no available package backend found for family"
-                                 << static_cast<int>(family);
-        return nullptr;
-    }
+
+        QList<PackageBackend*> BackendFactory::createBackends(QObject* parent,
+                                                             const QString& preferredId)
+        {
+            return createBackends(DistroProbe::detectFamily(), parent, preferredId);
+        }
+
+        QList<PackageBackend*> BackendFactory::createBackends(DistroProbe::Family family,
+                                                             QObject* parent,
+                                                             const QString& preferredId)
+        {
+            QList<PackageBackend*> backends;
+
+            // 1) 首选后端（若指定且可用）—— 优先于一切，且允许是任意后端（含 linyaps）
+            if (!preferredId.isEmpty())
+            {
+                PackageBackend* forced = createById(preferredId, parent);
+                if (forced && forced->isAvailable())
+                {
+                    backends.append(forced);
+                    return backends; // 显式指定后端时不再叠加其他后端
+                }
+                if (forced)
+                    delete forced;
+                qCWarning(dtkUpdateCore) << "preferred backend unavailable:" << preferredId
+                                         << ", fall back to auto detection";
+            }
+
+            // 2) 探测系统级后端（按发行系排序，单一主后端）
+            PackageBackend* system = createBackend(family, parent);
+            if (system)
+                backends.append(system);
+
+            // 3) 无论发行系如何，始终独立探测玲珑(linyaps)：跨发行版、与系统后端正交。
+            //    只要 ll-cli 运行环境健康即加入，使沙箱应用更新在所有发行版上都可被识别。
+            if (const BackendEntry* le = linyapsEntry())
+            {
+                QPointer<PackageBackend> probe(le->ctor(nullptr));
+                if (probe && probe->isAvailable())
+                {
+                    qCInfo(dtkUpdateCore) << "linglong backend available (cross-distro):"
+                                          << probe->backendName();
+                    delete probe;
+                    backends.append(le->ctor(parent));
+                }
+                else if (probe)
+                {
+                    qCInfo(dtkUpdateCore) << "linglong backend not available on this host"
+                                          << (probe->availabilityError().isEmpty()
+                                                  ? QString()
+                                                  : probe->availabilityError());
+                    delete probe;
+                }
+            }
+
+            return backends;
+        }
 
     PackageBackend* BackendFactory::createById(const QString& id, QObject* parent)
     {

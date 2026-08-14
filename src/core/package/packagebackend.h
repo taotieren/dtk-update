@@ -30,6 +30,20 @@ namespace DtkUpdate
     Q_ENUM_NS(BackendType)
 
     /**
+     * @brief 写操作语义枚举，用于基类模板方法消除各后端重复实现。
+     * @see PackageBackend::operationArgs / runWriteOperation
+     */
+    enum class Op
+    {
+        Install,     ///< 安装并保留配置
+        Remove,      ///< 移除但保留配置
+        Purge,       ///< 移除并删除配置
+        Autoremove,  ///< 清理孤儿依赖
+        CleanCache,  ///< 清理下载缓存
+    };
+    Q_ENUM_NS(Op)
+
+    /**
      * @brief 包管理后端抽象接口
      *
      * UI 与 tray 仅依赖此接口，不感知具体实现（apt/dpkg、dnf/rpm 等）。
@@ -57,10 +71,23 @@ namespace DtkUpdate
         virtual QString backendName() const = 0; // 展示名，如 "APT (Debian/Ubuntu)"
 
         /**
-         * @brief 该后端在当前系统是否可用（命令存在、且非容器等）
+         * @brief 该后端在当前系统是否可用（命令存在、且环境健康）
          * @note 由 BackendFactory 用于自动选择，也可用于 UI 禁用某些功能
          */
         virtual bool isAvailable() const = 0;
+
+        /**
+         * @brief 不可用时的诊断信息（供 UI 提示用户"为什么不能用 / 出了什么错"）。
+         *
+         * 仅当 isAvailable() 返回 false 时才有意义；可用时返回空字符串。
+         * 子类应在探测过程中把"命令存在却跑不起来 / 环境损坏 / 权限不足"等具体
+         * 原因写入此字段，便于上层向用户给出可执行的修复建议，而不是笼统地说
+         * "后端不可用"。默认实现返回空。
+         */
+        virtual QString availabilityError() const
+        {
+            return QString();
+        }
 
         /** 该后端是否支持"残留配置文件"(如 dpkg 的 rc 状态)。dnf/rpm 无此概念。 */
         virtual bool supportsResidualConfig() const = 0;
@@ -83,9 +110,23 @@ namespace DtkUpdate
          */
         virtual bool checkServicesNeedingRestart(QStringList& services, QString& error)
         {
-            Q_UNUSED(services);
+            services.clear();
             Q_UNUSED(error);
-            return false;
+            // 通用实现：needs-restarting -s 列出因更新需重启的服务（Debian/Ubuntu/Fedora
+            // 系命令与解析一致）。容器内 systemd 不管理宿主服务，跳过以免误报。
+            // 退出码非 0（有服务需重启）时用 runProbe 读取输出，避免漏报。
+            if (!SystemInfo::hasSystemd() || SystemInfo::isContainer())
+                return false;
+            if (!commandExists(QStringLiteral("needs-restarting")))
+                return false;
+            QString raw;
+            int exitCode = -1;
+            if (!runProbe({QStringLiteral("needs-restarting"), QStringLiteral("-s")}, raw, exitCode))
+                return false;
+            if (exitCode == 0 && raw.trimmed().isEmpty())
+                return true; // 无服务需重启
+            services = parseServiceList(raw);
+            return true;
         }
 
         /**
@@ -106,16 +147,32 @@ namespace DtkUpdate
          */
         virtual bool checkFailedUnits(QStringList& units, QString& error)
         {
-            Q_UNUSED(units);
+            units.clear();
             Q_UNUSED(error);
-            return false;
+            // 通用实现：systemctl --failed 解析（apt/dnf 完全一致）。
+            // 容器内多为宿主服务，failed unit 不应归咎于本次升级，跳过。
+            if (!SystemInfo::hasSystemd() || SystemInfo::isContainer())
+                return false;
+            QString raw;
+            if (!runQuery({QStringLiteral("systemctl"), QStringLiteral("--failed"),
+                           QStringLiteral("--no-legend"), QStringLiteral("--no-pager")},
+                          raw, error))
+                return false;
+            units = parseFailedUnits(raw);
+            return true;
         }
 
         /**
          * @brief 后端支持的配置项（Key=展示名，Value=可选值说明），供 UI/控制中心展示
          * @note 抽象层只负责描述，具体生效由各后端在对应操作中读取配置。
          */
-        virtual QVariantMap backendOptions() const = 0;
+        /**
+         * @brief 后端支持的配置项（Key=展示名，Value=可选值说明），供 UI/控制中心展示。
+         *        默认实现读取 m_config 的通用布尔开关（noInstallRecommends /
+         *        autoRemoveOrphans / autoCleanCache），子类可按需增删（如 dnf 无
+         *        noInstallRecommends 概念则移除该 key）。
+         */
+        virtual QVariantMap backendOptions() const;
 
         // ---- 查询（无需提权）----
         virtual bool fetchUpgradable(PackageList& out, QString& error) = 0;
@@ -138,11 +195,22 @@ namespace DtkUpdate
         virtual QStringList cacheDirectories() const = 0;
 
         // ---- 写操作（内部经 pkexec 提权）----
-        virtual bool install(const QStringList& packages, QString& error) = 0;
-        virtual bool remove(const QStringList& packages, QString& error) = 0; // 保留配置
-        virtual bool purge(const QStringList& packages, QString& error) = 0;  // 删除配置
-        virtual bool autoremove(QString& error) = 0;                          // 移除孤儿依赖
-        virtual bool cleanCache(QString& error) = 0;                          // 清理下载缓存
+        // 基类提供默认实现：经 operationArgs() 取得该操作的命令参数后统一交由
+        // runWriteOperation() 后台执行。子类仅需覆盖 operationArgs() 描述"操作→参数"，
+        // 不再各自重复 install/remove/... 的异步骨架（模板方法模式）。
+        // linyaps 因沙箱同步语义不同，仍按需覆盖。
+        virtual bool install(const QStringList& packages, QString& error);
+        virtual bool remove(const QStringList& packages, QString& error); // 保留配置
+        virtual bool purge(const QStringList& packages, QString& error);  // 删除配置
+        virtual bool autoremove(QString& error);                          // 移除孤儿依赖
+        virtual bool cleanCache(QString& error);                          // 清理下载缓存
+
+        /**
+         * @brief 返回某写操作对应的本机包管理器参数（不含提权前缀）。
+         *        子类唯一需要实现的"写操作差异点"，供 runWriteOperation 复用。
+         *        默认实现返回空（表示不支持该操作）。
+         */
+        virtual QStringList operationArgs(Op op, const QStringList& packages, QString& error);
 
       signals:
         void operationProgress(const QString& stage, int percent);
@@ -249,6 +317,34 @@ namespace DtkUpdate
          * 通过 operationFinished 信号异步送达。task 签名为 bool(QString &out, QString &err)。
          */
         void runPrivilegedAsync(std::function<bool(QString&, QString&)> task);
+
+        /**
+         * @brief 写操作模板方法：消除各后端 install/remove/purge/autoremove/cleanCache
+         *        的重复异步骨架。处理空参数检查、进度信号、后台提权执行。
+         * @param op        语义操作（决定参数与进度文案）
+         * @param packages  目标包列表（CleanCache/Autoremove 可为空）
+         * @param error     输出错误信息
+         * @return 总是 true（已启动异步任务；真实成败经 operationFinished 信号回传）
+         */
+        bool runWriteOperation(Op op, const QStringList& packages, QString& error);
+
+        /**
+         * @brief 通用"需重启服务列表"解析：剥去 .service 后缀（needs-restarting -s 输出）。
+         *        供各后端 checkServicesNeedingRestart 复用，避免逐行重复。
+         */
+        static QStringList parseServiceList(const QString& raw);
+
+        /**
+         * @brief 通用 systemctl --failed 输出解析：取每行首个空格分词作为 unit 名。
+         *        供各后端 checkFailedUnits 复用。
+         */
+        static QStringList parseFailedUnits(const QString& raw);
+
+        /**
+         * @brief 通用后端配置项读取：从 m_config 取三个布尔开关。
+         *        子类 backendOptions() 可调用本方法后按需增删 key。
+         */
+        QVariantMap defaultBackendOptions() const;
 
         AppConfig* m_config = nullptr;
     };

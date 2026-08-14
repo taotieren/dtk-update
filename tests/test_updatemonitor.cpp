@@ -165,4 +165,88 @@ TEST(UpdateMonitorTest, ApplyUpdatesEmptyNoOp)
     EXPECT_TRUE(backend.m_installed.isEmpty());
 }
 
+// 多后端聚合：系统后端 + 跨发行系玲珑(linyaps) 后端。
+// checkNow 应把两者可升级项合并进 m_upgradable，且每项带正确的 backendId，
+// 供 UI 区分展示；proceedUpdate 应按 backendId 分流到对应后端安装。
+class MonitorFakeLinyaps : public PackageBackend
+{
+    Q_OBJECT
+  public:
+    explicit MonitorFakeLinyaps(QObject* parent = nullptr) : PackageBackend(parent) {}
+    BackendType backendType() const override { return BackendType::Linyaps; }
+    QString backendId() const override { return QStringLiteral("linyaps"); }
+    QString backendName() const override { return QStringLiteral("Linyaps"); }
+    bool isAvailable() const override { return true; }
+    bool supportsResidualConfig() const override { return false; }
+    QVariantMap backendOptions() const override { return {}; }
+
+    bool fetchUpgradable(PackageList& out, QString&) override
+    {
+        out = m_upgradable;
+        return true;
+    }
+    bool listInstalled(PackageList&, const QString&, QString&) override { return true; }
+    bool simulateInstall(const QString&, QString&, QString&) override { return true; }
+    bool listResidualPackages(PackageList&, QString&) override { return true; }
+    QStringList cacheDirectories() const override { return {}; }
+    bool install(const QStringList& packages, QString&) override
+    {
+        m_installed = packages;
+        emit operationFinished(true, QStringLiteral("ok"));
+        return true;
+    }
+    bool remove(const QStringList&, QString&) override { return true; }
+    bool purge(const QStringList&, QString&) override { return true; }
+    bool autoremove(QString&) override { return true; }
+    bool cleanCache(QString&) override { return true; }
+
+    PackageList m_upgradable;
+    QStringList m_installed;
+};
+
+TEST(UpdateMonitorTest, MultiBackendAggregatesAndRoutes)
+{
+    ensureApp();
+    MonitorFakeBackend sysBackend;
+    PackageInfo sysPkg;
+    sysPkg.name = QStringLiteral("systemd");
+    sysPkg.isUpgradable = true;
+    sysBackend.m_upgradable = {sysPkg};
+
+    MonitorFakeLinyaps llBackend;
+    PackageInfo llPkg;
+    llPkg.name = QStringLiteral("org.deepin.demo");
+    llPkg.isUpgradable = true;
+    llPkg.backendId = QStringLiteral("linyaps"); // 真实 fetchUpgradable 会标记来源后端
+    llBackend.m_upgradable = {llPkg};
+
+    FakeConfig config;
+    UpdateMonitor monitor(&sysBackend, &config);
+    monitor.setLinyapsBackend(&llBackend);
+
+    QSignalSpy spyAvail(&monitor, &UpdateMonitor::updatesAvailable);
+    monitor.checkNow();
+    ASSERT_EQ(spyAvail.count(), 1);
+    // 两项可升级包被合并（系统 + 玲珑）
+    ASSERT_EQ(monitor.upgradable().size(), 2);
+    bool hasSys = false, hasLl = false;
+    for (const auto& p : monitor.upgradable())
+    {
+        if (p.name == QStringLiteral("systemd") && p.backendId.isEmpty())
+            hasSys = true;
+        if (p.name == QStringLiteral("org.deepin.demo") &&
+            p.backendId == QStringLiteral("linyaps"))
+            hasLl = true;
+    }
+    EXPECT_TRUE(hasSys);
+    EXPECT_TRUE(hasLl);
+
+    // 升级时按 backendId 分流：系统包交给系统后端，玲珑包交给玲珑后端
+    monitor.applyUpdates(); // 无 advisor，直接安装
+    EXPECT_TRUE(sysBackend.m_installed.contains(QStringLiteral("systemd")));
+    EXPECT_TRUE(llBackend.m_installed.contains(QStringLiteral("org.deepin.demo")));
+    EXPECT_FALSE(sysBackend.m_installed.contains(QStringLiteral("org.deepin.demo")));
+    EXPECT_FALSE(llBackend.m_installed.contains(QStringLiteral("systemd")));
+}
+
 #include "test_updatemonitor.moc"

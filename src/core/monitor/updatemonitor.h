@@ -48,6 +48,10 @@ namespace DtkUpdate
         // 设置安全提示器（可选；为空则跳过升级前提示）
         void setSecurityAdvisor(SecurityAdvisor* advisor) { m_advisor = advisor; }
 
+        // 设置可选的玲珑(linyaps)后端，用于跨发行版聚合沙箱应用更新。
+        // 设为 nullptr 可关闭玲珑聚合（如运行环境异常时由调用方清理）。
+        void setLinyapsBackend(PackageBackend* backend);
+
       public slots:
         void start();
         void stop();
@@ -75,6 +79,10 @@ namespace DtkUpdate
         // 升级后后检报告（内核/服务/配置审阅建议），供 UI 提示用户，绝不自动执行
         void postCheck(const PostCheckReport& report);
 
+        // 某后端运行环境异常/不可用（如 linyaps 的 ll-cli 存在但环境损坏），
+        // 供 UI 提示用户处理。available=false 表示不可用，reason 为诊断信息。
+        void backendUnavailable(const QString& backendId, const QString& reason);
+
       private slots:
         void onTimeout();
         void onConfigChanged();
@@ -88,6 +96,7 @@ namespace DtkUpdate
         void applyConfigInterval();
 
         PackageBackend* m_backend;
+        PackageBackend* m_linyaps = nullptr; // 可选：跨发行版沙箱应用后端，聚合更新
         AppConfig* m_config;
         SecurityAdvisor* m_advisor = nullptr;
         QTimer* m_timer;

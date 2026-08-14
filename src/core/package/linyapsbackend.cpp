@@ -16,13 +16,28 @@ namespace DtkUpdate
 
     bool LinyapsBackend::isAvailable() const
     {
-        // 玲珑后端只需 ll-cli 命令可用即可；沙箱应用管理不依赖特定发行版包管理。
+        // 玲珑是跨发行版的沙箱应用包管理器，不依赖特定发行版，
+        // 只要本机能找到 ll-cli 且环境健康即可，不应按发行系限制。
+        m_availabilityError.clear();
         if (!commandExists(QStringLiteral("ll-cli")))
+        {
+            // ll-cli 未安装：给出明确的安装/获取指引，而不是笼统"不可用"。
+            m_availabilityError = QStringLiteral(
+                "未找到 ll-cli 命令。玲珑(linglong)运行环境未安装；"
+                "请按你的发行版安装 linglong 运行时（如 deepin/fedora 的 linglong 包、"
+                "或参考 https://linglong.dev 的跨发行版安装指南）。");
             return false;
+        }
         // 轻量冒烟：能真正执行 `ll-cli list` 才视为可用。
+        // 这一步能暴露"命令存在但环境损坏/权限异常"的情况，并把具体错误留给用户。
         QString out, err;
         if (!runQuery(QStringList{QStringLiteral("ll-cli"), QStringLiteral("list")}, out, err))
+        {
+            m_availabilityError = QStringLiteral(
+                "ll-cli 命令存在，但执行 `ll-cli list` 失败，玲珑运行环境可能异常：")
+                + (err.isEmpty() ? QStringLiteral("（无错误输出，可能是权限不足或运行时未初始化）") : err);
             return false;
+        }
         return true;
     }
 
@@ -77,7 +92,10 @@ namespace DtkUpdate
             return false;
         // --upgradable 列出的都是可升级项
         for (PackageInfo& info : all)
+        {
             info.isUpgradable = true;
+            info.backendId = backendId(); // 标记来源后端，供多后端聚合区分
+        }
         out = all;
         return true;
     }

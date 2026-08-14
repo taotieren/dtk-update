@@ -30,6 +30,7 @@ namespace DtkUpdate
         QString backendId() const override { return QStringLiteral("linyaps"); }
         QString backendName() const override { return QStringLiteral("Linyaps (玲珑)"); }
         bool isAvailable() const override;
+        QString availabilityError() const override { return m_availabilityError; }
         bool supportsResidualConfig() const override { return false; }
         QVariantMap backendOptions() const override;
 
@@ -65,6 +66,10 @@ namespace DtkUpdate
       private:
         // 解析 `ll-cli list [--upgradable]` 的机器可读输出为 PackageList
         bool parseList(const QString& raw, PackageList& out, bool onlyUpgradable) const;
+
+        // 最近一次 isAvailable() 探测到的诊断信息（环境异常的具体原因），
+        // 供 availabilityError() 返回，便于 UI 提示用户如何修复。
+        mutable QString m_availabilityError;
     };
 
 } // namespace DtkUpdate
