@@ -101,6 +101,21 @@ Design constraints:
 - No feature decides for the user: the update confirmation dialog focuses "Cancel"
   by default; security advisories and pre-check results are shown and the user must
   explicitly confirm to proceed.
+- **Backend wiring is centralized**: the Linyaps (cross-distro sandbox) backend is
+  attached to `UpdateMonitor` via the single factory helper `BackendFactory::attachLinyaps`,
+  so front-ends (GUI / both trays) only write one line and never repeat the probe / wire
+  boilerplate. The wiring stays explicit (called from each front-end) rather than hidden
+  inside `UpdateMonitor` construction, keeping unit tests of the monitor deterministic.
+- **Concurrency safety**: a single `QLockFile` in the runtime dir guards against
+  concurrent GUI + tray write operations on the same system. It is held as a **value
+  member** (not heap-allocated) so it is released automatically when the monitor is
+  destroyed — no manual `delete` and no leak.
+- **Object lifetime discipline**: non-QObject resources are owned by value or by a
+  parented QObject; optional child-owned backends held across objects use `QPointer`
+  so they auto-null when the owner deletes the backend, preventing dangling pointers
+  and use-after-free. Front-ends own `UpdateMonitor` / `AppConfig` / `SecurityAdvisor`
+  via Qt parentage; cross-object raw pointers (`m_backend`, `m_config`) are externally
+  owned and never deleted by the holder.
 
 ### Adding a new package-manager backend
 
@@ -126,7 +141,8 @@ Adapting to a new distribution takes three steps, with no changes to UI / monito
 3. Add the new implementation files to `src/core/package/CMakeLists.txt`, and register the
    `id` in `PresetConfig::knownBackendIds()` for config validation.
    If the dependency-resolution output format differs from APT, branch in
-   `DependencyResolver` by `backendType()`.
+   `DependencyResolver` by `backendId()` (the base implementation already handles APT
+   and DNF; backends without structured transaction output fall back to target-only).
 
 See `src/core/package/dnfbackend.cpp` (Fedora/RHEL family) and
 `src/core/package/linyapsbackend.cpp` (linglong sandbox-app family) for examples.
@@ -169,7 +185,9 @@ DTK6 dev stack: `libdtk6gui-dev`/`libdtk6widget-dev`/`libdtk6log-dev`). The pipe
 builds the core, UI, daemon and runs the unit-test suite; the tray plugin is skipped
 on this generic image because the `dde-dock` SDK it depends on is a deepin/UOS
 component not present in Ubuntu. A complete `.deb` including the tray plugin is built
-in a deepin-based packaging environment (see `ci/multiarch-build.sh`).
+in a deepin-based packaging environment (see `ci/package-deb.sh`, driven by
+`.github/workflows/build.yml` via a debootstrap deepin beige chroot + qemu for
+loong64).
 
 ## Translations
 

@@ -75,6 +75,11 @@ tests          core 层 GoogleTest 测试
   会跳过宿主内核/服务的检查，避免误报。
 - 任何功能不替用户做选择：更新确认框默认聚焦「取消」，安全公告与预检结果展示后
   由用户显式确认才继续。
+- **后端接线集中化**：跨发行系的玲珑（Linyaps）沙箱后端经由唯一的工厂辅助方法
+  `BackendFactory::attachLinyaps` 接入 `UpdateMonitor`，前端（GUI / 两个托盘）只需一行
+  调用，不再重复探测与接线样板。该接线保持显式（由各前端调用），而非隐藏在
+  `UpdateMonitor` 构造内部，从而保证监视器的单元测试具备确定性。
+- **并发安全**：运行时目录单一的 `QLockFile` 防止 GUI 与托盘同时对系统发起写操作。
 
 两个托盘前端共用同一份 `UpdateIndicator` 核心：
 
@@ -104,7 +109,9 @@ tests          core 层 GoogleTest 测试
 2. 在 `BackendFactory::registry()` 中追加一条 `{id, ctor}` 记录，决定探测优先级。
 3. 把新实现文件加入 `src/core/package/CMakeLists.txt`，并在 `PresetConfig::knownBackendIds()`
    中登记该 `id` 以便配置校验。
-   若依赖解析输出格式与 APT 不同，可在 `DependencyResolver` 中按 `backendType()` 分流。
+   若依赖解析输出格式与 APT 不同，可在 `DependencyResolver` 中按 `backendId()` 分流
+  （基类已内置 APT 与 DNF 两种格式解析；玲珑等无结构化事务输出的后端由 `resolve()`
+  降级为仅目标包）。
 
 示例参考 `src/core/package/dnfbackend.cpp`（Fedora/RHEL 系）与
 `src/core/package/linyapsbackend.cpp`（玲珑沙箱应用系）。
@@ -141,7 +148,8 @@ CI 使用 `ubuntu:devel` 镜像构建（它是在 Ubuntu 官方源中唯一提�
 ——`libdtk6gui-dev`/`libdtk6widget-dev`/`libdtk6log-dev`——的套件）。流水线会构建核心、
 UI、守护进程并运行单元测试套件；托盘插件在该通用镜像上会被跳过，因为它依赖的
 `dde-dock` SDK 是 deepin/UOS 组件、未进入 Ubuntu 源。包含托盘插件的完整 `.deb`
-在 deepin 系打包环境下构建（见 `ci/multiarch-build.sh`）。
+在 deepin 系打包环境下构建（见 `ci/package-deb.sh`，由 `.github/workflows/build.yml`
+经 debootstrap deepin beige chroot + qemu 模拟 loong64 驱动）。
 
 ## 翻译
 
