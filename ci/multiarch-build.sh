@@ -9,15 +9,18 @@
 # 多架构支持说明：
 #   - amd64 / arm64：Ubuntu 官方提供对应的 ubuntu:devel 多架构镜像与 DTK6 开发栈，
 #     可在对应原生 runner（ubuntu-24.04 / ubuntu-24.04-arm64）上的同名容器内直接构建。
-#   - loong64：Ubuntu 官方暂未提供 loong64 的 DTK6 开发包，且缺少原生 runner，
-#     纯 Ubuntu 环境下无法真正构建。脚本保留 loong64 入口参数以便将来在 deepin/CLFS
-#     系根文件系统中复用，CI 中该架构标记为 best-effort（失败不阻塞其余架构）。
+#   - loong64：本脚本不支持。ubuntu:devel 容器既没有 loong64 的 DTK6 开发包，
+#     交叉编译工具链（loongarch64-linux-gnu-*/qemu-user-static）也无法在容器内安装，
+#     在该环境必然构建失败。loong64 的实际构建/打包由 .github/workflows/build.yml
+#     通过 debootstrap deepin beige rootfs + chroot（qemu 用户态模拟）完成，不走本脚本。
+#     故此处 loong64 直接报错退出，避免 `|| true` 掩盖后让 CMake 在找不到编译器时
+#     才抛出难以定位的错误、或在 qemu 下空转卡住。
 #
 # 子命令：
 #   ./ci/multiarch-build.sh test [arch]   # 在 arch 架构下 配置 + 编译 + ctest
 #   ./ci/multiarch-build.sh deb  [arch]   # 在 test 基础上额外产出 .deb 包
 #
-# arch 取值：amd64（默认）| arm64 | loong64
+# arch 取值：amd64（默认）| arm64（loong64 见上方说明，不支持）
 #
 set -euo pipefail
 
@@ -27,7 +30,12 @@ ARCH="${2:-amd64}"
 case "$ARCH" in
   amd64) TRIPLE="" ;;
   arm64) TRIPLE="aarch64-linux-gnu" ;;
-  loong64) TRIPLE="loongarch64-linux-gnu" ;;
+  loong64)
+    echo "错误: loong64 不支持用本脚本在 ubuntu:devel 容器内构建。" >&2
+    echo "      ubuntu:devel 既没有 loong64 的 DTK6 开发包，交叉工具链也无法安装，" >&2
+    echo "      在该环境必然失败。请改用 .github/workflows/build.yml 的 deepin beige" >&2
+    echo "      chroot 方案（loong64 经 qemu 用户态模拟）来产出 .deb。" >&2
+    exit 3 ;;
   *) echo "不支持的架构: $ARCH" >&2; exit 2 ;;
 esac
 
@@ -42,13 +50,13 @@ export DEBIAN_FRONTEND=noninteractive
 
 echo "==> 架构: $ARCH (triplet=${TRIPLE:-native})"
 
-# 非本机架构时启用多架构与交叉工具链（loong64 在 Ubuntu 上缺少 DTK6 包，此处尽力配置）
+# 非本机架构时启用多架构与交叉工具链（arm64 在 ubuntu:devel 提供对应 DTK6 包，可行）
 if [ -n "$TRIPLE" ]; then
   echo "==> 启用多架构 $ARCH"
-  dpkg --add-architecture "$ARCH" || true
+  dpkg --add-architecture "$ARCH"
   apt-get update
   apt-get install -y --no-install-recommends \
-    "gcc-$TRIPLE" "g++-$TRIPLE" "pkg-config-$TRIPLE" binutils-$TRIPLE qemu-user-static || true
+    "gcc-$TRIPLE" "g++-$TRIPLE" "pkg-config-$TRIPLE" binutils-$TRIPLE
 else
   apt-get update
 fi

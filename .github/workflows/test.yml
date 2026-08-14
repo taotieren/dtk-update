@@ -6,8 +6,12 @@ on:
   pull_request:
     branches: [main]
 
-# 多架构单元测试：amd64 / arm64 走原生 runner（Ubuntu 提供 DTK6 开发栈），
-# loong64 在纯 Ubuntu 环境缺少 DTK6 包，标记为 best-effort（失败不阻塞其余架构）。
+# 多架构单元测试：amd64 / arm64 走原生 runner（Ubuntu 提供 DTK6 开发栈）。
+# loong64 不在此矩阵：ubuntu:devel 容器没有 loong64 的 DTK6 开发包，
+# 且交叉编译工具链在容器内无法安装（见 ci/multiarch-build.sh 说明），
+# 在该环境必然构建失败。loong64 的构建/打包由其专属方案负责——
+# .github/workflows/build.yml 用 debootstrap deepin beige rootfs + chroot
+# （loong64 经 qemu 用户态模拟）产出 .deb，不走本测试容器。
 jobs:
   unit-test:
     runs-on: ${{ matrix.runner }}
@@ -19,14 +23,8 @@ jobs:
         include:
           - arch: amd64
             runner: ubuntu-24.04
-            best-effort: false
           - arch: arm64
             runner: ubuntu-24.04-arm64
-            best-effort: false
-          - arch: loong64
-            runner: ubuntu-24.04
-            best-effort: true
-    continue-on-error: ${{ matrix.best-effort }}
     steps:
       - uses: actions/checkout@v4
         with:
