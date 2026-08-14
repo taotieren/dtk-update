@@ -10,7 +10,8 @@ so the project is no longer tied to a single distribution or package manager.
 
 - System tray plugin for `dde-tray-loader` (V2 interface)
 - Update / install / remove / purge / autoremove / clean operations
-- Distribution-agnostic **multi-backend** design (APT, DNF, Linyaps; easy to extend)
+- Distribution-agnostic **multi-backend** design (APT, DNF, Linyaps; easy to extend),
+  with **cross-distro Linyaps** probed independently of the system package manager
 - Dependency resolution via backend dry-run parsing
 - Residual config & cache cleanup (`rc` packages, orphan configs)
 - Optional security advisories (deepin security center D-Bus, with offline heuristic fallback)
@@ -52,21 +53,35 @@ aligned with the deepin/UOS v25 ecosystem:
 ## Architecture
 
 ```
-src/core      business logic (UI-agnostic, fully unit-tested)
+src/core        business logic (UI-agnostic, fully unit-tested)
   package/      PackageBackend(abstract interface) · AptBackend(apt/dpkg) · DnfBackend(dnf/rpm)
-                · LinyapsBackend(ll-cli/玲珑) · BackendFactory(auto-detect by distro)
-                · PackageParser(pure parsing)
+                · LinyapsBackend(ll-cli/玲珑, cross-distro) · BackendFactory(auto-detect by distro
+                  + always probe Linyaps independently) · PackageParser(pure parsing)
   dependency/   DependencyResolver (backend dry-run parsing)
   security/     SecurityAdvisor (deepin security center D-Bus + upstream advisory fetch, optional)
   healthcheck/  PreUpdateCheck / PostUpdateCheck (pre/post update, read-only probes)
-  monitor/      UpdateMonitor (state machine + periodic scheduling)
-src/tray      dde-tray-loader plugin (PluginsItemInterfaceV2)
+  monitor/      UpdateMonitor (state machine + periodic scheduling, aggregates linyaps)
+src/indicator  UpdateIndicator (desktop-agnostic core shared by both trays: builds backend /
+                monitor / advisor / linyaps, exposes hooks for front-ends)
+                UpdateDialogs (shared DDialog builders: linyaps-unavailable prompt,
+                security/advisory confirm, post-update report — used by both trays)
+src/tray       dde-tray-loader plugin (PluginsItemInterfaceV2, deepin/UOS only; needs dde-dock SDK)
+src/tray-generic  cross-distro freedesktop tray (QSystemTrayIcon, any DTK6 distro; no dde-dock)
 src/ui        standalone DTK main window (DMainWindow)
 src/daemon    background DBus service (com.dtk.update.Daemon)
 src/common    logging, config (DConfig + INI backend.conf), translator
 translations  .ts sources (zh_CN / en_US / es / fr / de) + CMake compile rules
 tests         GoogleTest for core layer
 ```
+
+Two tray front-ends share one `UpdateIndicator` core:
+
+- **dde-tray** (`src/tray`): deepin/UOS Dock plugin via `PluginsItemInterfaceV2`. Built only
+  when the `dde-dock` SDK is present; otherwise the target is skipped.
+- **generic tray** (`src/tray-generic`): a standalone `dtk-update-tray-generic` process using
+  Qt6 `QSystemTrayIcon`. It has **no deepin-specific dependency** and runs on any distribution
+  that ships DTK6 + Qt6 (Ubuntu, Arch, Fedora, ...). Autostarted via
+  `dtk-update-tray-generic.desktop` with `NotShowIn=deepin` so deepin keeps a single tray.
 
 Design constraints:
 
@@ -116,6 +131,29 @@ Adapting to a new distribution takes three steps, with no changes to UI / monito
 See `src/core/package/dnfbackend.cpp` (Fedora/RHEL family) and
 `src/core/package/linyapsbackend.cpp` (linglong sandbox-app family) for examples.
 
+### Cross-distribution backends (e.g. Linyaps / 玲珑)
+
+Some backends are **not tied to a single distribution** and must be probed
+independently of the distro family. Linyaps (ll-cli) is a cross-distro sandbox-app
+manager: it is available on deepin, Fedora, Ubuntu, Arch, and more whenever the
+`linglong` runtime is installed. Therefore:
+
+- `LinyapsBackend` must **never** be gated by `DistroProbe::Family`. Its
+  `isAvailable()` only checks whether `ll-cli` exists and the runtime is healthy.
+- `BackendFactory` probes Linyaps **separately and unconditionally** (via
+  `createBackends()` / `availableBackendIds()`), in addition to the
+  distro-specific system backend. On a Debian/Fedora host both `apt`/`dnf` and
+  `linyaps` can be returned together — they are orthogonal (system packages vs.
+  sandbox apps).
+- When `isAvailable()` returns `false` for a reason other than "not installed"
+  (e.g. `ll-cli` exists but the runtime is broken / permission denied), the
+  backend must populate `availabilityError()` with a concrete, actionable
+  message. The UI and tray surface this through `UpdateMonitor::backendUnavailable`
+  so the user knows **how to fix it** rather than just "backend unavailable".
+- New cross-distro backends follow the same rule: register them in
+  `BackendFactory::registry()` but make sure they are probed by
+  `createBackends()` rather than hidden behind a single-family `orderedEntries()`.
+
 ## Build
 
 ```bash
@@ -126,7 +164,12 @@ ctest --output-on-failure   # unit tests
 sudo make install
 ```
 
-CI builds on the `deepin/deepin-build:25` image and produces `.deb` artifacts.
+CI builds on the `ubuntu:devel` image (the only Ubuntu suite that ships the full
+DTK6 dev stack: `libdtk6gui-dev`/`libdtk6widget-dev`/`libdtk6log-dev`). The pipeline
+builds the core, UI, daemon and runs the unit-test suite; the tray plugin is skipped
+on this generic image because the `dde-dock` SDK it depends on is a deepin/UOS
+component not present in Ubuntu. A complete `.deb` including the tray plugin is built
+in a deepin-based packaging environment (see `ci/multiarch-build.sh`).
 
 ## Translations
 

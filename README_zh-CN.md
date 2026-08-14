@@ -8,7 +8,8 @@
 
 - 面向 `dde-tray-loader` 的系统托盘插件（V2 接口）
 - 更新 / 安装 / 卸载 / 清除 / 自动移除 / 清理操作
-- 与发行版无关的 **多后端** 设计（APT、DNF、Linyaps，易于扩展）
+- 与发行版无关的 **多后端** 设计（APT、DNF、Linyaps，易于扩展）；**跨发行系的 Linyaps（玲珑）**
+  独立于系统包管理器单独探测，不受发行版限制
 - 基于后端 dry-run 解析的依赖解析
 - 残留配置与缓存清理（`rc` 包、孤儿配置）
 - 可选的安全公告（deepin 安全中心 D-Bus，离线启发式兜底）
@@ -41,13 +42,18 @@
 ```
 src/core      业务逻辑（与 UI 无关，完整单元测试）
   package/      PackageBackend(抽象接口) · AptBackend(apt/dpkg) · DnfBackend(dnf/rpm)
-                · LinyapsBackend(ll-cli/玲珑) · BackendFactory(按发行版自动探测)
-                · PackageParser(纯解析)
+                · LinyapsBackend(ll-cli/玲珑, 跨发行系) · BackendFactory(按发行系自动探测
+                  + 始终独立探测 Linyaps) · PackageParser(纯解析)
   dependency/   DependencyResolver (后端 dry-run 解析)
   security/     SecurityAdvisor (deepin 安全中心 D-Bus + 上游公告拉取，可选)
   healthcheck/  PreUpdateCheck / PostUpdateCheck (预检/后检，只读探测)
   monitor/      UpdateMonitor (状态机 + 定时调度)
-src/tray       dde-tray-loader 插件 (PluginsItemInterfaceV2)
+src/indicator  UpdateIndicator (与桌面环境解耦的共享核心，供两个托盘复用：构建后端 /
+               monitor / advisor / linyaps，向具体前端暴露钩子)
+               UpdateDialogs (共享 DDialog 构建器：玲珑不可用提示、安全公告确认、
+               更新后报告——两个托盘共用)
+src/tray       dde-tray-loader 插件 (PluginsItemInterfaceV2，仅 deepin/UOS，依赖 dde-dock SDK)
+src/tray-generic  跨发行系 freedesktop 托盘 (QSystemTrayIcon，任意 DTK6 发行系，无 dde-dock 依赖)
 src/ui         独立 DTK 主窗口 (DMainWindow)
 src/daemon     后台 DBus 服务 (com.dtk.update.Daemon)
 src/common     日志、配置 (DConfig + INI backend.conf)、翻译器
@@ -69,6 +75,15 @@ tests          core 层 GoogleTest 测试
   会跳过宿主内核/服务的检查，避免误报。
 - 任何功能不替用户做选择：更新确认框默认聚焦「取消」，安全公告与预检结果展示后
   由用户显式确认才继续。
+
+两个托盘前端共用同一份 `UpdateIndicator` 核心：
+
+- **dde-tray**（`src/tray`）：deepin/UOS 任务栏插件，经 `PluginsItemInterfaceV2` 接入；
+  仅当 `dde-dock` SDK 存在时才构建，否则该 target 被跳过。
+- **通用托盘**（`src/tray-generic`）：独立进程 `dtk-update-tray-generic`，使用 Qt6 原生
+  `QSystemTrayIcon`，**无任何 deepin 私有依赖**，可在任意装有 DTK6 + Qt6 的发行系运行
+  （Ubuntu / Arch / Fedora 等）。通过 `dtk-update-tray-generic.desktop` 自启，并设
+  `NotShowIn=deepin`，避免 deepin 上出现重复托盘。
 
 ### 扩展新的包管理器后端
 
@@ -94,6 +109,24 @@ tests          core 层 GoogleTest 测试
 示例参考 `src/core/package/dnfbackend.cpp`（Fedora/RHEL 系）与
 `src/core/package/linyapsbackend.cpp`（玲珑沙箱应用系）。
 
+### 跨发行版后端（如 Linyaps / 玲珑）
+
+部分后端**不绑定单一发行版**，必须独立于发行系探测。玲珑（ll-cli）是跨发行系的
+沙箱应用管理器：只要安装了 `linglong` 运行时，在 deepin、Fedora、Ubuntu、Arch 等
+任意发行版上均可使用。因此：
+
+- `LinyapsBackend` **绝不能被 `DistroProbe::Family` 限制**：其 `isAvailable()`
+  只判断 `ll-cli` 是否存在、运行时是否健康。
+- `BackendFactory` 对玲珑采取**单独的、无条件的探测**（`createBackends()` /
+  `availableBackendIds()`），与发行系对应的系统后端并列。在 Debian/Fedora 主机上
+  可同时返回 `apt`/`dnf` 与 `linyaps`——二者正交（系统包 vs 沙箱应用）。
+- 当 `isAvailable()` 因"非未安装"的原因返回 false（如 `ll-cli` 存在但运行时损坏 /
+  权限不足），后端必须在 `availabilityError()` 中返回具体、可执行的诊断信息。
+  UI 与托盘通过 `UpdateMonitor::backendUnavailable` 信号把这个原因呈现给用户，
+  让用户知道**如何修复**，而不是笼统的"后端不可用"。
+- 新增跨发行系后端同样遵循此原则：在 `BackendFactory::registry()` 中登记，
+  并确保由 `createBackends()` 探测，而非隐藏在某个发行系的 `orderedEntries()` 之后。
+
 ## 构建
 
 ```bash
@@ -104,7 +137,11 @@ ctest --output-on-failure   # 单元测试
 sudo make install
 ```
 
-CI 使用 `deepin/deepin-build:25` 镜像构建并产出 `.deb` 产物。
+CI 使用 `ubuntu:devel` 镜像构建（它是在 Ubuntu 官方源中唯一提供完整 DTK6 开发栈
+——`libdtk6gui-dev`/`libdtk6widget-dev`/`libdtk6log-dev`——的套件）。流水线会构建核心、
+UI、守护进程并运行单元测试套件；托盘插件在该通用镜像上会被跳过，因为它依赖的
+`dde-dock` SDK 是 deepin/UOS 组件、未进入 Ubuntu 源。包含托盘插件的完整 `.deb`
+在 deepin 系打包环境下构建（见 `ci/multiarch-build.sh`）。
 
 ## 翻译
 
