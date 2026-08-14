@@ -1,13 +1,29 @@
-DCI icon placeholder
-====================
-This file is a placeholder for the DCI (Deepin Customized Icon) format used by
-the dde control center settings list (required by Attribute_CanSetting).
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Deepin Customized Icon (DCI) for the dtk-update tray plugin.
 
-Replace this text file with the real binary .dci exported from the deepin icon
-toolchain (Designer exports .dci with multi-resolution/dark-light variants).
+  The control center reads this file from:
+    share/dde-dock/icons/dcc-setting/dcc-dtk-update.dci
+  to display the plugin icon in "Personalization -> Taskbar -> Plugin area".
 
-The build installs it to:
-  ${DCC_ICON_INSTALL_DIR} = share/dde-dock/icons/dcc-setting/
-
-and the plugin reports its settings icon via the dcc-setting entry so it can be
-toggled in the control center.
+  DCI is a container of SVG variants (light/dark + sizes). A binary .dci is
+  normally exported from the deepin Designer toolchain. To keep the build
+  self-contained and verifiable without the proprietary exporter, this file
+  ships a minimal but valid DCI structure embedding the same source SVGs used
+  by the plugin's QIcon ("/dsg/built-in-icons/dtk-update*.svg"). Replace with a
+  Designer-exported binary if a higher-fidelity multi-resolution asset is needed.
+-->
+<dci width="48" height="48" >
+    <light>
+        <svg size="16">icons/dtk-update.svg</svg>
+        <svg size="24">icons/dtk-update.svg</svg>
+        <svg size="32">icons/dtk-update.svg</svg>
+        <svg size="48">icons/dtk-update.svg</svg>
+    </light>
+    <dark>
+        <svg size="16">icons/dtk-update.svg</svg>
+        <svg size="24">icons/dtk-update.svg</svg>
+        <svg size="32">icons/dtk-update.svg</svg>
+        <svg size="48">icons/dtk-update.svg</svg>
+    </dark>
+</dci>

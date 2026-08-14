@@ -4,6 +4,7 @@ add_library(dtk-update-indicator STATIC
     updateindicator.cpp
     updatedialogs.h
     updatedialogs.cpp
+    ${CMAKE_SOURCE_DIR}/resources/resources.qrc
 )
 
 target_include_directories(dtk-update-indicator PUBLIC

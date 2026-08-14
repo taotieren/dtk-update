@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QPointer>
+#include <QTranslator>
 
 #include "indicator/updateindicator.h"
 
@@ -47,6 +48,14 @@ namespace DtkUpdate
         // 左键弹出面板
         QWidget* itemPopupApplet(const QString& itemKey) override;
 
+        // 控制中心显隐（Attribute_CanSetting 必须实现）
+        bool pluginIsAllowDisable() override;
+        bool pluginIsDisable() override;
+        void pluginStateSwitched() override;
+
+        // 图标主题变化时刷新（亮/暗切换）
+        void refreshIcon(const QString& itemKey) override;
+
       protected:
         void onStateChanged(bool hasUpdates, int count) override;
         void onBackendUnavailable(const QString& backendId, const QString& reason) override;
@@ -59,6 +68,7 @@ namespace DtkUpdate
         PluginProxyInterface* m_proxyInter = nullptr;
         QPointer<TrayWidget> m_trayWidget;
         QPointer<QWidget> m_popup;
+        QTranslator* m_translator = nullptr;
     };
 
 } // namespace DtkUpdate

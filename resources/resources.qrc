@@ -5,4 +5,11 @@
         <file>icons/dtk-update.svg</file>
         <file>icons/dtk-update-update.svg</file>
     </qresource>
+    <!-- 供 dde-tray-loader 插件 icon() 返回（Attribute_CanSetting 控制中心图标） -->
+    <qresource prefix="/dsg/built-in-icons">
+        <file alias="dtk-update.svg">icons/dtk-update.svg</file>
+        <file alias="dtk-update-dark.svg">icons/dtk-update.svg</file>
+        <file alias="dtk-update-update.svg">icons/dtk-update-update.svg</file>
+        <file alias="dtk-update-update-dark.svg">icons/dtk-update-update.svg</file>
+    </qresource>
 </RCC>

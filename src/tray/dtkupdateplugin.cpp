@@ -1,5 +1,6 @@
 #include "dtkupdateplugin.h"
 
+#include <QCoreApplication>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -17,12 +18,12 @@
 namespace DtkUpdate
 {
 
-    DtkUpdatePlugin::DtkUpdatePlugin(QObject* parent) : UpdateIndicator(parent)
-    {
-        DtkUpdate::loadTranslator(QStringLiteral("dtk-update"));
-    }
+    DtkUpdatePlugin::DtkUpdatePlugin(QObject* parent) : UpdateIndicator(parent) {}
 
-    DtkUpdatePlugin::~DtkUpdatePlugin() = default;
+    DtkUpdatePlugin::~DtkUpdatePlugin()
+    {
+        delete m_translator; // 持有而非跟随 app 实例，销毁时一并释放
+    }
 
     const QString DtkUpdatePlugin::pluginName() const
     {
@@ -37,6 +38,22 @@ namespace DtkUpdate
     void DtkUpdatePlugin::init(PluginProxyInterface* proxyInter)
     {
         m_proxyInter = proxyInter;
+
+        // 持有 QTranslator 并在 init() 注册（dde-tray-loader 不加载第三方翻译，
+        // 必须用实例成员持有，避免临时对象离开 init() 后被销毁导致翻译失效）
+        m_translator = new QTranslator(this);
+        const QStringList dirs = {QCoreApplication::applicationDirPath(),
+                                  QStringLiteral("/usr/share/dtk-update/translations"),
+                                  QStringLiteral("/usr/local/share/dtk-update/translations")};
+        for (const auto& dir : dirs)
+        {
+            if (m_translator->load(QLocale::system(), QStringLiteral("dtk-update"),
+                                   QStringLiteral("_"), dir))
+            {
+                QCoreApplication::installTranslator(m_translator);
+                break;
+            }
+        }
 
         m_trayWidget = new TrayWidget;
         connect(m_trayWidget, &TrayWidget::clicked, this,
@@ -65,12 +82,14 @@ namespace DtkUpdate
     QIcon DtkUpdatePlugin::icon(Dock::IconType iconType, Dock::ThemeType themeType) const
     {
         Q_UNUSED(iconType);
-        // 按主题返回 dci/svg 图标；无更新使用普通态，有更新使用带角标态
+        // 返回安装到资源内的 dci/svg 图标（控制中心按 dcc-setting 读取同名 dci）。
+        // 资源前缀 "/dsg/built-in-icons/" 与 dcc-dtk-update.dci 同源，亮/暗各一套。
         const bool updatable = monitor() && !monitor()->upgradable().isEmpty();
-        QString name =
+        const QString base =
             updatable ? QStringLiteral("dtk-update-update") : QStringLiteral("dtk-update");
-        Q_UNUSED(themeType)
-        return QIcon::fromTheme(name);
+        const QString suffix =
+            themeType == Dock::ThemeType_Dark ? QStringLiteral("-dark") : QString();
+        return QIcon(QStringLiteral(":/dsg/built-in-icons/%1%2.svg").arg(base, suffix));
     }
 
     const QString DtkUpdatePlugin::itemContextMenu(const QString& itemKey)
@@ -144,9 +163,45 @@ namespace DtkUpdate
         return m_popup;
     }
 
-    void DtkUpdatePlugin::onStateChanged(bool /*hasUpdates*/, int /*count*/)
+    void DtkUpdatePlugin::onStateChanged(bool /*hasUpdates*/, int count)
     {
+        // 更新托盘控件状态（红点/角标依赖此调用，否则永远灰色）
+        if (m_trayWidget)
+            m_trayWidget->setState(count);
         // 状态变化刷新图标（控制中心/任务栏可能缓存）
+        if (m_proxyInter)
+            m_proxyInter->itemUpdated(this, pluginName());
+    }
+
+    bool DtkUpdatePlugin::pluginIsAllowDisable()
+    {
+        // 允许用户在控制中心禁用本插件
+        return true;
+    }
+
+    bool DtkUpdatePlugin::pluginIsDisable()
+    {
+        // 默认启用；禁用状态由 proxy 持久化（键 "enable"）
+        if (!m_proxyInter)
+            return false;
+        return !m_proxyInter->getValue(this, QStringLiteral("enable"), true).toBool();
+    }
+
+    void DtkUpdatePlugin::pluginStateSwitched()
+    {
+        if (!m_proxyInter)
+            return;
+        const bool disable = pluginIsDisable();
+        if (disable)
+            m_proxyInter->itemRemoved(this, pluginName());
+        else
+            m_proxyInter->itemAdded(this, pluginName());
+    }
+
+    void DtkUpdatePlugin::refreshIcon(const QString& itemKey)
+    {
+        Q_UNUSED(itemKey)
+        // 图标主题（亮/暗）切换时由框架调用，转发刷新
         if (m_proxyInter)
             m_proxyInter->itemUpdated(this, pluginName());
     }
