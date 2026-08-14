@@ -6,6 +6,7 @@
 #include "indicator/updateindicator.h"
 
 #include <pluginsiteminterface.h>
+#include <pluginsiteminterface_v2.h>
 
 class TrayWidget;
 class QMenu;
