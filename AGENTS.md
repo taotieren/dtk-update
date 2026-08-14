@@ -59,8 +59,13 @@ DConfig appId 为 `org.deepin.dtk-update`。
   （空字符串是合法值，不代表“缺失”）。
 - 本地化：使用 `tr()`；刷新时用 `lupdate` 后接 `python3 translations/_gen.py`
   （回填 zh_CN/es/fr/de，剔除未完成的条目）。共五种语言。
-- 代码风格：`.clang-format`（LLVM/Allman，4 空格，100 列）。改动文件请跑
-  `clang-format -i`；CI 内有 `clang-tidy`。
+- 代码风格：`.clang-format`（LLVM/Allman，4 空格，100 列，
+  `IncludeBlocks: Regroup` + `SortIncludes: true`）。**改动文件必须跑
+  `clang-format -i`**；CI 有 `find src tests \( -name '*.cpp' -o -name '*.h' \) | xargs
+  clang-format --dry-run --Werror` 门禁（失败 exit 123），提交前务必本地先过一遍。
+  特别注意：**include 顺序由工具按字母序自动重排**，引号 include（如
+  `"core/monitor/updatemonitor.h"`）会排在 `"dnfbackend.h"` 之前，手改 include
+  顺序极易触发该 CI 失败，直接交给 `clang-format -i` 处理即可。CI 内另含 `clang-tidy`。
 
 ## 可用 Skills（AI 助手应优先调用的技能）
 
@@ -123,10 +128,25 @@ DConfig appId 为 `org.deepin.dtk-update`。
   类。涉及 `attachLinyaps` / 真实后端的测试，在管理器未安装时应 `SKIP` 而非伪通过。
 - **死代码**：删除功能时，要连其 config 键、getter/setter、DConfig 条目、`showConfig()`
   行一起删。不要留下“虚拟”开关却无人读取。诚实的零/空胜过看起来合理但实际的占位数字。
+- **CI lint 门禁（clang-format dry-run）**：build.yml 有
+  `find src tests \( -name '*.cpp' -o -name '*.h' \) | xargs clang-format --dry-run --Werror`，
+  **任一文件不符合即 exit 123 红 CI**。曾因手改 include 顺序（`backendfactory.cpp` 里
+  `"core/monitor/updatemonitor.h"` 排到了 `"dnfbackend.h"` 之后）触发——该文件本地编译
+  无误、仅在 CI lint 阶段失败，错误信息指向文件首行 `#include`，极易误判为其他问题。
+  **所有改动文件提交前必须本地跑 `clang-format --dry-run --Werror` 自检**；include 顺序
+  交给 `clang-format -i` 自动重排，勿手排（见「约定」代码风格段）。注意：**clang-format
+  版本差异**可能改变格式化结果（如本机 clang-format 22 与 CI 版本），本地 `-i` 后立即
+  `git diff` 复核再提交最稳妥。
 - **文档漂移**：重构后要在同一改动里修正 README（英文 + 简中）——打包脚本
-  （`ci/package-deb.sh`，不是 `multiarch-build.sh`）、接线
+  （`ci/package-deb.sh` 是 **唯一** 的 CI 脚本，旧的 `ci/multiarch-build.sh` 已删除，
+  凡文档/代码引用到它的都属漂移须清理）、接线
   （`BackendFactory::attachLinyaps`，不是构造内自接）、以及 `backendId()` 与
   `backendType()` 的引用都曾发生过漂移。
+- **CI 脚本清单（防漂移）**：`ci/` 下**仅保留 `package-deb.sh`**——由 `build.yml` 在
+  deepin beige chroot 内调用，执行 `dpkg-buildpackage` 产 `.deb`。**已删除
+  `ci/multiarch-build.sh`**（旧 ubuntu:devel 交叉编译方案遗留，CI 不再调用）。
+  `test.yml` 改为在 ubuntu:devel 容器内**原生** `cmake -B build + cmake --build + ctest`
+  跑单元测试，不依赖任何 ci/*.sh 脚本。凡新增脚本引用前先确认未被删除。
 
 ## 构建与验证
 
@@ -159,7 +179,9 @@ ctest --output-on-failure        # 预期 66 passed + 3 skipped（非 debian 开
    DConfig schema、示例 `data/backend.conf.example`、README 后端扩展指南要同步增删，
    不要留无人读取的“虚拟”开关。
 6. **构建与测试零回归**：`cmake + make + ctest` 必须全绿（预期 66 passed + 3 skipped）；
-   跑 `clang-format -i` 覆盖改动文件；`read_lints` 无错误；`git status` 确认无遗留草稿文件。
+   对所有改动文件跑 `clang-format -i`，并额外 `clang-format --dry-run --Werror` 自检零违规
+   （**这是 CI 门禁，任一文件不符即 exit 123 红 CI**，见「已踩过的坑」CI lint 门禁条）；
+   `read_lints` 无错误；`git status` 确认无遗留草稿文件。
 7. **文档同步**：本文件与 README（en / zh-CN）在同一改动里更新；changelog 追加版本条目，
    措辞与代码模块名对齐。
 8. **网络源时效**：`SecurityAdvisor::upstreamFeedUrl` / `distroNoticeUrl` 里的发行版官方 RSS/
@@ -168,4 +190,8 @@ ctest --output-on-failure        # 预期 66 passed + 3 skipped（非 debian 开
    保持返回空并注释，绝不指向无关地址。
 9. **按功能分组提交**：不同性质的改动（清理 / 修复 / 文档）拆成独立 commit，commit message
    用 `cleanup:`/`fix:`/`refactor:`/`docs:` 前缀，便于回溯，不要混成一团。
+10. **有修改必然有提交（硬纪律）**：**只要动了代码 / 文档 / 配置，收尾就必须 `git commit`**，
+    绝不允许"改完不提交就结束"——上一轮 clang-format 修复、tray 头文件修复、ci 脚本清理曾
+    因漏提交被用户提醒。完成所有检查项（含 `git status` 确认无遗留）后，立即按第 9 条分组提交；
+    除非用户明确说"先别提交"。commit 后 `git status` 复核工作区干净再收工。
 

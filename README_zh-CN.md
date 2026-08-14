@@ -147,12 +147,13 @@ ctest --output-on-failure   # 单元测试
 sudo make install
 ```
 
-CI 使用 `ubuntu:devel` 镜像构建（它是在 Ubuntu 官方源中唯一提供完整 DTK6 开发栈
-——`libdtk6gui-dev`/`libdtk6widget-dev`/`libdtk6log-dev`——的套件）。流水线会构建核心、
-UI、守护进程并运行单元测试套件；托盘插件在该通用镜像上会被跳过，因为它依赖的
-`dde-dock` SDK 是 deepin/UOS 组件、未进入 Ubuntu 源。包含托盘插件的完整 `.deb`
-在 deepin 系打包环境下构建（见 `ci/package-deb.sh`，由 `.github/workflows/build.yml`
-经 debootstrap deepin beige chroot + qemu 模拟 loong64 驱动）。
+CI 有两条流水线。**单元测试**流水线跑在 `ubuntu:devel` 镜像上（它是在 Ubuntu 官方源中
+唯一提供完整 DTK6 开发栈——`libdtk6gui-dev`/`libdtk6widget-dev`/`libdtk6log-dev`——的套件），
+构建核心/UI/守护进程并运行 `ctest`；托盘插件在该通用镜像上会被跳过，因为它依赖的
+`dde-dock` SDK 是 deepin/UOS 组件、未进入 Ubuntu 源。**构建**流水线在 deepin 系打包环境下
+产出含托盘插件的完整 `.deb`（见 `ci/package-deb.sh`——**唯一的 CI 脚本**——由
+`.github/workflows/build.yml` 经 debootstrap deepin beige chroot + qemu 模拟 loong64 驱动）。
+旧的 `ci/multiarch-build.sh` 已删除。
 
 ## 翻译
 

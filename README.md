@@ -183,14 +183,15 @@ ctest --output-on-failure   # unit tests
 sudo make install
 ```
 
-CI builds on the `ubuntu:devel` image (the only Ubuntu suite that ships the full
-DTK6 dev stack: `libdtk6gui-dev`/`libdtk6widget-dev`/`libdtk6log-dev`). The pipeline
-builds the core, UI, daemon and runs the unit-test suite; the tray plugin is skipped
-on this generic image because the `dde-dock` SDK it depends on is a deepin/UOS
-component not present in Ubuntu. A complete `.deb` including the tray plugin is built
-in a deepin-based packaging environment (see `ci/package-deb.sh`, driven by
+CI has two pipelines. The **unit-test** pipeline runs on the `ubuntu:devel` image
+(the only Ubuntu suite that ships the full DTK6 dev stack:
+`libdtk6gui-dev`/`libdtk6widget-dev`/`libdtk6log-dev`), building core/UI/daemon and
+running `ctest`; the tray plugin is skipped there because the `dde-dock` SDK it
+depends on is a deepin/UOS component not present in Ubuntu. The **build** pipeline
+produces a complete `.deb` including the tray plugin in a deepin-based packaging
+environment (see `ci/package-deb.sh` — the only CI script — driven by
 `.github/workflows/build.yml` via a debootstrap deepin beige chroot + qemu for
-loong64).
+loong64). The legacy `ci/multiarch-build.sh` was removed.
 
 ## Translations
 
