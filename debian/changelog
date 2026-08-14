@@ -14,6 +14,21 @@ dtk-update (0.1.2) unstable; urgency=medium
     notices behavior; update AGENTS.md security/advisor description and add the
     "verify upstream feed URLs for staleness" long-task checklist item.
 
+ -- dtk-update taotieren <admin@taotieren.com>  Thu, 14 Aug 2026 00:00:00 +0000
+
+dtk-update (0.1.1) unstable; urgency=medium
+
+  * cleanup: remove stray empty src/core/cleanup directory (no source, not in
+    CMakeLists); residual/cache cleanup lives in healthcheck + PackageBackend
+    CleanCache/Autoremove operations.
+  * fix: drop redundant const_cast in LinyapsBackend::runQuery stream parsing.
+  * refactor: remove redundant SecurityAdvisor::m_available snapshot, probe deepin
+    SecurityCenter availability at call time via isServiceRegistered.
+  * docs: align AGENTS.md with implementation; add post-task verification
+    checklist to prevent missing / unimplemented / dead code.
+
+ -- dtk-update taotieren <admin@taotieren.com>  Fri, 14 Aug 2026 00:00:00 +0000
+
 dtk-update (0.1.0) unstable; urgency=medium
 
   * refactor: centralize Linyaps backend wiring in BackendFactory::attachLinyaps,
@@ -33,16 +48,3 @@ dtk-update (0.1.0) unstable; urgency=medium
     systemd user service and debian packaging.
 
  -- dtk-update taotieren <admin@taotieren.com>  Thu, 13 Aug 2026 00:00:00 +0000
-
-dtk-update (0.1.1) unstable; urgency=medium
-
-  * cleanup: remove stray empty src/core/cleanup directory (no source, not in
-    CMakeLists); residual/cache cleanup lives in healthcheck + PackageBackend
-    CleanCache/Autoremove operations.
-  * fix: drop redundant const_cast in LinyapsBackend::runQuery stream parsing.
-  * refactor: remove redundant SecurityAdvisor::m_available snapshot, probe deepin
-    SecurityCenter availability at call time via isServiceRegistered.
-  * docs: align AGENTS.md with implementation; add post-task verification
-    checklist to prevent missing / unimplemented / dead code.
-
- -- dtk-update taotieren <admin@taotieren.com>  Fri, 14 Aug 2026 00:00:00 +0000

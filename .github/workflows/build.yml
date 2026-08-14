@@ -78,18 +78,19 @@ jobs:
       - name: Package deb
         id: pkg
         run: |
-          # 版本号：tag 触发用 tag 名（去 v 前缀），分支触发用默认 0.1.0
+          # 版本号：tag 触发用 tag 名（去 v 前缀），分支触发交由脚本从 changelog 读取
           VER="${GITHUB_REF_NAME#v}"
+          IS_TAG="false"
           case "$VER" in
-            0.*|1.*|2.*) ;;  # 形如 0.1.0 的 tag
-            *) VER="0.1.0" ;;
+            0.*|1.*|2.*) IS_TAG="true" ;;  # 形如 0.1.0 的 tag
+            *) VER="0.1.0"; IS_TAG="false" ;;
           esac
           sudo mkdir -p /tmp/artifacts
           # 不再用 `|| true` 吞掉失败：打包失败必须让本步骤红掉，
           # 同时保留 pkg.log 供 always() 上传排查。
           set -o pipefail
           rc=0
-          sudo chroot /tmp/rootfs bash -c "cd /src && bash ci/package-deb.sh ${{ matrix.arch }} $VER" \
+          sudo chroot /tmp/rootfs bash -c "cd /src && IS_TAG=$IS_TAG bash ci/package-deb.sh ${{ matrix.arch }} $VER" \
             2>&1 | tee /tmp/pkg.log || rc=$?
           sudo cp /tmp/pkg.log /tmp/artifacts/ci-pkg-${{ matrix.arch }}.log || true
           if [ "$rc" -ne 0 ]; then

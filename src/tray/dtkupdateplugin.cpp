@@ -39,6 +39,11 @@ namespace DtkUpdate
     {
         m_proxyInter = proxyInter;
 
+        // 确保 resources.qrc（含 /dsg/built-in-icons/ 图标）被链接进本插件 .so。
+        // 该 qrc 编入 dtk-update-indicator 静态库，静态链接时链接器可能丢弃未被
+        // 直接引用的资源目标文件，显式初始化可保证 icon() 在运行时能取到资源图标。
+        Q_INIT_RESOURCE(resources);
+
         // 持有 QTranslator 并在 init() 注册（dde-tray-loader 不加载第三方翻译，
         // 必须用实例成员持有，避免临时对象离开 init() 后被销毁导致翻译失效）
         m_translator = new QTranslator(this);

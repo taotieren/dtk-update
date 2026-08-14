@@ -42,6 +42,13 @@ fi
 
 echo "==> 重写 changelog 顶部版本为 $VER"
 # 直接改写首行最可靠：不依赖 dch，且避免追加多余条目导致版本号漂移
+# 注意：必须保持 changelog 版本号降序（首段最新），否则 dpkg-buildpackage
+# 会因版本号倒挂告警甚至失败。分支触发（IS_TAG != true）时从 changelog 首行
+# 读取原版本号，避免硬编码 0.1.0 导致与后续 0.1.1/0.1.2 段倒挂。
+if [ "${IS_TAG:-}" != "true" ]; then
+  VER="$(head -1 debian/changelog | sed -E 's/.*\(([^)]+)\).*/\1/')"
+  echo "分支触发：沿用 changelog 顶部版本 $VER"
+fi
 sed -i "1s/.*/dtk-update ($VER) beige; urgency=medium/" debian/changelog
 head -1 debian/changelog
 
