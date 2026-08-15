@@ -10,6 +10,17 @@ compile_commands.json
 *.deb
 .debhelper
 obj-*/
+# debhelper 13 单包打包临时产物（dpkg-buildpackage 在本地跑会生成，不应入库）
+debian/tmp/
+debian/dtk-update/
+debian/debhelper-build-stamp
+debian/*.debhelper.log
+debian/*.substvars
+debian/files
+debian/*.postinst.debhelper
+debian/*.postrm.debhelper
+debian/*.preinst.debhelper
+debian/*.prerm.debhelper
 
 # Agent 工作记忆（非项目源码，不入库）
 .codebuddy/

@@ -8,6 +8,11 @@ project(dtk-update
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# 本项目含静态库（common/core/indicator）会被链接进共享对象（dde-dock 托盘插件
+# libdtk-update-tray.so）。aarch64/loong64 等架构在链接 .so 时强制要求所有目标文件以
+# -fPIC 编译，否则报 "unsupported relocation / recompile with -fPIC"。开启全局 PIC 使所有
+# target 一致可重定位，避免架构相关的链接失败。
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
