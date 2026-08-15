@@ -153,6 +153,19 @@ DConfig appId 为 `org.deepin.dtk-update`。
   `ci/multiarch-build.sh`**（旧 ubuntu:devel 交叉编译方案遗留，CI 不再调用）。
   `test.yml` 改为在 ubuntu:devel 容器内**原生** `cmake -B build + cmake --build + ctest`
   跑单元测试，不依赖任何 ci/*.sh 脚本。凡新增脚本引用前先确认未被删除。
+- **debhelper 13 单包打包陷阱（dh_install 目录错位）**：单包项目下 `dh_auto_install` 默认把
+  文件装进 `debian/<pkg>`（包名目录），而 `dh_install` 的默认 sourcedir 是 `debian/tmp`，二者
+  错位会让 `dh_install` 在 `debian/tmp` 找不到任何文件而 `missing files, aborting`。必须在
+  `debian/rules` 里 `override_dh_auto_install: dh_auto_install --destdir=debian/tmp` 让二者一致。
+  若误用 `dh_install --sourcedir=debian/<pkg>` 反而触发 self-copy（同目录 cp）错误。**验证打包务必
+  跑完整 `dpkg-buildpackage`，不能只到 `cmake + make`**——编译错误会掩盖后面的 dh_install/dh_missing
+  阶段问题。
+- **可选插件的打包写法**：dde-tray 插件 `libdtk-update-tray.so` 依赖 deepin 专属 dde-dock SDK，
+  非 deepin 环境不产出。它**不能**写进 `debian/install`（否则 dh_install 因找不到而 abort），也不能
+  仅靠 `debian/not-installed` 兜底（`not-installed` 只管"tmp 有但 install 没列"，管不了"install 列了但
+  tmp 无"）。正确做法：`debian/install` 不列它；在 `override_dh_install` 里 `dh_install` 完成后，仅当
+  `debian/tmp/.../libdtk-update-tray.so` 存在时手动 `dh_install -pdtk-update` 装入。dcc 图标
+  `dcc-dtk-update.dci` 由 CMake 顶层安装（tray 跳过也照装），正常列在 `debian/install` 即可。
 
 ## 构建与验证
 
