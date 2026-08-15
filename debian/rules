@@ -13,3 +13,24 @@ override_dh_auto_configure:
 
 override_dh_auto_test:
 	dh_auto_test
+
+# 单包项目下 dh_auto_install 会把文件装进 debian/dtk-update（包名目录），而 dh_install 的
+# 默认 sourcedir 是 debian/tmp，二者错位会导致 dh_install 在 debian/tmp 找不到任何文件而
+# 中止打包。此处显式让 dh_auto_install 装到 debian/tmp（与 dh_install 默认源一致），
+# dh_install 再从 debian/tmp 移到 debian/dtk-update 完成打包。
+override_dh_auto_install:
+	dh_auto_install --destdir=debian/tmp
+
+# dde-dock 托盘插件（libdtk-update-tray.so）依赖 deepin 专属的 dde-dock SDK，非 deepin 发行系
+# 无此包，CMake 已自动跳过 src/tray，故该 .so 不会生成。它不在 debian/install 中（否则非
+# deepin 下 dh_install 会因找不到而 abort），而是在此处由 dh_install 完成后、仅当文件存在时
+# 手动装入包目录：beige 打包环境装了 dde-tray-loader-dev 时 .so 存在 -> 进 deb；非 deepin 下
+# 不存在 -> 跳过，其余文件照常打包。
+override_dh_install:
+	dh_install
+	@if ls debian/tmp/usr/lib/*/dde-dock/plugins/libdtk-update-tray.so >/dev/null 2>&1; then \
+		echo "dh_install: installing optional dde-dock tray plugin"; \
+		dh_install -pdtk-update 'usr/lib/*/dde-dock/plugins/libdtk-update-tray.so' 'usr/lib/x86_64-linux-gnu/dde-dock/plugins/'; \
+	else \
+		echo "dh_install: dde-dock tray plugin not built (no dde-dock SDK), skipping"; \
+	fi

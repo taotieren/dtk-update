@@ -1,0 +1,5 @@
+# 列出允许「本次构建未产生」而无需安装的文件（compat 13 的 dh_missing 机制）。
+# 当前 dde-tray 插件（libdtk-update-tray.so）已由 debian/rules 的 override_dh_install
+# 在存在时手动装入，不存在时（非 deepin 环境，CMake 已跳过 src/tray）则不装；该文件本身
+# 不在 debian/install 中，故 dh_missing 不会因它报错。此文件目前留空，作为后续可选文件
+# 的兜底声明位。
