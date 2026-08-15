@@ -244,4 +244,11 @@ libdtk6widget-dev libdtk6log-dev libgtest-dev libpolkit-qt6-1-dev libxkbcommon-d
     绝不允许"改完不提交就结束"——上一轮 clang-format 修复、tray 头文件修复、ci 脚本清理曾
     因漏提交被用户提醒。完成所有检查项（含 `git status` 确认无遗留）后，立即按第 9 条分组提交；
     除非用户明确说"先别提交"。commit 后 `git status` 复核工作区干净再收工。
+11. **修复/功能完成后必须清理仓库垃圾（硬纪律）**：收尾阶段主动清理一切构建 / 打包临时产物，
+    不让它们遗留在工作区，也不要混入提交。典型包括：本地 `build/`（cmake 构建目录）、
+    `compile_commands.json`、以及 `dpkg-buildpackage` 在 `debian/` 下生成的 `tmp/`、`dtk-update/`
+    目录、`debhelper-build-stamp`、`*.debhelper.log`、`*.substvars`、`files`、`*.post*.debhelper` 等。
+    这些已统一列入 `.gitignore`，可用 `git clean -fdx debian/`（或 `rm -rf build`）安全移除；
+    清理后用 `git status` 复核，确认只剩应当跟踪的源码 / 配置改动，再提交。绝不在仓库里残留
+    "未跟踪的草稿 / 半成品" 文件。
 
