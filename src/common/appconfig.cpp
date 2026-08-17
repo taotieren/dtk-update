@@ -79,7 +79,9 @@ namespace DtkUpdate
 
     bool AppConfig::fetchUpstreamAdvisories() const
     {
-        return boolOption(QStringLiteral("FetchUpstreamAdvisories"), true);
+        // 默认关闭上游安全公告预取（网络最小化、隐私优先），需用户在 backend.conf/DConfig
+        // 显式开启 FetchUpstreamAdvisories=true。与 AGENTS.md「m_fetchUpstream 默认 false」一致。
+        return boolOption(QStringLiteral("FetchUpstreamAdvisories"), false);
     }
 
     QString AppConfig::preferredBackend() const

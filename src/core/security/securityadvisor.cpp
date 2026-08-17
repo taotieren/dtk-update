@@ -201,6 +201,9 @@ namespace DtkUpdate
                              QNetworkRequest::NoLessSafeRedirectPolicy);
             req.setHeader(QNetworkRequest::UserAgentHeader,
                           QStringLiteral("dtk-update/1.0 (advisory-fetch)"));
+            // 请求稳定语言（英文），避免服务端按 Accept-Language 返回本地化描述导致
+            // parseAdvisoryFeed 的包名匹配漏判；等价于本地解析前注入 LC_ALL=C 的区域稳定纪律。
+            req.setRawHeader("Accept-Language", "en");
             QNetworkReply* reply = nam->get(req);
 
             auto* timer = new QTimer(nam);
