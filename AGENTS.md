@@ -241,6 +241,20 @@ DConfig appId 为 `org.deepin.dtk-update`。
   并在当日工作记忆与提交说明里记录，避免再犯这类问题。clang-format 门禁对全量 `src/tests`
   文件生效——哪怕只改了一行注释，只要该文件进入 diff 就要过 `--dry-run --Werror`，
   故提交前对所有改动文件跑 `clang-format -i` 是硬前提。
+- **禁止提交编译产物（仓库卫生硬纪律）**：构建目录与中间文件**严禁入库**。
+  - `build/`、`build-*/`、`build-asan/` 等 CMake 构建目录是本地调试产物（如 `build-asan`
+    是用 AddressSanitizer 编译的本地内存错误检测构建，**只在本地用于跑 `test-core` 复现
+    use-after-free / 泄漏**，不是源码），已被 `.gitignore` 忽略，**任何改动都不得 `git add` 它们**。
+  - 其他禁止入库的编译产物：`*.o` / `*.obj` / `*.a` / `*.so*` / `moc_*.cpp` / `qrc_*.cpp` /
+    `ui_*.h` / `*.moc` / `*_autogen/` / `compile_commands.json` / `Testing/Temporary/*`
+    （CTest 日志）/ 各 `.dir/*.o.d` 依赖文件等。
+  - **`git add` 纪律**：绝不用 `git add -A`、不 `git add` 整个目录或 `.`；必须**显式指定源码路径**
+    （如 `git add src/core/security/securityadvisor.cpp`），提交前用 `git status` 复核暂存区
+    只有源码/doc/配置，无构建产物。曾经因 `git add -A` 把整个 `build-asan/`（498 个文件）误提交进
+    历史，被迫 `git rebase` 重写 11 笔提交才清除——此坑**严禁重现**。
+  - 若误把构建产物纳入了某次提交：立即 `git rm --cached -r <路径>` 从索引移除（保留本地目录），
+    amend 或新提交修正；若已 push 且需彻底清除历史，再走 rebase + `push --force-with-lease`
+    （共享分支强推需谨慎，确认无人基于旧历史开发）。
 
 ## 常态化严苛审查工作流（防垃圾代码污染源码）
 
