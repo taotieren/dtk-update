@@ -103,3 +103,39 @@ TEST(SecurityAdvisorTest, AdvisoryHasSourceField)
     ASSERT_EQ(out.size(), 1);
     EXPECT_EQ(out.first().source.toStdString(), "offline");
 }
+
+// 锁定 commit 0d9049d 的元类型注册：advisory 经 Qt::QueuedConnection 跨线程转发
+// （模拟 UpdateIndicator::distroNoticesReady 跨线程 queued 链路）。若 Advisory/Notice
+// 未 qRegisterMetaType，queued 连接会静默失败、QSignalSpy::value<>() 取空，本用例断言失败。
+TEST(SecurityAdvisorTest, CrossThreadSignalDeliversAdvisories)
+{
+    ensureApp();
+    SecurityAdvisor advisor;
+    advisor.setFetchUpstream(false); // 禁用预取，手动 emit 以便构造确定负载
+
+    QThread worker;
+    advisor.moveToThread(&worker);
+    worker.start();
+
+    QSignalSpy spy(&advisor, &SecurityAdvisor::upstreamAdvisoriesReady);
+
+    SecurityAdvisor::AdvisoryList payload;
+    SecurityAdvisor::Advisory a;
+    a.package = QStringLiteral("systemd");
+    a.severity = QStringLiteral("critical");
+    payload.append(a);
+
+    // 跨线程 queued 发射：验证元类型已注册（否则值取空）
+    QMetaObject::invokeMethod(&advisor, "upstreamAdvisoriesReady", Qt::QueuedConnection,
+                              Q_ARG(SecurityAdvisor::AdvisoryList, payload));
+
+    ASSERT_TRUE(spy.wait(5000));
+    ASSERT_EQ(spy.count(), 1);
+    auto received = spy.first().at(0).value<SecurityAdvisor::AdvisoryList>();
+    ASSERT_EQ(received.size(), 1);
+    EXPECT_EQ(received.first().package.toStdString(), "systemd");
+    EXPECT_EQ(received.first().severity.toStdString(), "critical");
+
+    worker.quit();
+    worker.wait();
+}

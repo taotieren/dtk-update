@@ -308,4 +308,61 @@ TEST(UpdateMonitorTest, MultiBackendAggregatesAndRoutes)
     EXPECT_FALSE(llBackend.m_installed.contains(QStringLiteral("systemd")));
 }
 
+// 验证 commit 6f56292 的聚合兜底：沙箱后端 fetchUpgradable 漏填 backendId 时，
+// checkNow 聚合期必须强制回填 sb->backendId()，否则 proceedUpdate 按 p.backendId 路由
+// 会误把沙箱包归入系统后端 sysPkgs（AGENTS.md「沙箱后端按 backendId 分组路由」坑）。
+class MonitorFakeLinyapsMissingId : public MonitorFakeLinyaps
+{
+  public:
+    explicit MonitorFakeLinyapsMissingId(QObject* parent = nullptr) : MonitorFakeLinyaps(parent) {}
+    bool fetchUpgradable(PackageList& out, QString&) override
+    {
+        // 故意不清空上游返回的 backendId 字段，模拟漏填来源后端
+        PackageList raw = m_upgradable;
+        for (PackageInfo& p : raw)
+            p.backendId.clear();
+        out = raw;
+        return true;
+    }
+};
+
+TEST(UpdateMonitorTest, BackendIdBackfilledWhenMissing)
+{
+    ensureApp();
+    MonitorFakeBackend sysBackend;
+    PackageInfo sysPkg;
+    sysPkg.name = QStringLiteral("systemd");
+    sysPkg.isUpgradable = true;
+    sysBackend.m_upgradable = {sysPkg};
+
+    MonitorFakeLinyapsMissingId llBackend;
+    PackageInfo llPkg;
+    llPkg.name = QStringLiteral("org.deepin.demo");
+    llPkg.isUpgradable = true;
+    // 注意：此处不预设 backendId，交由 MonitorFakeLinyapsMissingId 强制清空，
+    // 以验证聚合兜底路径（非依赖后端自觉）。
+    llBackend.m_upgradable = {llPkg};
+
+    FakeConfig config;
+    UpdateMonitor monitor(&sysBackend, &config);
+    monitor.setLinyapsBackend(&llBackend);
+
+    QSignalSpy spyAvail(&monitor, &UpdateMonitor::updatesAvailable);
+    monitor.checkNow();
+    ASSERT_EQ(spyAvail.count(), 1);
+    ASSERT_EQ(monitor.upgradable().size(), 2);
+
+    // 聚合后沙箱包 backendId 必须被兜底为 "linyaps"，而非空（空则路由失败）
+    bool backfilled = false;
+    for (const auto& p : monitor.upgradable())
+        if (p.name == QStringLiteral("org.deepin.demo") && p.backendId == QStringLiteral("linyaps"))
+            backfilled = true;
+    EXPECT_TRUE(backfilled) << "聚合期未兜底回填沙箱包 backendId（commit 6f56292 回归）";
+
+    // 路由正确性：沙箱包仍交由玲珑后端安装，不污染系统后端
+    monitor.applyUpdates();
+    EXPECT_TRUE(llBackend.m_installed.contains(QStringLiteral("org.deepin.demo")));
+    EXPECT_FALSE(sysBackend.m_installed.contains(QStringLiteral("org.deepin.demo")));
+}
+
 #include "test_updatemonitor.moc"
