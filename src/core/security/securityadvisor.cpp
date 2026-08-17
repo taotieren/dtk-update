@@ -267,7 +267,10 @@ namespace DtkUpdate
             return QStringLiteral("https://lists.opensuse.org/archives/list/"
                                   "security-announce@lists.opensuse.org/feed");
         case DistroProbe::Family::Arch:
-            // Arch 无官方安全公告 RSS；取官方新闻流作最近通知/手动干预提示
+            // Arch 无官方安全公告 RSS；取官方新闻流作最近通知/手动干预提示（兜底）。
+            // 注意：distroNoticeUrl(Arch) 也指向同一 news feed，开启 FetchUpstreamAdvisories
+            // 时会对同 URL 发起两次异步请求（一次当安全公告解析、一次当通知）。属已知取舍，
+            // 默认关闭路径不触发，开启时重复请求代价小，暂不合并去重。
             return QStringLiteral("https://archlinux.org/feeds/news/");
         case DistroProbe::Family::Fedora:
             // Fedora 无稳定官方安全公告 RSS，留空跳过（不指向失效地址）
