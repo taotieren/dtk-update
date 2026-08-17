@@ -321,10 +321,21 @@ DConfig appId 为 `org.deepin.dtk-update`。
   `dtk-update-daemon.lock`）防多 daemon 抢 DBus service 名。GUI 侧 `main.cpp` 同理加 `dtk-update-gui.lock`。
   （daemon 的 D-Bus `status/checkNow/applyUpdates` 当前无客户端调用，属架构预留：保留接口、勿删，但落地
   实际调用前不要声称"daemon 已打通更新闭环"。）
-- **AptBackend 必须覆盖 privilegedPrefix（P0）**：基类 `PackageBackend::privilegedPrefix()` 默认返回
-  `{pkexec, sudo}`，拼出 `pkexec sudo apt-get`——在 pkexec 已提权后内部再 sudo，多余且在无 sudo 环境失败。
-  APT 后端**必须**覆盖为 `{pkexec, apt-get}`（或 `{pkexec, aptitude}` 视实现）。新增任何系统级后端时，
-  先核对基类默认值是否可用，否则必须覆盖。`DnfBackend`/`PacmanBackend`/`ZypperBackend` 同理需各自正确返回。
+- **privilegedPrefix 已纯虚化（防沉默认 sudo 陷阱）**：`PackageBackend::privilegedPrefix()` 已改为**纯虚**，
+  任何新增后端若不覆盖即编译失败（而非静默回落到 `{pkexec, sudo}` 拼出 `pkexec sudo apt-get` 的多余/失败路径）。
+  现有后端均覆盖：apt→`{pkexec, apt-get}`、dnf→`{pkexec, dnf}`、pacman→`{pkexec, pacman}`、
+  zypper→`{pkexec, zypper}`、linyaps/snap/flatpak→空（各自经 polkit 自提权）。新增后端**必须**覆盖此钩子。
+- **沙箱后端升级语义必须走 refresh/update/upgrade（P1）**：`UpdateMonitor::proceedUpdate` 对所有后端统一调
+  `upgrade()`（基类 `upgrade()` 默认把 `Op::Upgrade` 回落到 `operationArgs(Op::Install)`——系统后端 install 含
+  upgrade 语义，无碍）。但 snap/flatpak/linyaps 的 install 命令（`snap install`/`flatpak install`/`ll-cli install`）
+  **不含已装包升级语义**，对已装应用会报 `already installed` 失败，必须各自 `operationArgs` 的
+  `case Op::Upgrade:` 显式覆盖：snap→`refresh`、flatpak→`update -y`（**不带** install 的 `flathub` 固定远端）、
+  linyaps→`upgrade`。凡改 `proceedUpdate` 路由或沙箱后端写路径，必须确认升级分支非 install。
+- **子 agent 死代码误报纠正（复审铁律）**：常态化审查时 `code-explorer` 子 agent 曾报告
+  `IniParser::sectionValue()` 为"零调用死代码"。主 agent 复核发现该 API 被 `tests/test_iniparser.cpp` 调用，
+  属公开测试接口、非死代码——此类"漏算测试调用方"的高频误报必须主 agent 亲自 grep 全仓（含 `tests/`）复核后再落地，
+  严禁盲删（删除会直接破坏测试编译）。同理，`value()` 的 `Section.Key` 点号查询会回落段内，与 `sectionValue`
+  语义有别，二者并存合理，勿以"功能重复"为由删其一。
 - **通用托盘资源静态链接陷阱（P1）**：`src/tray-generic` 是独立可执行文件，静态链接 `dtk-update-indicator`
   静态库里的 `resources.qrc` 会被链接器惰性丢弃（`undefined reference to qInitResources_resources`）。
   正确做法：generic 自身用 `qt_add_resources` 直接编译 `resources.qrc` 进可执行文件，并在
