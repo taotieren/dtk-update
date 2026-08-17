@@ -28,10 +28,8 @@ namespace DtkUpdate
         }
     }
 
-    QVariantMap PresetConfig::defaultOptionsFor(const QString& backendId,
-                                                DistroProbe::Family family)
+    QVariantMap PresetConfig::defaultOptionsFor(const QString& backendId)
     {
-        Q_UNUSED(family); // 当前各后端默认选项与发行系无关，预留 family 以便后续差异化
         QVariantMap opts;
         if (backendId == "apt")
         {

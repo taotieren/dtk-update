@@ -91,7 +91,7 @@ namespace DtkUpdate
 
     bool AppConfig::boolOption(const QString& key, bool dconfigDefault) const
     {
-        // 优先级：配置文件该后端段 > 配置文件全局 > DConfig > 发行版预设
+        // 优先级：backend.conf 后端段 > backend.conf 全局段 > DConfig > 发行版预设
         QVariantMap fileOpts = d->backendConfig->optionsFor(d->effectiveBackendId);
         if (fileOpts.contains(key) && !fileOpts[key].isNull())
             return fileOpts[key].toBool();
@@ -99,7 +99,7 @@ namespace DtkUpdate
         if (d->cfg && d->cfg->keyList().contains(key))
             return d->cfg->value(key, dconfigDefault).toBool();
 
-        QVariantMap preset = PresetConfig::defaultOptionsFor(d->effectiveBackendId, d->family);
+        QVariantMap preset = PresetConfig::defaultOptionsFor(d->effectiveBackendId);
         if (preset.contains(key))
             return preset[key].toBool();
         return dconfigDefault;

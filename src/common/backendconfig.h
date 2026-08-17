@@ -30,7 +30,8 @@ namespace DtkUpdate
      *   1. 系统级 /etc/dtk-update/backend.conf
      *   2. 用户级 ~/.config/dtk-update/backend.conf
      *
-     * 若 PreferredBackend 不在已注册后端列表中，则回落到发行版预设默认后端。
+     * 若 PreferredBackend 不在已注册后端列表中，则本层回落到首个已注册后端
+     * （调用方 AppConfig 会再据发行版预设二次兜底，不静默使用错误后端）。
      */
     class BackendConfig : public QObject
     {
@@ -58,8 +59,9 @@ namespace DtkUpdate
         QVariantMap toVariantMap(const IniParser::SectionMap& src) const;
 
         QString m_preferred;
-        IniParser::SectionMap m_globals;                 // 全局选项
-        QMap<QString, IniParser::SectionMap> m_sections; // 各后端独立段（小写键）
+        IniParser::SectionMap m_globals; // 全局选项
+        QMap<QString, IniParser::SectionMap>
+            m_sections; // 各后端独立段（段名小写；段内键保留原始大小写）
     };
 
 } // namespace DtkUpdate
