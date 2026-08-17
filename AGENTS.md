@@ -427,14 +427,21 @@ DConfig appId 为 `org.deepin.dtk-update`。
   tmp 无"）。正确做法：`debian/install` 不列它；在 `override_dh_install` 里 `dh_install` 完成后，仅当
   `debian/tmp/.../libdtk-update-tray.so` 存在时手动 `dh_install -pdtk-update` 装入。  dcc 图标
   `dcc-dtk-update.dci` 由 CMake 顶层安装（tray 跳过也照装），正常列在 `debian/install` 即可。
-- **CMake install 用相对 DESTINATION（P1，打包真坑）**：`data/CMakeLists.txt` 的 `install(FILES ...
-  DESTINATION /etc/xdg/autostart)` 写成**绝对路径**，会忽略 `$DESTDIR` 直接写到构建机真实 `/etc`
-  （本地 `make install` 污染系统），且 `dpkg-buildpackage` 下 dh_auto_install 把它装到真 `/etc/xdg/autostart`
-  而非 `debian/tmp/etc/...`，debhelper 无法纳入包、dh_install 也据此找不到文件而 abort。**所有 install
-  DESTINATION 必须相对路径**（`etc/xdg/autostart`、`usr/lib/systemd/user`、`usr/share/...`），与 `debian/install`
-  的路径前缀一致。另一处 `DESTINATION lib/systemd/user` 缺 `usr` 前缀，也会让 `debian/install` 的
-  `usr/lib/systemd/user/dtk-update.service` 在 `debian/tmp` 找不到 → dh_install 报错。改路径后须跑完整
-  `dpkg-buildpackage` 验证 dh_install/dh_missing 阶段不 abort（不能只到 cmake+make）。
+- **CMake install DESTINATION 必须与 dh 的 prefix 机制对齐（P1，打包真坑，0.0.1 首发 build 红根因）**：
+  `dh_auto_install` 默认给 CMake 传 `CMAKE_INSTALL_PREFIX=/usr`，install 路径是**相对该 prefix** 解析的，
+  不是相对 deb 根。因此：
+  - `usr/lib/systemd/user` 这类**带 usr 前缀**的写法会被拼成 `/usr/usr/lib/systemd/user`（双 usr），
+    `debian/install` 的 `usr/lib/systemd/user/...` 在 `debian/tmp` 找不到 → `dh_install` abort。
+    **正确**：相对 prefix 写 `lib/systemd/user`（→ `/usr/lib/systemd/user`）。
+  - `etc/xdg/autostart` 这类**无前缀**写法会被拼成 `/usr/etc/xdg/autostart`（etc 在 prefix 之外），
+    而 `debian/install` 期望 `/etc/xdg/autostart` → 找不到。etc 树不属于 prefix，**正确**：用绝对路径
+    `DESTINATION /etc/xdg/autostart`（dh_auto_install 的 `--destdir=debian/tmp` 会把绝对路径正确落到
+    `debian/tmp/etc/xdg/autostart`，不会污染构建机真实 `/etc`；早期误以为绝对路径会写穿宿主 `/etc` 是
+    错误结论，`$DESTDIR` 已被 dh 接管）。
+  - `share/...`、`bin/...`、`lib/dtk-update/...` 等用 GNUInstallDirs 相对 prefix 形式即可（已正确，
+    不触发报错）。
+  **结论**：`usr/` 开头的 DESTINATION 一律改成相对 prefix（去掉 `usr/`）；`etc/` 开头的一律用绝对 `/etc/...`。
+  改路径后必须跑完整 `dpkg-buildpackage`（不能只到 cmake+make）验证 `dh_install`/`dh_missing` 不 abort。
 - **tr() 文案必须进 ts、lupdate+_gen.py 闭环（P1，翻译漂移）**：凡源码新增/改动面向用户可见字符串（如
   `PackageBackend::stageText` 的 `tr("Upgrading")`），必须 `lupdate ../src -ts *.ts -source-language en_US`
   重新抽取，再 `python3 translations/_gen.py` 把 `zh_CN/es/fr/de` 字典条目回填（en_US 作源语言保持源串）。
