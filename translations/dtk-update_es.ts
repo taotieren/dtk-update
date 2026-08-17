@@ -37,37 +37,37 @@
 <context>
     <name>DtkUpdate::GenericIndicator</name>
     <message>
-        <location filename="../src/tray-generic/genericindicator.cpp" line="40"/>
+        <location filename="../src/tray-generic/genericindicator.cpp" line="50"/>
         <source>Check for Updates</source>
         <translation>Buscar actualizaciones</translation>
     </message>
     <message>
-        <location filename="../src/tray-generic/genericindicator.cpp" line="47"/>
+        <location filename="../src/tray-generic/genericindicator.cpp" line="57"/>
         <source>Open Update Manager</source>
         <translation>Abrir el gestor de actualizaciones</translation>
     </message>
     <message>
-        <location filename="../src/tray-generic/genericindicator.cpp" line="51"/>
+        <location filename="../src/tray-generic/genericindicator.cpp" line="61"/>
         <source>Quit</source>
         <translation>Salir</translation>
     </message>
     <message>
-        <location filename="../src/tray-generic/genericindicator.cpp" line="69"/>
+        <location filename="../src/tray-generic/genericindicator.cpp" line="89"/>
         <source>%1 update(s) available</source>
         <translation>Hay %1 actualizaciones disponibles</translation>
     </message>
     <message>
-        <location filename="../src/tray-generic/genericindicator.cpp" line="70"/>
+        <location filename="../src/tray-generic/genericindicator.cpp" line="90"/>
         <source>System up to date</source>
         <translation>El sistema está actualizado</translation>
     </message>
     <message>
-        <location filename="../src/tray-generic/genericindicator.cpp" line="73"/>
+        <location filename="../src/tray-generic/genericindicator.cpp" line="93"/>
         <source>Updates available</source>
         <translation>Hay actualizaciones disponibles</translation>
     </message>
     <message>
-        <location filename="../src/tray-generic/genericindicator.cpp" line="74"/>
+        <location filename="../src/tray-generic/genericindicator.cpp" line="94"/>
         <source>%1 package(s) can be updated.</source>
         <translation>Hay %1 paquetes que se pueden actualizar.</translation>
     </message>
@@ -75,7 +75,7 @@
 <context>
     <name>DtkUpdate::LinyapsBackend</name>
     <message>
-        <location filename="../src/core/package/linyapsbackend.cpp" line="25"/>
+        <location filename="../src/core/package/linyapsbackend.cpp" line="26"/>
         <source>未找到 ll-cli 命令。玲珑(linglong)运行环境未安装；请按你的发行版安装 linglong 运行时（如 deepin/fedora 的 linglong 包、或参考 https://linglong.dev 的跨发行版安装指南）。</source>
         <translation type="unfinished"></translation>
     </message>
@@ -90,17 +90,17 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/package/linyapsbackend.cpp" line="131"/>
+        <location filename="../src/core/package/linyapsbackend.cpp" line="130"/>
         <source>无法查询 %1（ll-cli search 失败）</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/package/linyapsbackend.cpp" line="136"/>
+        <location filename="../src/core/package/linyapsbackend.cpp" line="135"/>
         <source>未找到可安装的应用：%1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/core/package/linyapsbackend.cpp" line="139"/>
+        <location filename="../src/core/package/linyapsbackend.cpp" line="138"/>
         <source>%1 可经 ll-cli 安装</source>
         <translation type="unfinished"></translation>
     </message>
@@ -306,32 +306,37 @@
 <context>
     <name>DtkUpdate::PackageBackend</name>
     <message>
-        <location filename="../src/core/package/packagebackend.cpp" line="213"/>
+        <location filename="../src/core/package/packagebackend.cpp" line="231"/>
         <source>Installing</source>
         <translation>Instalando</translation>
     </message>
     <message>
-        <location filename="../src/core/package/packagebackend.cpp" line="214"/>
+        <location filename="../src/core/package/packagebackend.cpp" line="232"/>
+        <source>Upgrading</source>
+        <translation>Actualizando</translation>
+    </message>
+    <message>
+        <location filename="../src/core/package/packagebackend.cpp" line="233"/>
         <source>Removing</source>
         <translation>Eliminando</translation>
     </message>
     <message>
-        <location filename="../src/core/package/packagebackend.cpp" line="215"/>
+        <location filename="../src/core/package/packagebackend.cpp" line="234"/>
         <source>Purging</source>
         <translation>Purga</translation>
     </message>
     <message>
-        <location filename="../src/core/package/packagebackend.cpp" line="216"/>
+        <location filename="../src/core/package/packagebackend.cpp" line="235"/>
         <source>Removing orphans</source>
         <translation>Eliminando huérfanos</translation>
     </message>
     <message>
-        <location filename="../src/core/package/packagebackend.cpp" line="217"/>
+        <location filename="../src/core/package/packagebackend.cpp" line="236"/>
         <source>Cleaning cache</source>
         <translation>Limpiando caché</translation>
     </message>
     <message>
-        <location filename="../src/core/package/packagebackend.cpp" line="219"/>
+        <location filename="../src/core/package/packagebackend.cpp" line="238"/>
         <source>Working</source>
         <translation>Trabajando</translation>
     </message>
@@ -339,12 +344,12 @@
 <context>
     <name>DtkUpdate::SecurityAdvisor</name>
     <message>
-        <location filename="../src/core/security/securityadvisor.cpp" line="375"/>
+        <location filename="../src/core/security/securityadvisor.cpp" line="395"/>
         <source>Security-sensitive package update</source>
         <translation>Actualización de paquete sensible para la seguridad</translation>
     </message>
     <message>
-        <location filename="../src/core/security/securityadvisor.cpp" line="377"/>
+        <location filename="../src/core/security/securityadvisor.cpp" line="397"/>
         <source>This package is security-sensitive. Review the changelog before updating.</source>
         <translation>Este paquete es sensible para la seguridad. Revise el registro de cambios antes de actualizar.</translation>
     </message>
@@ -353,37 +358,37 @@
     <name>DtkUpdate::TrayPopup</name>
     <message>
         <location filename="../src/tray/traypopup.cpp" line="29"/>
-        <location filename="../src/tray/traypopup.cpp" line="73"/>
+        <location filename="../src/tray/traypopup.cpp" line="69"/>
         <source>Checking for updates…</source>
         <translation>Buscando actualizaciones…</translation>
     </message>
     <message>
-        <location filename="../src/tray/traypopup.cpp" line="45"/>
+        <location filename="../src/tray/traypopup.cpp" line="41"/>
         <source>Update Now</source>
         <translation>Actualizar ahora</translation>
     </message>
     <message>
-        <location filename="../src/tray/traypopup.cpp" line="77"/>
+        <location filename="../src/tray/traypopup.cpp" line="73"/>
         <source>Updating…</source>
         <translation>Actualizando…</translation>
     </message>
     <message>
-        <location filename="../src/tray/traypopup.cpp" line="81"/>
+        <location filename="../src/tray/traypopup.cpp" line="77"/>
         <source>Last check failed. Click to retry.</source>
         <translation>La última comprobación falló. Haga clic para reintentar.</translation>
     </message>
     <message>
-        <location filename="../src/tray/traypopup.cpp" line="85"/>
+        <location filename="../src/tray/traypopup.cpp" line="81"/>
         <source>%1 updates available</source>
         <translation>Hay %1 actualizaciones disponibles</translation>
     </message>
     <message>
-        <location filename="../src/tray/traypopup.cpp" line="90"/>
+        <location filename="../src/tray/traypopup.cpp" line="86"/>
         <source>System up to date</source>
         <translation>El sistema está actualizado</translation>
     </message>
     <message>
-        <location filename="../src/tray/traypopup.cpp" line="109"/>
+        <location filename="../src/tray/traypopup.cpp" line="105"/>
         <source>…and %1 more</source>
         <translation>…y %1 más</translation>
     </message>
@@ -491,7 +496,7 @@
 <context>
     <name>QObject</name>
     <message>
-        <location filename="../src/ui/main.cpp" line="24"/>
+        <location filename="../src/ui/main.cpp" line="28"/>
         <source>Dtk Update</source>
         <translation>Dtk Update</translation>
     </message>
