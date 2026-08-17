@@ -389,15 +389,33 @@ DConfig appId 为 `org.deepin.dtk-update`。
   非 deepin 环境不产出。它**不能**写进 `debian/install`（否则 dh_install 因找不到而 abort），也不能
   仅靠 `debian/not-installed` 兜底（`not-installed` 只管"tmp 有但 install 没列"，管不了"install 列了但
   tmp 无"）。正确做法：`debian/install` 不列它；在 `override_dh_install` 里 `dh_install` 完成后，仅当
-  `debian/tmp/.../libdtk-update-tray.so` 存在时手动 `dh_install -pdtk-update` 装入。dcc 图标
+  `debian/tmp/.../libdtk-update-tray.so` 存在时手动 `dh_install -pdtk-update` 装入。  dcc 图标
   `dcc-dtk-update.dci` 由 CMake 顶层安装（tray 跳过也照装），正常列在 `debian/install` 即可。
+- **CMake install 用相对 DESTINATION（P1，打包真坑）**：`data/CMakeLists.txt` 的 `install(FILES ...
+  DESTINATION /etc/xdg/autostart)` 写成**绝对路径**，会忽略 `$DESTDIR` 直接写到构建机真实 `/etc`
+  （本地 `make install` 污染系统），且 `dpkg-buildpackage` 下 dh_auto_install 把它装到真 `/etc/xdg/autostart`
+  而非 `debian/tmp/etc/...`，debhelper 无法纳入包、dh_install 也据此找不到文件而 abort。**所有 install
+  DESTINATION 必须相对路径**（`etc/xdg/autostart`、`usr/lib/systemd/user`、`usr/share/...`），与 `debian/install`
+  的路径前缀一致。另一处 `DESTINATION lib/systemd/user` 缺 `usr` 前缀，也会让 `debian/install` 的
+  `usr/lib/systemd/user/dtk-update.service` 在 `debian/tmp` 找不到 → dh_install 报错。改路径后须跑完整
+  `dpkg-buildpackage` 验证 dh_install/dh_missing 阶段不 abort（不能只到 cmake+make）。
+- **tr() 文案必须进 ts、lupdate+_gen.py 闭环（P1，翻译漂移）**：凡源码新增/改动面向用户可见字符串（如
+  `PackageBackend::stageText` 的 `tr("Upgrading")`），必须 `lupdate ../src -ts *.ts -source-language en_US`
+  重新抽取，再 `python3 translations/_gen.py` 把 `zh_CN/es/fr/de` 字典条目回填（en_US 作源语言保持源串）。
+  漏跑会导致非英语用户看到裸英文。**`_gen.py` 字典是单一事实源**：任何新 visible 字符串的译法必须先加进
+  `_gen.py` 四语言字典，Agent 不得只改 ts 文件（会被下次 `_gen.py` 覆盖）。验证：grep 源码 `tr("Xxx")`
+  在 5 个 ts 均存在对应 `<message>`。
+- **clang-format 门禁在 lint.yml 而非 build.yml（P2，文档漂移已纠正）**：`find src tests ... | xargs
+  clang-format --dry-run --Werror` 属 `lint.yml` 的 `format` job；`build.yml` 只负责 deepin beige chroot
+  内 `dpkg-buildpackage` 产 deb。曾误记归 build.yml，已修正。lint.yml 当前 `apt-get install clang-format`
+  （ubuntu:devel 浮动版本），若本地 clang-format 与 CI 频繁不一致，可钉死具体版本（如 `clang-format-22`）。
 
 ## 构建与验证
 
 ```bash
 sudo apt build-dep .            # 宿主依赖；CI 内 chroot 镜像此步骤
 mkdir -p build && cd build && cmake .. && make -j$(nproc)
-ctest --output-on-failure        # 当前共 73 个 TEST 用例；SKIP 数量随宿主环境变化
+ctest --output-on-failure        # 当前共 74 个 TEST 用例；SKIP 数量随宿主环境变化
                                   # （apt/dnf/linyaps 不可用、非容器等触发 GTEST_SKIP，
                                   # 当前源码共 6 处 GTEST_SKIP，详见「测试坑」章节）
 ```
