@@ -3,10 +3,10 @@ install(FILES dtk-update.desktop
     DESTINATION share/applications
 )
 install(FILES dtk-update-tray.desktop
-    DESTINATION /etc/xdg/autostart
+    DESTINATION etc/xdg/autostart
 )
 install(FILES dtk-update-tray-generic.desktop
-    DESTINATION /etc/xdg/autostart
+    DESTINATION etc/xdg/autostart
 )
 
 # DConfig 元数据（配置项集中定义，供控制中心/命令行调整）
@@ -27,5 +27,5 @@ install(FILES com.dtk.update.Daemon.service
 
 # systemd 用户服务单元
 install(FILES ${CMAKE_SOURCE_DIR}/systemd/user/dtk-update.service
-    DESTINATION lib/systemd/user
+    DESTINATION usr/lib/systemd/user
 )
