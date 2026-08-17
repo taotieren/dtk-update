@@ -148,14 +148,18 @@ namespace DtkUpdate
         if (dot > 0)
         {
             const QString sec = key.left(dot);
-            const QString k = key.mid(dot + 1);
-            // 段内确实存在该键（即使值为空）即视为命中，优先返回其值。
-            const SectionMap* secMap = nullptr;
+            const QString k = key.mid(dot + 1).toLower();
             const auto sit = m_sections.constFind(sec.toLower());
             if (sit != m_sections.constEnd())
-                secMap = &sit.value();
-            if (secMap && secMap->contains(k.toLower()))
-                return secMap->value(k.toLower());
+            {
+                // 段内键保留原始大小写存储，须大小写不敏感遍历命中。
+                // 命中（即使值为空字符串）即视为显式覆盖，优先返回其真实值，
+                // 不回退到全局或默认（空值是合法覆盖，见 AGENTS.md）。
+                const auto& secMap = sit.value();
+                for (auto it = secMap.constBegin(); it != secMap.constEnd(); ++it)
+                    if (it.key().toLower() == k)
+                        return it.value();
+            }
         }
         const QString g = globalValue(key, QString());
         return g.isEmpty() ? def : g;

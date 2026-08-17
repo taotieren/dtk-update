@@ -35,15 +35,17 @@ namespace DtkUpdate
         bool listResidualPackages(PackageList& out, QString& error) override;
         QStringList cacheDirectories() const override;
 
+        // 预检/后检探针（沙箱应用层，系统级探针禁用）；与基类一致为 public 接口
+        bool checkRebootRequired(bool& required, QString& error) override;
+        bool checkServicesNeedingRestart(QStringList& services, QString& error) override;
+        bool checkConfigFilesToReview(QStringList& paths, QString& error) override;
+        bool checkFailedUnits(QStringList& units, QString& error) override;
+
       protected:
         QStringList operationArgs(Op op, const QStringList& packages, QString& error) override;
 
         // 沙箱后端：命令名由 prefix 提供，flatpak 自身处理 polkit，不套 pkexec。
         QStringList privilegedPrefix() const override;
-        bool checkRebootRequired(bool& required, QString& error) override;
-        bool checkServicesNeedingRestart(QStringList& services, QString& error) override;
-        bool checkConfigFilesToReview(QStringList& paths, QString& error) override;
-        bool checkFailedUnits(QStringList& units, QString& error) override;
     };
 
 } // namespace DtkUpdate

@@ -58,17 +58,58 @@ TEST(HealthCheckTest, PostCheckAggNoBackendSafe)
     EXPECT_FALSE(r.rebootRequired);
 }
 
+// 确定性假后端：覆盖四个预检探针返回 false/空，避免测试受真实宿主 failed unit
+// 或待审配置影响（见 AGENTS.md「测试坑 · MonitorFakeBackend 需覆盖预检探针」）。
+class HealthCheckFakeBackend : public PackageBackend
+{
+    Q_OBJECT
+  public:
+    explicit HealthCheckFakeBackend(QObject* parent = nullptr) : PackageBackend(parent) {}
+    bool isAvailable() const override { return true; }
+    QString availabilityError() const override { return QString(); }
+    QStringList privilegedPrefix() const override { return {QStringLiteral("echo")}; }
+    BackendType backendType() const override { return BackendType::Apt; }
+    QString backendId() const override { return QStringLiteral("fake"); }
+    QString backendName() const override { return QStringLiteral("Fake"); }
+    bool supportsResidualConfig() const override { return false; }
+    bool fetchUpgradable(PackageList&, QString&) override { return true; }
+    bool listInstalled(PackageList&, const QString&, QString&) override { return true; }
+    bool simulateInstall(const QString&, QString&, QString&) override { return true; }
+    bool listResidualPackages(PackageList&, QString&) override { return true; }
+    QStringList cacheDirectories() const override { return {}; }
+    bool checkRebootRequired(bool& required, QString&) override
+    {
+        required = false;
+        return false;
+    }
+    bool checkServicesNeedingRestart(QStringList& svcs, QString&) override
+    {
+        svcs.clear();
+        return false;
+    }
+    bool checkConfigFilesToReview(QStringList& cfgs, QString&) override
+    {
+        cfgs.clear();
+        return false;
+    }
+    bool checkFailedUnits(QStringList& units, QString&) override
+    {
+        units.clear();
+        return false;
+    }
+};
+
 TEST(HealthCheckTest, PreCheckAggregatesFromAptBackend)
 {
-    AptBackend be;
+    HealthCheckFakeBackend be;
     PreCheckReport r = PreUpdateCheck::run(&be);
-    // 聚合逻辑稳定：未执行实际操作，报告默认不应含任何需确认项（仅验证聚合不崩溃且结构有效）。
+    // 确定性后端：聚合逻辑稳定、不崩溃、结构有效，且不带任何环境相关需确认项。
     EXPECT_FALSE(r.hasAnything());
 }
 
 TEST(HealthCheckTest, PostCheckAggregatesFromAptBackend)
 {
-    AptBackend be;
+    HealthCheckFakeBackend be;
     PostCheckReport r = PostUpdateCheck::run(&be);
     EXPECT_FALSE(r.hasAnything());
 }
@@ -151,3 +192,5 @@ TEST(HealthCheckTest, PostCheckReportNewFieldsDefault)
     EXPECT_EQ(r.cleanableCacheBytes, 0);
     EXPECT_FALSE(r.hasAnything());
 }
+
+#include "test_healthcheck.moc"

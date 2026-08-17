@@ -273,6 +273,14 @@ namespace DtkUpdate
         }
 
         /**
+         * @brief runPrivileged 的纯执行体（static 成员），不依赖 this 存活。
+         * 供 runWriteOperation 的异步任务以值捕获 prefix 后安全调用，避免对象析构后
+         * 后台线程访问悬空 this（segfault）。
+         */
+        static bool runPrivilegedExec(const QStringList& prefix, const QStringList& args,
+                                      QString& output, int timeoutMs, bool* cancelled);
+
+        /**
          * @brief 各后端应返回的提权命令前缀（含 pkexec 与本机包管理器）。
          *        例如 APT 返回 {"pkexec","apt-get"}，DNF 返回 {"pkexec","dnf"}。
          *        默认回退为 {"pkexec","sudo"}，具体后端必须覆盖。

@@ -68,10 +68,12 @@ namespace DtkUpdate
         return !QStandardPaths::findExecutable(command).isEmpty();
     }
 
-    bool PackageBackend::runPrivileged(const QStringList& args, QString& output, int timeoutMs,
-                                       bool* cancelled) const
+    // 纯执行体（static 成员函数，无 this 依赖）：在调用线程同步取 prefix 后，可安全在后台线程执行，
+    // 避免 runWriteOperation 的 lambda 捕获 this 导致对象析构后异步访问悬空指针（segfault）。
+    bool PackageBackend::runPrivilegedExec(const QStringList& prefix, const QStringList& args,
+                                           QString& output, int timeoutMs, bool* cancelled)
     {
-        QStringList full = privilegedPrefix();
+        QStringList full = prefix;
         full.append(args);
         if (full.size() < 2)
         {
@@ -104,6 +106,12 @@ namespace DtkUpdate
         output = QString::fromLocal8Bit(p.readAllStandardOutput()) +
                  QString::fromLocal8Bit(p.readAllStandardError());
         return p.exitCode() == 0;
+    }
+
+    bool PackageBackend::runPrivileged(const QStringList& args, QString& output, int timeoutMs,
+                                       bool* cancelled) const
+    {
+        return runPrivilegedExec(privilegedPrefix(), args, output, timeoutMs, cancelled);
     }
 
     QStringList PackageBackend::collectConfigFiles(const QStringList& dirs,
@@ -221,8 +229,11 @@ namespace DtkUpdate
         if (args.isEmpty())
             return true; // 后端不支持该操作（如 linyaps 未覆盖）
         // 后台线程执行，避免阻塞 UI/tray 主线程；结果经 operationFinished 回传。
-        runPrivilegedAsync([this, args](QString& out, QString& err)
-                           { return runPrivileged(args, out, err); });
+        // 同步取出 prefix（此时 this 有效），异步任务仅依赖值捕获，避免对象析构后 this
+        // 悬空（segfault）。
+        const QStringList prefix = privilegedPrefix();
+        runPrivilegedAsync([prefix, args](QString& out, QString&)
+                           { return runPrivilegedExec(prefix, args, out, 600000, nullptr); });
         return true; // 已启动异步任务
     }
 

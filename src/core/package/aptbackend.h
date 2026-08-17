@@ -34,6 +34,11 @@ namespace DtkUpdate
         bool supportsResidualConfig() const override { return true; }
         QVariantMap backendOptions() const override;
 
+        // 预检/后检探针：与基类一致为 public 接口。monitor/healthcheck/测试均需调用，
+        // 不得收为 protected（子类 override 收紧访问会导致类外调用编译失败）。
+        bool checkRebootRequired(bool& required, QString& error) override;
+        bool checkConfigFilesToReview(QStringList& paths, QString& error) override;
+
       protected:
         QStringList privilegedPrefix() const override
         {
@@ -45,10 +50,6 @@ namespace DtkUpdate
         bool simulateInstall(const QString& pkg, QString& resolution, QString& error) override;
         bool listResidualPackages(PackageList& out, QString& error) override;
         QStringList cacheDirectories() const override;
-
-        // 预检/后检（apt/dpkg 具体实现）
-        bool checkRebootRequired(bool& required, QString& error) override;
-        bool checkConfigFilesToReview(QStringList& paths, QString& error) override;
 
       protected:
         // 写操作经基类 runWriteOperation 模板执行，本类仅描述"操作→参数"
