@@ -66,6 +66,13 @@ DConfig appId 为 `org.deepin.dtk-update`。
   （空字符串是合法值，不代表“缺失”）。
 - 本地化：使用 `tr()`；刷新时用 `lupdate` 后接 `python3 translations/_gen.py`
   （回填 zh_CN/es/fr/de，剔除未完成的条目）。共五种语言。
+- **字符串变更联动（硬纪律）**：凡是改动源码中面向用户的可见字符串（UI 文案、托盘提示、
+  对话框、通知、安全公告确认/后检报告、错误信息等），必须同步刷新翻译文件
+  （`lupdate` + `python3 translations/_gen.py`，重填并剔除 unfinished 条目），并在同一改动里
+  更新文档（README 的 en / zh-CN、必要时 AGENTS.md）中引用到该文案/术语/能力描述的段落。
+  勿留"代码已改、ts 未刷、文档还写旧措辞"的漂移——这是高频复发问题。新增/删除能力时，
+  `tr()` 字符串、`ts` 文件、README 后端扩展指南、`backend.conf.example` 要一并增删，
+  不要留无人读取的"虚拟"开关或孤立文案。
 - 代码风格：`.clang-format`（LLVM/Allman，4 空格，100 列，
   `IncludeBlocks: Regroup` + `SortIncludes: true`）。**改动文件必须跑
   `clang-format -i`**；CI 有 `find src tests \( -name '*.cpp' -o -name '*.h' \) | xargs
@@ -129,6 +136,18 @@ DConfig appId 为 `org.deepin.dtk-update`。
   - 它们与系统包管理器（apt/dnf）**正交**：跨发行系、只管沙箱应用、更新不触内核/系统服务。
     `UpdateMonitor` 用 `m_sandboxBackends`（`QList<QPointer<PackageBackend>>`）持有**所有**沙箱后端，
     `checkNow` 逐个聚合、`proceedUpdate` 按 `backendId` 通用分组路由，切勿再硬编码 `linyaps`。
+  - **沙箱后端与系统后端的本质区别（必须区别对待）**：系统包管理器（apt/dnf）与发行版**强绑定**——
+    一个发行系通常只有一种、且在安装该系统时即确定存在；其可用性是"发行系身份"的推论，
+    逻辑上可视为"恰好一个 / 必存在"。沙箱式应用商店则**与发行系无关**：一台机器上可能
+    **一个都没有**（纯净最小化系统未装 snapd/flatpak/linglong），也可能**同时存在多个**
+    （如同时装了 snap + flatpak + linyaps），且每个都依赖自己独立运行环境健康
+    （daemon 在跑、有远端、运行时未损坏）。因此沙箱后端绝不可像系统后端那样假设"必有且仅有一个"，
+    而必须**逐个独立探测 + 运行时可用才接入**：`attachSandboxBackends` 遍历 `sandboxIds()`，
+    每个 `isAvailable()` 为真才 `setSandboxBackend` 接入参与聚合，为假直接丢弃，**不报错、不回退**
+    到任何"默认沙箱后端"。UI 与 monitor 不得对沙箱后端数量做任何假设（0/1/N 都合法）：
+    可升级列表、更新确认、后检报告都按"这些后端当前真实可用集合"动态生成，按 `backendId`
+    分组路由，绝不写死 linyaps 或假定 snap/flatpak 一定在。这种"正交 + 多实例 + 按需探测"
+    的模型是沙箱后端与 apt/dnf 类系统后端最关键的架构差异，新增沙箱后端须沿用此范式。
   - 提权：`privilegedPrefix()` 返回**空**（snapd/flatpak 经自身 polkit 策略提权，不套 pkexec）。
   - 四探针（重启/服务/残留配置/失败 unit）**全部 `support=false`**：沙箱应用不触系统层。
   - `isAvailable()` 必须探测真实运行环境，防"命令在但 daemon 没起"的伪可用陷阱：
