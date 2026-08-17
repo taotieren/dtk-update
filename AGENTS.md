@@ -403,6 +403,12 @@ DConfig appId 为 `org.deepin.dtk-update`。
   与聚合兜底对称。
 - **测试恒真断言是伪通过（P2）**：`EXPECT_TRUE(x || !x)` 永远 true，掩盖逻辑未验证。健康/探针类测试应断言
   确定性结构（如未执行实际操作时 `report.hasAnything()` 应为 false），或 SKIP 环境缺失分支，勿用恒真占位。
+- **已修复点必须有回归用例锁定（P1/P2 缺口纪律）**：第十五轮审查 tests 层发现，commit 6f56292（聚合兜底回填
+  backendId）与 commit 0d9049d（Advisory/Notice 元类型注册）虽已落地，但原测试仅覆盖"包自带正确 backendId"同线程
+  直连路径，未锁定"漏填即失败/跨线程 queued 失败"路径。已补 `test_updatemonitor.cpp::BackendIdBackfilledWhenMissing`
+  （沙箱后端返回 backendId 空包，验证聚合兜底+路由正确）与 `test_securityadvisor.cpp::CrossThreadSignalDeliversAdvisories`
+  （`QMetaObject::invokeMethod(Qt::QueuedConnection)` 跨线程发射，验证元类型注册后 queued 传递非空负载）。**新增修复
+  时若破坏既有约束，必须同步补回归用例**，勿让"已修但无测试锁定"的缺陷复发。
 - **CI 脚本清单（防漂移）**：`ci/` 下**仅保留 `package-deb.sh`**——由 `build.yml` 在
   deepin beige chroot 内调用，执行 `dpkg-buildpackage` 产 `.deb`。**已删除
   `ci/multiarch-build.sh`**（旧 ubuntu:devel 交叉编译方案遗留，CI 不再调用）。
