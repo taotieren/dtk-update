@@ -388,6 +388,19 @@ DConfig appId 为 `org.deepin.dtk-update`。
   再提交；曾因把 `upstreamFeedUrl(Arch)` 改为返回空导致该用例 5s 超时回归（sync emit 路径在本机未触发），已回退。
   已知取舍：Arch 无官方安全公告 RSS，`upstreamFeedUrl(Arch)` 与 `distroNoticeUrl(Arch)` 同指 news feed，
   开启 `FetchUpstreamAdvisories` 时同 URL 双发（一次当安全公告、一次当通知）；默认关闭路径不触发，暂不去重。
+- **SecurityAdvisor 跨线程信号结构体必须 Q_DECLARE_METATYPE（P1）**：`upstreamAdvisoriesReady`
+  / `distroNoticesReady` 信号携带 `QList<Advisory>` / `QList<Notice>` 自定义结构体，必须经
+  `qRegisterMetaType` 注册元类型，否则经 `UpdateIndicator::distroNoticesReady` **跨线程** queued
+  转发时运行时静默失败、`QSignalSpy::value<>()` 取空。原 `Advisory`/`Notice` 未注册（全仓库仅
+  `PackageInfo` 注册了元类型），已修复（`securityadvisor.h` 加 `AdvisoryList`/`NoticeList` 别名 +
+  `securityadvisor.cpp` 顶部 `qRegisterMetaType`，commit 0d9049d）。**新增经信号传递的自定义结构体
+  必须同步注册元类型**，勿因同线程直连侥幸通过而漏注册。
+- **UpdateMonitor 聚合沙箱包须强制回填 backendId（P2）**：`checkNow` 聚合沙箱后端可升级包时，
+  必须遍历 `apps` 显式 `p.backendId = sb->backendId()` 兜底，否则某沙箱后端 `fetchUpgradable`
+  漏填 `backendId` 会导致 `proceedUpdate` 按 `p.backendId` 路由时误把沙箱包归入系统后端 `sysPkgs`，
+  违反「沙箱后端按 backendId 分组路由、绝不硬编码 linyaps」。原实现直接 `list.append(apps)` 隐式依赖
+  后端自觉，已修复（commit 6f56292）。`dnf` 等系统后端自身也在 `fetchUpgradable` 末回填 `backendId`，
+  与聚合兜底对称。
 - **测试恒真断言是伪通过（P2）**：`EXPECT_TRUE(x || !x)` 永远 true，掩盖逻辑未验证。健康/探针类测试应断言
   确定性结构（如未执行实际操作时 `report.hasAnything()` 应为 false），或 SKIP 环境缺失分支，勿用恒真占位。
 - **CI 脚本清单（防漂移）**：`ci/` 下**仅保留 `package-deb.sh`**——由 `build.yml` 在
