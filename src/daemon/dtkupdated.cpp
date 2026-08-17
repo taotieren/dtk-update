@@ -17,6 +17,7 @@ namespace DtkUpdate
         if (m_backend)
             m_backend->setConfig(m_config);
         m_advisor = new SecurityAdvisor(this);
+        m_advisor->setFetchUpstream(m_config->fetchUpstreamAdvisories());
         m_monitor = new UpdateMonitor(m_backend, m_config, this);
         m_monitor->setSecurityAdvisor(m_advisor);
         // 聚合沙箱式应用商店后端（linglong/snap/flatpak）：与系统后端正交、跨发行系，
