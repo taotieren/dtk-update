@@ -55,6 +55,10 @@ DConfig appId 为 `org.deepin.dtk-update`。
   4. `PresetConfig::knownBackendIds()` 加入该 id（与 registry 对齐）；
   5. 若该后端属**沙箱式应用商店**（见下），还需在 `BackendFactory::sandboxIds()` 列表追加 id，
      并由 `attachSandboxBackends` 自动探测接入（无需改 UI 调用点）。
+  - **预留 id 提示**：`PresetConfig::defaultBackendFor()` 中已为 `arch→pacman`、`suse→zypper`
+    预留默认值，但对应的 `PacmanBackend`/`ZypperBackend` 尚未实现，二者既不在 `registry()`
+    也不在 `knownBackendIds()`。这是**单向预留**：当前仅影响"未知发行系的默认后端猜测"，
+    不会参与聚合；新增这两个后端时必须按上面 5 项完整登记，切勿只加 `defaultBackendFor` 分支。
 - `isAvailable()` 必须探测**全部**关键命令**并**做轻量冒烟测试——缺失 `rpm`/`dpkg-query`
   必须返回 false，而非“命令存在即可用”（即“伪可用”陷阱）。
 - 健康探针默认 `support=false`，按后端覆盖。`needs-restarting` 退出码 `1` 表示建议重启、
@@ -194,7 +198,9 @@ DConfig appId 为 `org.deepin.dtk-update`。
   `ApplyUpdatesWithoutAdvisorInstallsDirectly` / `MultiBackendAggregatesAndRoutes` 等断言失败。
   这类失败在 CI 容器（无 failed unit）不出现、仅本地有 failed unit 的机器暴露。正确写法：
   在 `MonitorFakeBackend` 中显式覆盖四个 `check*` 探针返回 `false`/清空列表，使假后端不触发
-  真实系统探测（已补，勿删）。
+  真实系统探测（已补，勿删）。基类四个探针为 `checkRebootRequired` / `checkServicesNeedingRestart`
+  / `checkConfigFilesToReview` / `checkFailedUnits`，新增假后端或测试后端时须**全部**覆盖，
+  不可只覆盖其中两个。
 - **死代码**：删除功能时，要连其 config 键、getter/setter、DConfig 条目、`showConfig()`
   行一起删。不要留下“虚拟”开关却无人读取。诚实的零/空胜过看起来合理但实际的占位数字。
 - **CI lint 门禁（clang-format dry-run）**：build.yml 有
@@ -235,8 +241,9 @@ DConfig appId 为 `org.deepin.dtk-update`。
 ```bash
 sudo apt build-dep .            # 宿主依赖；CI 内 chroot 镜像此步骤
 mkdir -p build && cd build && cmake .. && make -j$(nproc)
-ctest --output-on-failure        # 预期 66 passed + 3 skipped（非 debian 开发机
-                                  # apt/dnf/linyaps 不可用 -> SKIP）
+ctest --output-on-failure        # 当前共 73 个 TEST 用例；SKIP 数量随宿主环境变化
+                                  # （apt/dnf/linyaps 不可用、非容器等触发 GTEST_SKIP，
+                                  # 当前源码共 6 处 GTEST_SKIP，详见「测试坑」章节）
 ```
 
 本地机通常为 Arch/DTK6，apt/dnf 后端 `isAvailable()` 返回 false，相关测试 `SKIP`——
@@ -291,7 +298,7 @@ libdtk6widget-dev libdtk6log-dev libgtest-dev libpolkit-qt6-1-dev libxkbcommon-d
 5. **配置键一致性**：新增/删除功能时，`AppConfig::backendOptions`、`showConfig()` 输出、
    DConfig schema、示例 `data/backend.conf.example`、README 后端扩展指南要同步增删，
    不要留无人读取的“虚拟”开关。
-6. **构建与测试零回归**：`cmake + make + ctest` 必须全绿（预期 66 passed + 3 skipped）；
+6. **构建与测试零回归**：`cmake + make + ctest` 必须全绿（当前共 73 个 TEST 用例，SKIP 数随环境变化，非固定 3 个）；
    对所有改动文件跑 `clang-format -i`，并额外 `clang-format --dry-run --Werror` 自检零违规
    （**这是 CI 门禁，任一文件不符即 exit 123 红 CI**，见「已踩过的坑」CI lint 门禁条）；
    `read_lints` 无错误；`git status` 确认无遗留草稿文件。
@@ -382,4 +389,74 @@ libdtk6widget-dev libdtk6log-dev libgtest-dev libpolkit-qt6-1-dev libxkbcommon-d
 > **禁止为凑改动而写与需求无关的"陪衬代码"、伪实现或占位空壳**——宁可诚实留空、标注 TODO，
 > 也不要用看似合理的无关代码糊弄。每一行代码都应能回答"它解决什么问题、符合哪条约定"。
 > **所有 claims 都必须有源码 diff 或 commit 作为证据，主 agent 须亲自核验，不接受子 agent 的口头保证。**
+
+### 模式三：常态化自查 / 自更新 / 自迭代（文档生命力保障）
+
+本文件不是一次性写完就锁死的静态文档——它是随代码演进而必须同步生长的"活指南"。
+模式一/二解决"开发时防幻觉"，本模式解决"文档随代码过时"这一更隐蔽的漂移：代码改了、
+坑踩了、约束新增了，若 AGENTS.md 不回流，下一轮 agent 会基于过期约定犯错。因此 AGENTS.md
+**自身也必须被定期交叉验证、自主更新、持续迭代**，且同样通过子 agent 分工 + 主 agent 验收
+的闭环完成（不依赖单人记忆）。
+
+#### 触发条件（何时跑自审 / 自更新）
+
+- **T1（必触发）每次新增 / 删除包后端后**：对照"约定"章节的注册清单 5 项（后端子类 /
+  `package/CMakeLists.txt` 源列表 / `BackendFactory::registry()` / `PresetConfig::knownBackendIds()`
+  / 沙箱后端的 `sandboxIds()`）逐处核查 AGENTS.md 与源码是否一致；同时核查 `defaultBackendFor`
+  的预留 id 是否产生了新的"代码有、文档无"漂移。
+- **T2（必触发）模式二闸门通过或 PR 合并后**：将三 agent 审查结论里的"新增坑 / 漂移 / 新约束"
+  按本模式 SOP 回流进 AGENTS.md，使模式二第 378 行"记录在当日工作记忆"从软约定升级为硬性回流步骤。
+- **T3（定期）每个 Release / 每约 10 个开发轮次 / 用户明确要求"更新维护"时**：跑一次 AGENTS.md
+  全量自审（见执行步骤），不依赖具体代码改动。
+- **T4（专项）`SecurityAdvisor` 外网 RSS/Atom 端点时效**：纳入本机制，定期 `web_fetch` 探测
+  各 `DistroProbe::Family` 分支的 URL 可访问性（呼应"约定"第 8 条），失效即更新。
+
+#### 执行步骤（SOP：子 agent 写、主 agent 验收）
+
+1. **拉起文档自审子 agent**（复用模式二子 agent A「规范符合性」视角，独立读源码）：用 grep /
+   read_file 逐条 diff AGENTS.md 的声明（registry / knownBackendIds / CMakeLists 源列表 / 硬性约束
+   / 已踩过的坑 / 测试预期数字）与 `src/` `tests/` `debian/` `ci/` 真实内容，输出**漂移清单**
+   （每条含"文档声明 → 代码实况 → 一致/漂移 + 证据路径:行号"）。
+2. **读取事实来源**：主 agent 读取 `.codebuddy/memory/` 最新日日志与 `MEMORY.md`，提取本轮
+   "新增坑 / 纠正记录 / 新约束 / 提交哈希"，作为自更新的权威输入（记忆已就位，本步骤是回流通道）。
+3. **回填文档**：按下方"坑登记模板"把新增坑追加进「已踩过的坑」；同步修正架构地图、注册清单、
+   字符串联动涉及的 README（en / zh-CN）、`backend.conf.example`；必要时更新 `MEMORY.md` 速查表。
+4. **主 agent 验收（不可 delegated）**：逐条 git diff 复核自审子 agent 的改动，确认每条漂移修复
+   都有源码证据；禁止"看起来合理"的凭空补充。自审结论与最终处置（修复 commit 号 / 已澄清项）
+   记入当日工作记忆与提交说明。
+5. **提交**：建议 `docs(agents):` 独立 commit，关联对应的业务 commit 哈希，便于回溯。
+
+#### 轻量自更新钩子（降低人工遗忘成本）
+
+以下可复用命令 / 信号，建议由 codebuddy `automations` 在 git commit 后或 CI 失败时触发，
+把"硬纪律"变成可失败门禁：
+
+- **引用文件存在性校验**（防文档死引用）：对 AGENTS.md 引用的 `ci/package-deb.sh`、
+  `translations/_gen.py`、`data/backend.conf.example`、`README*.md` 等跑 `test -f`，缺失即报错。
+- **后端注册四处一致性 grep**：后端 id 须同时出现在 `BackendFactory::registry()`、
+  `PresetConfig::knownBackendIds()`、`package/CMakeLists.txt` 源列表、AGENTS.md 注册清单，缺任一即漂移。
+- **i18n 同步门禁**（可选增强）：改动 `src/**/*.{cpp,h}` 后自动跑 `lupdate` +
+  `python3 translations/_gen.py` 并 `git diff --exit-code` 检查 `.ts` 是否同步（当前为手动纪律，无自动入口）。
+- **clang-tidy 真正阻断**（可选增强）：将 `lint.yml` 的 `tidy` job 中 `|| true` 改为 `|| exit 1`，
+  使静态检查成为真实门禁（当前不阻断 CI）。
+
+#### 坑登记模板（标准化，供子 agent 自动追加）
+
+新增坑一律按此结构追加到「已踩过的坑」，保证可机器解析、可回溯：
+
+```
+- **<坑标题>（YYYY-MM-DD）**：<一句话现象>。
+  - 触发场景：<什么操作 / 测试触发>
+  - 根因：<一句话>
+  - 修复 commit：<hash>
+  - 复发判定：<如何检测是否复发，如 CI 挂死 / exitCode 误判 / 测试断言失败>
+  - 关联约束：<硬性约束第 N 条 / 约定第 M 项 / 模式 X>
+```
+
+#### 与模式一 / 模式二的关系
+
+- 模式一（并行开发）：子 agent 各自交付后，主 agent 验收时**并行**触发 T1 文档自审，不额外增人。
+- 模式二（提交前闸门）：三 agent 审查出的"新增坑 / 漂移"项，按本模式 SOP 回流 AGENTS.md。
+- 本模式是模式一/二的**元层闭环**——保证 AGENTS.md 不会随代码演进而静默过时，是项目长期可靠性
+  的兜底机制。后续凡涉及"更新维护相关内容"的请求，默认走本模式，无需用户重复说明。
 
