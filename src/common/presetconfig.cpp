@@ -5,8 +5,9 @@ namespace DtkUpdate
 
     QStringList PresetConfig::knownBackendIds()
     {
-        // 与 BackendFactory::registry() 保持一致；此处仅用于配置文件合法性校验
-        return {"apt", "dnf", "linyaps"};
+        // 与 BackendFactory::registry() 保持一致；此处仅用于配置文件合法性校验。
+        // 沙箱式应用商店（linyaps/snap/flatpak）跨发行系、与系统包管理正交，均列入已知后端。
+        return {"apt", "dnf", "linyaps", "snap", "flatpak"};
     }
 
     QString PresetConfig::defaultBackendFor(DistroProbe::Family family)

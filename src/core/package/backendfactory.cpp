@@ -9,8 +9,10 @@
 #include "common/presetconfig.h"
 #include "core/monitor/updatemonitor.h"
 #include "dnfbackend.h"
+#include "flatpakbackend.h"
 #include "linyapsbackend.h"
 #include "logger.h"
+#include "snapbackend.h"
 
 namespace DtkUpdate
 {
@@ -34,6 +36,10 @@ namespace DtkUpdate
                              [](QObject* p) -> PackageBackend* { return new DnfBackend(p); }},
                 BackendEntry{QStringLiteral("linyaps"),
                              [](QObject* p) -> PackageBackend* { return new LinyapsBackend(p); }},
+                BackendEntry{QStringLiteral("snap"),
+                             [](QObject* p) -> PackageBackend* { return new SnapBackend(p); }},
+                BackendEntry{QStringLiteral("flatpak"),
+                             [](QObject* p) -> PackageBackend* { return new FlatpakBackend(p); }},
             };
             return entries;
         }
@@ -65,13 +71,35 @@ namespace DtkUpdate
             return ordered;
         }
 
-        // 返回 linyaps 注册项（跨发行系，独立于 orderedEntries 探测）
-        const BackendEntry* linyapsEntry()
+        // 返回沙箱式应用商店注册项（跨发行系，独立于 orderedEntries 探测）。
+        // 它们与系统包管理器(apt/dnf)正交，可跨任意发行系运行，每个都无条件独立探测。
+        const BackendEntry* sandboxEntry(const QString& id)
         {
             for (const auto& e : registry())
-                if (e.id == QStringLiteral("linyaps"))
+                if (e.id == id)
                     return &e;
             return nullptr;
+        }
+
+        const BackendEntry* linyapsEntry()
+        {
+            return sandboxEntry(QStringLiteral("linyaps"));
+        }
+        const BackendEntry* snapEntry()
+        {
+            return sandboxEntry(QStringLiteral("snap"));
+        }
+        const BackendEntry* flatpakEntry()
+        {
+            return sandboxEntry(QStringLiteral("flatpak"));
+        }
+
+        // 所有沙箱式应用商店 id（探测顺序即接入顺序）
+        const QStringList& sandboxIds()
+        {
+            static const QStringList ids = {QStringLiteral("linyaps"), QStringLiteral("snap"),
+                                            QStringLiteral("flatpak")};
+            return ids;
         }
 
     } // namespace
@@ -147,22 +175,25 @@ namespace DtkUpdate
         if (system)
             backends.append(system);
 
-        // 3) 无论发行系如何，始终独立探测玲珑(linyaps)：跨发行版、与系统后端正交。
-        //    只要 ll-cli 运行环境健康即加入，使沙箱应用更新在所有发行版上都可被识别。
-        if (const BackendEntry* le = linyapsEntry())
+        // 3) 无论发行系如何，始终独立探测沙箱式应用商店（linglong/snap/flatpak）：
+        //    它们跨发行版、与系统包管理器(apt/dnf)正交，各自运行环境健康即加入。
+        for (const QString& id : sandboxIds())
         {
-            QPointer<PackageBackend> probe(le->ctor(nullptr));
+            const BackendEntry* se = sandboxEntry(id);
+            if (!se)
+                continue;
+            QPointer<PackageBackend> probe(se->ctor(nullptr));
             if (probe && probe->isAvailable())
             {
                 qCInfo(dtkUpdateCore)
-                    << "linglong backend available (cross-distro):" << probe->backendName();
+                    << "sandbox backend available (cross-distro):" << probe->backendName();
                 delete probe;
-                backends.append(le->ctor(parent));
+                backends.append(se->ctor(parent));
             }
             else if (probe)
             {
                 qCInfo(dtkUpdateCore)
-                    << "linglong backend not available on this host"
+                    << "sandbox backend not available on this host:" << id
                     << (probe->availabilityError().isEmpty() ? QString()
                                                              : probe->availabilityError());
                 delete probe;
@@ -183,12 +214,37 @@ namespace DtkUpdate
         return nullptr;
     }
 
+    void BackendFactory::attachSandboxBackends(UpdateMonitor* monitor, AppConfig* config,
+                                               QObject* parent)
+    {
+        // 沙箱式应用商店（linglong/snap/flatpak）与系统级后端正交：逐个独立无条件探测，
+        // 可用则接入 monitor 参与更新聚合，不可用直接丢弃。集中此逻辑，消除 GUI / 各托盘
+        // 重复的接入样板。新代码应优先调用本方法，一次性接入所有沙箱后端。
+        if (!monitor)
+            return;
+        for (const QString& id : sandboxIds())
+        {
+            PackageBackend* sb = createById(id, parent);
+            if (!sb)
+                continue;
+            if (!sb->isAvailable())
+            {
+                qCInfo(dtkUpdateCore)
+                    << id << "backend present but unavailable:" << sb->availabilityError();
+                sb->deleteLater();
+                continue;
+            }
+            if (config)
+                sb->setConfig(config);
+            monitor->setSandboxBackend(sb);
+            qCInfo(dtkUpdateCore) << id << "sandbox backend attached";
+        }
+    }
+
     PackageBackend* BackendFactory::attachLinyaps(UpdateMonitor* monitor, AppConfig* config,
                                                   QObject* parent)
     {
-        // 玲珑(linyaps) 与系统级后端正交：独立无条件探测，可用则接入 monitor 聚合，
-        // 不可用直接丢弃。集中此逻辑，消除 GUI / 各托盘重复的接入样板。
-        // 返回接入的实例（或 nullptr 表示未接入），调用方可保存以便后续管理。
+        // 兼容封装：仅接入玲珑(linyaps)。新代码请用 attachSandboxBackends 一次性接入全部。
         if (!monitor)
             return nullptr;
         PackageBackend* linyaps = createById(QStringLiteral("linyaps"), parent);

@@ -49,8 +49,12 @@ namespace DtkUpdate
         // 设置安全提示器（可选；为空则跳过升级前提示）
         void setSecurityAdvisor(SecurityAdvisor* advisor) { m_advisor = advisor; }
 
-        // 设置可选的玲珑(linyaps)后端，用于跨发行版聚合沙箱应用更新。
-        // 设为 nullptr 可关闭玲珑聚合（如运行环境异常时由调用方清理）。
+        // 设置可选的沙箱应用商店后端（linyaps/snap/flatpak 等），用于跨发行版聚合沙箱应用更新。
+        // 多个沙箱后端可同时存在，与系统包管理(apt/dnf)正交互不干扰。
+        // 设为 nullptr 可移除已接入的沙箱后端（如运行环境异常时由调用方清理）。
+        void setSandboxBackend(PackageBackend* backend);
+
+        // 兼容封装：接入玲珑(linyaps)后端（等价 setSandboxBackend）。新代码建议直接传对应后端。
         void setLinyapsBackend(PackageBackend* backend);
 
       public slots:
@@ -97,7 +101,9 @@ namespace DtkUpdate
         void applyConfigInterval();
 
         PackageBackend* m_backend;
-        QPointer<PackageBackend> m_linyaps; // 可选：跨发行版沙箱应用后端（QPointer 防悬空）
+        // 可选：跨发行版沙箱应用商店后端列表（linyaps/snap/flatpak 等），与系统包管理人正交。
+        // 用 QPointer 持有，父对象（通常为 UI/tray）删除时自动置空，monitor 不持有所有权。
+        QList<QPointer<PackageBackend>> m_sandboxBackends;
         AppConfig* m_config;
         SecurityAdvisor* m_advisor = nullptr;
         QTimer* m_timer;

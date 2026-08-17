@@ -57,7 +57,7 @@ namespace DtkUpdate
 
         // 跨发行系接入可选的玲珑(linyaps)后端：由 BackendFactory 统一探测接入。
         // 系统后端（apt/dnf）不可用时仍经 backendUnavailable 提示用户。
-        BackendFactory::attachLinyaps(m_monitor, m_config, this);
+        BackendFactory::attachSandboxBackends(m_monitor, m_config, this);
 
         connect(m_monitor, &UpdateMonitor::backendUnavailable, this,
                 &MainWindow::onBackendUnavailable);

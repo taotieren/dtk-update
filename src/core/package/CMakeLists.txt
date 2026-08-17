@@ -12,6 +12,10 @@ set(PACKAGE_SOURCES
     dnfbackend.cpp
     linyapsbackend.h
     linyapsbackend.cpp
+    snapbackend.h
+    snapbackend.cpp
+    flatpakbackend.h
+    flatpakbackend.cpp
 )
 
 add_library(dtk-update-package STATIC ${PACKAGE_SOURCES})

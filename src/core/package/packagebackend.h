@@ -22,9 +22,11 @@ namespace DtkUpdate
     enum class BackendType
     {
         Unknown = 0,
-        Apt,     ///< Debian/Ubuntu/Deepin/UOS 等 (apt + dpkg)
-        Dnf,     ///< Fedora/RHEL 等 (dnf + rpm)
-        Linyaps, ///< 玲珑 (ll-cli) 沙箱应用包管理
+        Apt,      ///< Debian/Ubuntu/Deepin/UOS 等 (apt + dpkg)
+        Dnf,      ///< Fedora/RHEL 等 (dnf + rpm)
+        Linyaps,  ///< 玲珑 (ll-cli) 沙箱应用包管理
+        Snap,     ///< snap (snapd) 沙箱应用商店
+        Flatpak,  ///< flatpak 沙箱应用商店
         // 后续可扩展：Pacman, Zypper, Portage ...
     };
     Q_ENUM_NS(BackendType)

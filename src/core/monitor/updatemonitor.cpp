@@ -93,23 +93,37 @@ namespace DtkUpdate
 
     UpdateMonitor::~UpdateMonitor() = default;
 
+    void UpdateMonitor::setSandboxBackend(PackageBackend* backend)
+    {
+        if (!backend)
+            return;
+        // 去重：相同实例不重复接入
+        for (const auto& existing : m_sandboxBackends)
+            if (existing == backend)
+                return;
+        m_sandboxBackends.append(backend);
+        // 每接入一个沙箱后端都重连进度/完成信号，使各后端操作统一回传 monitor。
+        connect(backend, &PackageBackend::operationProgress, this,
+                &UpdateMonitor::onBackendProgress);
+        connect(backend, &PackageBackend::operationFinished, this,
+                &UpdateMonitor::onBackendFinished);
+    }
+
     void UpdateMonitor::setLinyapsBackend(PackageBackend* backend)
     {
-        if (m_linyaps)
+        // 兼容封装：仅接入 linyaps（或移除 linyaps）。新代码请用 setSandboxBackend。
+        if (!backend)
         {
-            disconnect(m_linyaps, &PackageBackend::operationProgress, this,
-                       &UpdateMonitor::onBackendProgress);
-            disconnect(m_linyaps, &PackageBackend::operationFinished, this,
-                       &UpdateMonitor::onBackendFinished);
+            m_sandboxBackends.erase(
+                std::remove_if(m_sandboxBackends.begin(), m_sandboxBackends.end(),
+                               [](const QPointer<PackageBackend>& b)
+                               { return b && b->backendId() == QStringLiteral("linyaps"); }),
+                m_sandboxBackends.end());
+            return;
         }
-        m_linyaps = backend;
-        if (m_linyaps)
-        {
-            connect(m_linyaps, &PackageBackend::operationProgress, this,
-                    &UpdateMonitor::onBackendProgress);
-            connect(m_linyaps, &PackageBackend::operationFinished, this,
-                    &UpdateMonitor::onBackendFinished);
-        }
+        if (backend->backendId() != QStringLiteral("linyaps"))
+            return; // 仅接受 linyaps 实例
+        setSandboxBackend(backend);
     }
 
     void UpdateMonitor::applyConfigInterval()
@@ -144,23 +158,25 @@ namespace DtkUpdate
             emit checkFailed(error);
             return;
         }
-        // 聚合可选的玲珑(linyaps)沙箱应用更新：跨发行版，与系统后端正交。
-        // 无论当前发行系如何都尝试；若 linyaps 运行环境异常，发出诊断提示而非静默忽略。
-        if (m_linyaps)
+        // 聚合可选的沙箱应用商店更新（linglong/snap/flatpak 等）：跨发行版，与系统后端正交。
+        // 无论当前发行系如何都逐个尝试；若某沙箱后端运行环境异常，发出诊断提示而非静默忽略。
+        for (QPointer<PackageBackend>& sb : m_sandboxBackends)
         {
-            PackageList linglong;
-            QString llErr;
-            if (m_linyaps->isAvailable())
+            if (!sb)
+                continue;
+            PackageList apps;
+            QString err;
+            if (sb->isAvailable())
             {
-                if (m_linyaps->fetchUpgradable(linglong, llErr))
-                    list.append(linglong);
+                if (sb->fetchUpgradable(apps, err))
+                    list.append(apps);
                 else
-                    emit backendUnavailable(QStringLiteral("linyaps"), llErr);
+                    emit backendUnavailable(sb->backendId(), err);
             }
             else
             {
-                // ll-cli 存在但环境异常 / 未安装：把具体原因交给 UI 提示用户处理
-                emit backendUnavailable(QStringLiteral("linyaps"), m_linyaps->availabilityError());
+                // 沙箱命令存在但环境异常 / 未安装：把具体原因交给 UI 提示用户处理
+                emit backendUnavailable(sb->backendId(), sb->availabilityError());
             }
         }
         m_upgradable = list;
@@ -232,13 +248,20 @@ namespace DtkUpdate
 
         setState(State::Updating);
         m_cancelled = false; // 新一次升级开始，清除上一次取消标志
-        // 按来源后端分组：系统包走 m_backend，玲珑沙箱应用走 m_linyaps。
-        QStringList sysPkgs, llPkgs;
+        // 按来源后端分组：系统包走 m_backend，沙箱应用按各自 backendId 路由到对应沙箱后端。
+        QStringList sysPkgs;
+        QHash<QString, QStringList> sbPkgs; // backendId -> 包名列表
         for (const auto& p : m_upgradable)
         {
-            if (p.backendId == QStringLiteral("linyaps"))
-                llPkgs.append(p.name);
-            else
+            bool isSb = false;
+            for (const auto& sb : m_sandboxBackends)
+                if (sb && sb->backendId() == p.backendId)
+                {
+                    sbPkgs[p.backendId].append(p.name);
+                    isSb = true;
+                    break;
+                }
+            if (!isSb)
                 sysPkgs.append(p.name);
         }
         // install 为异步后台执行，成功后经 operationFinished 信号回传 onBackendFinished。
@@ -246,11 +269,21 @@ namespace DtkUpdate
         QString error;
         if (m_backend && !sysPkgs.isEmpty())
             m_backend->install(sysPkgs, error);
-        if (m_linyaps && !llPkgs.isEmpty())
-            m_linyaps->install(llPkgs, error);
+        for (const auto& sb : m_sandboxBackends)
+        {
+            if (!sb)
+                continue;
+            const QString id = sb->backendId();
+            if (sbPkgs.contains(id) && !sbPkgs.value(id).isEmpty())
+                sb->install(sbPkgs.value(id), error);
+        }
         // 若本次没有可安装包（理论上不会发生，因 m_upgradable 非空才进入），
         // 主动结束更新态避免卡在 Updating。
-        if (sysPkgs.isEmpty() && llPkgs.isEmpty())
+        bool anyPkg = !sysPkgs.isEmpty();
+        for (const auto& pkgs : sbPkgs)
+            if (!pkgs.isEmpty())
+                anyPkg = true;
+        if (!anyPkg)
         {
             setState(State::Idle);
             if (m_lock.isLocked())

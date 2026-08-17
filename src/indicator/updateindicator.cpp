@@ -25,7 +25,7 @@ namespace DtkUpdate
 
         // 跨发行系接入可选的玲珑(linyaps)后端：由 BackendFactory 统一探测，
         // 可用则接入 monitor 聚合，不可用则自动丢弃，此处无需重复样板。
-        BackendFactory::attachLinyaps(m_monitor, m_config, this);
+        BackendFactory::attachSandboxBackends(m_monitor, m_config, this);
 
         connect(m_monitor, &UpdateMonitor::backendUnavailable, this,
                 &UpdateIndicator::onBackendUnavailable);

@@ -82,6 +82,19 @@ namespace DtkUpdate
          */
         static PackageBackend* attachLinyaps(UpdateMonitor* monitor, AppConfig* config = nullptr,
                                              QObject* parent = nullptr);
+
+        /**
+         * @brief 将可选的沙箱应用商店后端（linyaps/snap/flatpak）接入 UpdateMonitor
+         *
+         * 它们与系统级后端正交：各自无条件探测运行环境，健康则接入 monitor 参与更新聚合，
+         * 不可用则直接丢弃（不接入）。集中此逻辑以消除 GUI / 各托盘重复的接入样板。
+         * 新代码应优先调用本方法而非逐个 attachLinyaps/attachSnap/...。
+         * @param monitor 目标 UpdateMonitor（不可为空）
+         * @param config  配置（可为空；非空则转发给后端 setConfig）
+         * @param parent  创建的沙箱后端父对象（通常为调用方 this）
+         */
+        static void attachSandboxBackends(UpdateMonitor* monitor, AppConfig* config = nullptr,
+                                          QObject* parent = nullptr);
     };
 
 } // namespace DtkUpdate
