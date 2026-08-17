@@ -35,6 +35,29 @@ class MonitorFakeBackend : public PackageBackend
     bool listResidualPackages(PackageList&, QString&) override { return true; }
     QStringList cacheDirectories() const override { return {}; }
 
+    // 假后端不触发任何真实系统探测（避免宿主有 failed units / 需重启服务时
+    // 干扰"无前检确认即直装"类断言），让测试确定性通过。
+    bool checkRebootRequired(bool& required, QString&) override
+    {
+        required = false;
+        return false;
+    }
+    bool checkServicesNeedingRestart(QStringList& services, QString&) override
+    {
+        services.clear();
+        return false;
+    }
+    bool checkConfigFilesToReview(QStringList& paths, QString&) override
+    {
+        paths.clear();
+        return false;
+    }
+    bool checkFailedUnits(QStringList& units, QString&) override
+    {
+        units.clear();
+        return false;
+    }
+
     bool install(const QStringList& packages, QString&) override
     {
         m_installed = packages;
@@ -189,6 +212,29 @@ class MonitorFakeLinyaps : public PackageBackend
     bool simulateInstall(const QString&, QString&, QString&) override { return true; }
     bool listResidualPackages(PackageList&, QString&) override { return true; }
     QStringList cacheDirectories() const override { return {}; }
+
+    // 假后端不触发任何真实系统探测（避免宿主有 failed units / 需重启服务时
+    // 干扰"无前检确认即直装"类断言），让测试确定性通过。
+    bool checkRebootRequired(bool& required, QString&) override
+    {
+        required = false;
+        return false;
+    }
+    bool checkServicesNeedingRestart(QStringList& services, QString&) override
+    {
+        services.clear();
+        return false;
+    }
+    bool checkConfigFilesToReview(QStringList& paths, QString&) override
+    {
+        paths.clear();
+        return false;
+    }
+    bool checkFailedUnits(QStringList& units, QString&) override
+    {
+        units.clear();
+        return false;
+    }
     bool install(const QStringList& packages, QString&) override
     {
         m_installed = packages;
