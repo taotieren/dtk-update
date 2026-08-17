@@ -17,8 +17,8 @@ DConfig appId 为 `org.deepin.dtk-update`。
 - `src/core` — 与 UI 无关的纯业务逻辑，已完整单元测试覆盖。**严禁**在此引入
   Dock/Tray/UI 头文件。
   - `package/` — `PackageBackend`（抽象基类，公共实现已下沉此处）·
-    `AptBackend` · `DnfBackend` · `LinyapsBackend` · `BackendFactory`（注册表 +
-    自动探测）· `PackageParser`。
+    `AptBackend` · `DnfBackend` · `LinyapsBackend` · `SnapBackend` · `FlatpakBackend`
+    · `BackendFactory`（注册表 + 自动探测）· `PackageParser`。
   - `monitor/` — `UpdateMonitor`（聚合后端、状态机、并发锁、D-Bus/网络监听）。
   - `dependency/` — `DependencyResolver`（后端 dry-run 输出解析）。
   - `healthcheck/` — `PreUpdateCheck` / `PostUpdateCheck`（仅检查，不修改）。
@@ -48,6 +48,13 @@ DConfig appId 为 `org.deepin.dtk-update`。
 
 - 子类化 `PackageBackend`；仅覆盖语义虚函数 + `privilegedPrefix()` + 健康探针。
   在 `BackendFactory::registry()` 登记，**同时**把 id 加入 `PresetConfig::knownBackendIds()`。
+  完整注册清单（新增后端切勿遗漏任一项，否则会出现"文档/代码引用漂移"）：
+  1. `src/core/package/` 新增 `XxxBackend.{h,cpp}`，仿 `linyapsbackend.cpp` 写语义虚函数与 `privilegedPrefix()`；
+  2. `package/CMakeLists.txt` 的 `dtk_update_core` 源文件列表加入 `xxxbackend.h`/`xxxbackend.cpp`；
+  3. `BackendFactory::registry()` 增加 `{id, [](){ return new XxxBackend(); }}` 条目；
+  4. `PresetConfig::knownBackendIds()` 加入该 id（与 registry 对齐）；
+  5. 若该后端属**沙箱式应用商店**（见下），还需在 `BackendFactory::sandboxIds()` 列表追加 id，
+     并由 `attachSandboxBackends` 自动探测接入（无需改 UI 调用点）。
 - `isAvailable()` 必须探测**全部**关键命令**并**做轻量冒烟测试——缺失 `rpm`/`dpkg-query`
   必须返回 false，而非“命令存在即可用”（即“伪可用”陷阱）。
 - 健康探针默认 `support=false`，按后端覆盖。`needs-restarting` 退出码 `1` 表示建议重启、
@@ -116,7 +123,24 @@ DConfig appId 为 `org.deepin.dtk-update`。
   到前端弹窗。`m_fetchUpstream` 默认 false，需用户显式开启（`AppConfig::fetchUpstreamAdvisories`）。
 - **单元测试确定性**：不要在 `UpdateMonitor` 构造内自动接入真实后端（如 Linyaps），
   这会破坏 `CheckNow` 测试。前端应显式调用
-  `BackendFactory::attachLinyaps(m_monitor, m_config, this)`。
+  `BackendFactory::attachSandboxBackends(m_monitor, m_config, this)`（一次性接入 linyaps/snap/flatpak
+  全部沙箱后端；旧的 `attachLinyaps` 保留为仅接 linyaps 的兼容封装）。
+- **沙箱式应用商店后端（linyaps / snap / flatpak）共性约定**：
+  - 它们与系统包管理器（apt/dnf）**正交**：跨发行系、只管沙箱应用、更新不触内核/系统服务。
+    `UpdateMonitor` 用 `m_sandboxBackends`（`QList<QPointer<PackageBackend>>`）持有**所有**沙箱后端，
+    `checkNow` 逐个聚合、`proceedUpdate` 按 `backendId` 通用分组路由，切勿再硬编码 `linyaps`。
+  - 提权：`privilegedPrefix()` 返回**空**（snapd/flatpak 经自身 polkit 策略提权，不套 pkexec）。
+  - 四探针（重启/服务/残留配置/失败 unit）**全部 `support=false`**：沙箱应用不触系统层。
+  - `isAvailable()` 必须探测真实运行环境，防"命令在但 daemon 没起"的伪可用陷阱：
+    snap 冒烟 `snap list --unicode=never`；flatpak 需 `flatpak remotes` 至少存在一个远端（纯净最小化
+    系统可能装了 flatpak 却无任何远端，remote-ls 无意义）。
+  - 解析稳健性：snap `refresh --list` 跳过首行表头、取前两列（name/version）；
+    flatpak `remote-ls --updates --columns=application,version,branch` 用 **tab** 分隔，且版本列为空时
+    视为"已是最新"跳过（避免把无新版本的已装应用刷进可升级列表）。
+  - 写操作无原生 dry-run：snap 用 `snap info`、flatpak 用 `flatpak remote-info` 作可行性兜底（仅探测
+    包存在性）；`operationArgs` 中 `Autoremove`/`CleanCache` 返回空（沙箱自管理依赖与缓存）。
+  - 新增沙箱后端后，CI `ubuntu:devel` 容器默认无 snap/flatpak，相关 `isAvailable()` 返回 false，
+    测试应 `SKIP` 而非伪通过（参考 `LinyapsBackendTest::NotAvailableWithoutLlCli`）。
 - **Qt6 D-Bus**：`QDBusConnection::connect` 没有 functor 重载——D-Bus 信号必须用旧式
   `SLOT()` 字符串连接，且槽参数要匹配（`onPrepareForSleep(bool)`、`onNmStateChanged(uint)`）。
   无参 `SLOT()` 会在运行时静默丢弃参数（例如断开时也触发一次检查）。`NM_STATE_CONNECTED_GLOBAL` = 70。
@@ -132,6 +156,22 @@ DConfig appId 为 `org.deepin.dtk-update`。
 - **测试**：必须显式注册 `Qt::Test`（`find_package(Qt${QT_MAJOR_VERSION}Test)`），
   否则测试文件被静默跳过。不要跨编译单元定义两个 `QCoreApplication` 实例或两个同名 mock
   类。涉及 `attachLinyaps` / 真实后端的测试，在管理器未安装时应 `SKIP` 而非伪通过。
+- **测试坑 · `SecurityAdvisorTest::UpstreamPrefetchAsyncSignals` 挂死 CI（高频复发）**：
+  该测试调 `SecurityAdvisor::prefetchUpstream`，其内部 `asyncGet` 走 `QNetworkAccessManager`
+  异步网络。若测试 TU 内**没有 `QCoreApplication`**（即漏调 `ensureApp()`），则 `QSignalSpy::wait()`
+  无法驱动 Qt 事件循环 → 网络回调与 5s `QTimer` 超时都永不触发 → **整套件在 CI `Run tests`
+  步骤永久挂起、6h 超时 cancelled**。修复铁律：**凡用到 `SecurityAdvisor` 异步信号的测试必须
+  先调 `ensureApp()`**（在 `test_runprivasync.cpp` 定义，跨 TU 用 `extern void ensureApp();` 声明）。
+  禁用分支（`m_fetchUpstream=false`）为**同步** emit 空缓存，断言用 `EXPECT_EQ(spy.count(), 1)`
+  而非 `spy.wait()`；异步分支才用 `spy.wait(5000)`。
+- **测试坑 · `MonitorFakeBackend` 需覆盖预检探针**：`UpdateMonitor::applyUpdates` 会调
+  `PreUpdateCheck::run(m_backend)`，而 `PackageBackend` 基类的 `checkFailedUnits`/`checkServicesNeedingRestart`
+  默认实现对**有 systemd 的宿主**会执行 `systemctl --failed` / `needs-restarting`，若宿主恰有
+  failed unit 则返回非空 → `pre.hasAnything()` 为真 → 进入"需用户确认"分支、不直装，导致
+  `ApplyUpdatesWithoutAdvisorInstallsDirectly` / `MultiBackendAggregatesAndRoutes` 等断言失败。
+  这类失败在 CI 容器（无 failed unit）不出现、仅本地有 failed unit 的机器暴露。正确写法：
+  在 `MonitorFakeBackend` 中显式覆盖四个 `check*` 探针返回 `false`/清空列表，使假后端不触发
+  真实系统探测（已补，勿删）。
 - **死代码**：删除功能时，要连其 config 键、getter/setter、DConfig 条目、`showConfig()`
   行一起删。不要留下“虚拟”开关却无人读取。诚实的零/空胜过看起来合理但实际的占位数字。
 - **CI lint 门禁（clang-format dry-run）**：build.yml 有
