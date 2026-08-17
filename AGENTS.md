@@ -219,15 +219,17 @@ DConfig appId 为 `org.deepin.dtk-update`。
   - 收尾自查用 `grep -rnE "尚未|未实现|占位|not yet|not implemented|TODO|FIXME|HACK" src tests`
     扫一遍，确认无指向"已做却说没做"的残留；历史审计报告（`research_report_*.md`）里提到的
     "占位符/未实现"是已修复记录，不算活跃代码残留，无需改。
-- **CI lint 门禁（clang-format dry-run）**：build.yml 有
-  `find src tests \( -name '*.cpp' -o -name '*.h' \) | xargs clang-format --dry-run --Werror`，
+- **CI lint 门禁（clang-format dry-run）**：`lint.yml` 的 `format` job 有
+  `find src tests \( -name '*.cpp' -o -name '*.h' \) | xargs clang-format --dry-run --Werror`
+  （**不是** `build.yml`，`build.yml` 只负责 deb 打包；此门禁曾因记忆误归 build.yml 而漂移，已纠正），
   **任一文件不符合即 exit 123 红 CI**。曾因手改 include 顺序（`backendfactory.cpp` 里
   `"core/monitor/updatemonitor.h"` 排到了 `"dnfbackend.h"` 之后）触发——该文件本地编译
   无误、仅在 CI lint 阶段失败，错误信息指向文件首行 `#include`，极易误判为其他问题。
   **所有改动文件提交前必须本地跑 `clang-format --dry-run --Werror` 自检**；include 顺序
   交给 `clang-format -i` 自动重排，勿手排（见「约定」代码风格段）。注意：**clang-format
   版本差异**可能改变格式化结果（如本机 clang-format 22 与 CI 版本），本地 `-i` 后立即
-  `git diff` 复核再提交最稳妥。
+  `git diff` 复核再提交最稳妥；`lint.yml` 当前用 `apt-get install clang-format`（ubuntu:devel
+  浮动版本），若本地与 CI 频繁不一致可钉死具体版本（如 `clang-format-22`）以减少噪声。
 - **文档漂移**：重构后要在同一改动里修正 README（英文 + 简中）——打包脚本
   （`ci/package-deb.sh` 是 **唯一** 的 CI 脚本，旧的 `ci/multiarch-build.sh` 已删除，
   凡文档/代码引用到它的都属漂移须清理）、接线
@@ -279,6 +281,11 @@ DConfig appId 为 `org.deepin.dtk-update`。
    `clang-format -i` 全过 → `cmake --build` 编译通过 → `ctest` 无回归 → 关注 CI 结果（见上条）。
 6. **文档与记忆同步**：每轮审查发现的新坑，追加进「已踩过的坑」；本次新增的"常态化审查工作流"本身也要随项目演进维护。
    工作记忆（` .codebuddy/memory/`）追加当日闭环记录。
+   **AGENTS.md 更新纪律（硬）**：本文件（AGENTS.md）的「硬性约束」「已踩过的坑」「约定」一旦因审查/修复/重构而改动，
+   **必须随对应代码改动一起提交**（不单独遗漏、也不无限期挂起未提交）。理由：AGENTS.md 是 AI 与贡献者的唯一权威约束来源，
+   若代码已改而文档仍写旧措辞（如门禁归属、后端清单、死注释描述），下一轮 agent/贡献者会基于过期文档误判、重复踩坑。
+   提交粒度与代码改动一致——同一次功能/修复提交里顺带 `git add AGENTS.md` 即可；若纯文档纠错（如门禁归属漂移），
+   可独立成一笔 `docs(agents)` 提交，但不得长期留作未提交改动。
 
 **子 agent 只读陷阱提示**：`code-explorer` 子 agent 是只读角色，无法落地代码；所谓"重构 agent"只能退回方案文本。
 最终写代码须主 agent 基于**实际文件内容**审核后亲自执行，不可盲信子 agent 对文件内容的转述。
@@ -336,17 +343,34 @@ DConfig appId 为 `org.deepin.dtk-update`。
   属公开测试接口、非死代码——此类"漏算测试调用方"的高频误报必须主 agent 亲自 grep 全仓（含 `tests/`）复核后再落地，
   严禁盲删（删除会直接破坏测试编译）。同理，`value()` 的 `Section.Key` 点号查询会回落段内，与 `sectionValue`
   语义有别，二者并存合理，勿以"功能重复"为由删其一。
-- **通用托盘资源静态链接陷阱（P1）**：`src/tray-generic` 是独立可执行文件，静态链接 `dtk-update-indicator`
-  静态库里的 `resources.qrc` 会被链接器惰性丢弃（`undefined reference to qInitResources_resources`）。
-  正确做法：generic 自身用 `qt_add_resources` 直接编译 `resources.qrc` 进可执行文件，并在
-  `main.cpp` **全局命名空间**调 `Q_INIT_RESOURCE(resources)`（`Q_INIT_RESOURCE` 在 `namespace DtkUpdate`
-  内展开会错位符号名→链接失败）。图标回退路径真实前缀是 `/icons`（`resources.qrc` 定义）与
-  `/dsg/built-in-icons/`（dde-dock loader 要求），**不是** `/resources`——`QIcon::fromTheme` 取不到时
-  回退 `:/icons/%1.svg`。
+- **通用托盘资源静态链接陷阱（P1，仅 generic 适用）**：`src/tray-generic` 是独立可执行文件，静态链接
+  `dtk-update-indicator` 静态库里的 `resources.qrc` 会被链接器惰性丢弃（`undefined reference to
+  qInitResources_resources`）。正确做法：generic 自身用 `qt_add_resources` 直接编译 `resources.qrc`
+  进可执行文件，并在 `main.cpp` **全局命名空间**调 `Q_INIT_RESOURCE(resources)`（`Q_INIT_RESOURCE`
+  在 `namespace DtkUpdate` 内展开会错位符号名→链接失败）。图标回退路径真实前缀是 `/icons`
+  （`resources.qrc` 定义）与 `/dsg/built-in-icons/`（dde-dock loader 要求），**不是** `/resources`——
+  `QIcon::fromTheme` 取不到时回退 `:/icons/%1.svg`。
+  **dde-tray 不同**：`src/tray`（dde-dock 插件 .so）直接链接 `dtk-update-indicator` 静态库，而
+  `src/indicator/CMakeLists.txt` 已将 `${CMAKE_SOURCE_DIR}/resources/resources.qrc` 编入该库
+  **未指定 NAMESPACE**，故 qrc 符号实际落在 `DtkUpdate` 命名空间；dde-tray 在 `namespace DtkUpdate`
+  内调 `Q_INIT_RESOURCE(resources)` 可正确解析（CI deepin beige chroot 已成功产出 .deb 间接印证）。
+  故"namespace 内 Q_INIT_RESOURCE 会错位"仅对 generic 成立，对 dde-tray 属误判——常态化审查子 agent
+  曾据此误报 dde-tray P1，主 agent 须以 CI 链接结果为据纠正，勿盲改 dde-tray。
 - **Flatpak simulateInstall 不可写死 flathub（P1）**：`FlatpakBackend::simulateInstall`（依赖解析可行性兜底）
   若硬编 `flatpak remote-info flathub <pkg>`，应用位于其他远端（fedora/gnome-nightly/verified 等）时
   remote-info 失败，`DependencyResolver::resolve` 直接 return false 阻断整条依赖解析。必须遍历
   `flatpak remotes --columns=name` 所有远端逐个尝试，最后才兜底 flathub。同理 snap 也应遍历已登录远端。
+- **SecurityAdvisor 三处 setFetchUpstream 接线必须同步（P1）**：`m_fetchUpstream` 由
+  `AppConfig::fetchUpstreamAdvisories()` 驱动，UI（`ui/main.cpp`）、托盘（`indicator/updateindicator.cpp`）、
+  daemon（`daemon/dtkupdated.cpp`）**三处**构造 SecurityAdvisor 后都须调 `setFetchUpstream(config.fetchUpstreamAdvisories())`。
+  漏任一处即导致该运行形态下用户配置形同虚设。新增运行形态（如未来新前端）必须同步接线，否则属"声明/实现不一致"的虚设开关。
+- **改安全公告 feed URL 须先跑 ctest 验证（回归铁律）**：`SecurityAdvisor::upstreamFeedUrl` / `distroNoticeUrl`
+  的返回值被 `SecurityAdvisorTest::UpstreamPrefetchAsyncSignals` 间接依赖（本机 `DistroProbe::detectFamily()`
+  决定走哪条 URL 分支，sync emit 与 asyncGet 路径行为不同，可能让 `spy.wait(5000)` 超时）。任何改动 feed URL
+  或 `prefetchUpstream` 早期 return 分支，必须**先本地跑全量 ctest** 确认 `UpstreamPrefetchAsyncSignals` 仍绿，
+  再提交；曾因把 `upstreamFeedUrl(Arch)` 改为返回空导致该用例 5s 超时回归（sync emit 路径在本机未触发），已回退。
+  已知取舍：Arch 无官方安全公告 RSS，`upstreamFeedUrl(Arch)` 与 `distroNoticeUrl(Arch)` 同指 news feed，
+  开启 `FetchUpstreamAdvisories` 时同 URL 双发（一次当安全公告、一次当通知）；默认关闭路径不触发，暂不去重。
 - **测试恒真断言是伪通过（P2）**：`EXPECT_TRUE(x || !x)` 永远 true，掩盖逻辑未验证。健康/探针类测试应断言
   确定性结构（如未执行实际操作时 `report.hasAnything()` 应为 false），或 SKIP 环境缺失分支，勿用恒真占位。
 - **CI 脚本清单（防漂移）**：`ci/` 下**仅保留 `package-deb.sh`**——由 `build.yml` 在
