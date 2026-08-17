@@ -306,6 +306,7 @@ namespace DtkUpdate
         // 注意：install 可能仍在后台线程执行，置 m_cancelled 让 onBackendFinished 忽略
         // 其后续回调，避免"已取消"后又弹后检/重查。
         m_cancelled = true;
+        m_pendingOps = 0; // 清零进行中的异步写计数，避免旧后台回调污染下一轮 proceedUpdate 的计数
         if (m_state != State::Updating)
             setState(State::HasUpdates);
         m_upgradable.clear(); // 用户已明确放弃本次升级
