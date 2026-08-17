@@ -29,7 +29,7 @@ DConfig appId 为 `org.deepin.dtk-update`。
 - `src/indicator` — `UpdateIndicator`（桌面无关的共享核心，静态库，被两个托盘继承）
   + `UpdateDialogs`（共享的 DDialog 构建器）。
 - `src/tray` — deepin/UOS Dock 插件（仅当探测到 `dde-dock` SDK 时才构建）。
-- `src/tray-generic` — 基于 `QSystemTrayIcon` 的独立托盘，无 deepin 私有依赖。
+- `src/tray-generic` — 基于 `QSystemTrayIcon` 的独立托盘，不依赖 dde-dock / dde-shell 私有接口（可用 DTK 框架做亮暗主题刷新，属正常框架依赖，非私有 SDK）。
 - `src/ui` — `MainWindow`（DTK）。`src/daemon` — D-Bus 服务。两者均不依赖 dde-dock。
 
 ## 硬性约束（不可违反）
@@ -174,6 +174,11 @@ DConfig appId 为 `org.deepin.dtk-update`。
 - **Qt6 D-Bus**：`QDBusConnection::connect` 没有 functor 重载——D-Bus 信号必须用旧式
   `SLOT()` 字符串连接，且槽参数要匹配（`onPrepareForSleep(bool)`、`onNmStateChanged(uint)`）。
   无参 `SLOT()` 会在运行时静默丢弃参数（例如断开时也触发一次检查）。`NM_STATE_CONNECTED_GLOBAL` = 70。
+- **daemon 须订阅 PrepareForSleep / NetworkManager 信号（P2）**：daemon 是后台常驻 D-Bus 服务，
+  原实现仅 `checkNow`/`status` 两槽，未订阅系统唤醒/联网信号，系统唤醒或网络恢复后不会自动重检。
+  已修复（`Daemon::Daemon()` 内用旧式 `SLOT()` 连接 login1 `PrepareForSleep` 与 NM `StateChanged`，
+  槽 `onPrepareForSleep(bool)` 仅在 `sleeping==false` 时、`onNmStateChanged(uint)` 仅在 `state==70` 时
+  调 `m_monitor->checkNow()`，commit 0b361bf）。新增系统信号须沿用 Qt6 旧式 SLOT 带参连接，勿无参连接。
 - **DependencyResolver**：按 `backendId()` 分流解析（APT 用 `^Inst/`/`^Remv`，DNF 用
   `Installing:/Removing:`）；无结构化输出的后端降级为仅目标包而非失败。`parseSimulateOutput`
   是 `static` 方法——内部不得访问非静态的 `m_backend`。
@@ -366,6 +371,12 @@ DConfig appId 为 `org.deepin.dtk-update`。
   已修复为对称门控（`!dnfFormat` 门控 APT 分支、`dnfFormat` 门控 DNF 分支），并补两条 DNF 单测
   （`ParseSimulateOutputDnfFormat` / `ParseSimulateOutputDnfIgnoresAptLines`）锁定行为。新增后端复用
   此函数时务必保持格式严格分流，勿让某一格式的正则越界吞掉另一格式的输出。
+- **PackageBackend 探针必须用 runProbe 读退出码（P1）**：健康探针默认 `support=false`，按后端覆盖；
+  `needs-restarting` 退出码 1=需重启/0=否、`systemctl --failed` 退出码 1=有 failed unit/0=否，**探针必须用
+  `runProbe`（读取退出码）而非 `runQuery`（非零退出时丢弃 stdout、返回 false，导致 failed unit 永远漏报、
+  support 误判 false）**。原 `checkFailedUnits` 基类默认实现误用 `runQuery`，已修复为 `runProbe` 按退出码判定
+  （commit 0b361bf），与 `checkServicesNeedingRestart` 对称。新增探针须沿用 runProbe，切勿因"命令存在即成功"
+  的直觉误用 runQuery。
 - **SecurityAdvisor 三处 setFetchUpstream 接线必须同步（P1）**：`m_fetchUpstream` 由
   `AppConfig::fetchUpstreamAdvisories()` 驱动，UI（`ui/main.cpp`）、托盘（`indicator/updateindicator.cpp`）、
   daemon（`daemon/dtkupdated.cpp`）**三处**构造 SecurityAdvisor 后都须调 `setFetchUpstream(config.fetchUpstreamAdvisories())`。
