@@ -21,11 +21,10 @@ namespace DtkUpdate
 
     // 注册跨线程信号携带的自定义结构体元类型，否则 queued 连接静默失败。
     // 必须在任何信号发射前完成（构造 SecurityAdvisor 时即注册）。
+    // 命名空间作用域 static 初始化在 main 前执行，确保注册先于任何信号发射。
     static const int kAdvisoryMetaId =
         qRegisterMetaType<DtkUpdate::SecurityAdvisor::AdvisoryList>();
     static const int kNoticeMetaId = qRegisterMetaType<DtkUpdate::SecurityAdvisor::NoticeList>();
-    Q_UNUSED(kAdvisoryMetaId);
-    Q_UNUSED(kNoticeMetaId);
 
     namespace
     {
