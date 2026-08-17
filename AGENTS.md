@@ -241,6 +241,34 @@ DConfig appId 为 `org.deepin.dtk-update`。
   并在当日工作记忆与提交说明里记录，避免再犯这类问题。clang-format 门禁对全量 `src/tests`
   文件生效——哪怕只改了一行注释，只要该文件进入 diff 就要过 `--dry-run --Werror`，
   故提交前对所有改动文件跑 `clang-format -i` 是硬前提。
+
+## 常态化严苛审查工作流（防垃圾代码污染源码）
+
+**核心纪律：绝不随意提交未经审查的代码。** 每完成一轮功能开发 / 修复 / 重构，或用户要求"检查已实现功能"时，
+必须按如下多 agent 工作流执行一轮严苛审查，发现问题先分析确认、再重构落地，禁止带病提交。
+该流程已在 dde-dock/通用托盘、core/common/ui/daemon 审查中验证有效。
+
+1. **拆分审查域**：把已实现代码按模块领域分成 2-4 个独立审查流（如 core / common / ui+daemon+indicator）。
+   每个流独立、无重叠，避免重复劳动。
+2. **并行派审查子 agent**：用 `Task` 工具同时启动多个 `code-explorer` 子 agent（只读、出证据），
+   每个 agent 逐文件 `read_file`、对照本 AGENTS.md 的「硬性约束」「已踩过的坑」做静态分析，
+   输出**带 文件:行号 证据**的问题清单（问题类型 / 现象 / 违反约束编号 / 严重程度 / 修复方向）。
+   严禁子 agent 凭空猜测文件内容——必须基于实际读取证据。
+3. **主 agent 亲自核验、纠正误报**：子 agent 有高频误报倾向（曾误报 IID 值、resources.qrc 是否编入、
+   onStateChanged 实现文本、把"已修复"说成"未修复"）。主 agent **必须**亲自 `read_file` 复核每一条高危项，
+   区分"真问题"与"子 agent 误判"，只落地已核实的问题。
+4. **分类重构**：把确认的问题分三档——
+   - 高危（P0/P1）：硬性约束违反（提权/异步写/默认焦点/单实例/架构虚设服务），立即重构；
+   - 中危（P2）：空值覆盖丢失、漏接沙箱后端、死注释、死代码，本轮内修；
+   - 低危（P3）：命名/注释澄清，可记录待办不阻塞提交。
+5. **落地与验证**：主 agent 亲自改代码（子 agent 无写权限，只出方案）；改动后必须：
+   `clang-format -i` 全过 → `cmake --build` 编译通过 → `ctest` 无回归 → 关注 CI 结果（见上条）。
+6. **文档与记忆同步**：每轮审查发现的新坑，追加进「已踩过的坑」；本次新增的"常态化审查工作流"本身也要随项目演进维护。
+   工作记忆（` .codebuddy/memory/`）追加当日闭环记录。
+
+**子 agent 只读陷阱提示**：`code-explorer` 子 agent 是只读角色，无法落地代码；所谓"重构 agent"只能退回方案文本。
+最终写代码须主 agent 基于**实际文件内容**审核后亲自执行，不可盲信子 agent 对文件内容的转述。
+
 - **teardown 段错误：QCoreApplication 静态全局析构顺序错位（CI 容器必现，本地偶发）**：
   表象：**全部 74 个用例全 OK，ctest 却报 `***Exception: SegFault`**（`gh run view` 见
   `0% tests passed, 1 tests failed out of 1`）。真实根因**不是** SecurityAdvisor 异步链，
@@ -259,6 +287,26 @@ DConfig appId 为 `org.deepin.dtk-update`。
   复发判定：CI `unit-test` 仍 `SegFault` 或本地 `ctest` 偶崩 → 先查是否把 `QCoreApplication`
   当静态全局、或是否再次链回 `gtest_main` 导致双 main/析构错位。验证：本地 `ctest` 全绿后
   必须 `gh run view <id> --log` 确认 CI 两架构 `unit-test` 均 `success` 才算闭环。
+- **LinyapsBackend 写操作必须走基类异步模板（P0 高频坑）**：沙箱后端（linglong/snap/flatpak）**严禁**手写
+  `runPrivileged(...)` + `waitForFinished(...)` + 主线程 `emit operationFinished` 的同步写（曾出现
+  `linyapsbackend.cpp` 直接调 `runPrivileged` 阻塞 600s 并主线程发信号）。正确做法：只覆盖
+  `operationArgs(Op, packages, error)` 返回该后端的命令参数（install→`install`、remove/purge→`uninstall`、
+  autoremove/cleanCache→`prune`），基类 `runWriteOperation` 会自动经 `runPrivilegedAsync` 后台执行并
+  通过 `operationFinished` 信号回调。新增/修改任何后端写路径前，先确认是否复用基类模板，勿重复造阻塞轮子。
+- **升级确认框默认焦点必须落在取消（硬约束3，P0）**：`MainWindow` 的更新确认 `DDialog` 必须让 **Cancel**
+  成为默认推荐按钮（`addButton("Cancel", true, ButtonRecommend)`），Update 为普通按钮。曾出现把 Update 设为
+  `true`/`ButtonRecommend`、Cancel 设为 `false` 的倒退——等于默认高亮"升级"，属"替用户做决定"，违反
+  "绝不替用户做决定、默认焦点在取消"的硬约束。改完用 `grep -n "ButtonRecommend" src/ui/mainwindow.cpp` 复核。
+- **iniparser::value 空值覆盖陷阱（P2）**：`IniParser::value(key, def)` 对 `Section.Key` 点号查询，命中判定
+  必须用"段内是否真含该键"，**不可**用 `if (!v.isEmpty()) return v` 回退——空字符串值（`Key =`）是合法覆盖，
+  会被误判为"未命中"而错误回退全局默认值。正确：段内 `contains(key)` 即返回其 value（含空）。
+  注 `sectionValue`/`globalValue` 内部用 `!isEmpty()` 判"未命中→返 def"是另一语义、无需改。
+- **Daemon 必须接入沙箱后端且单实例（P2）**：`Daemon` 构造在 `new UpdateMonitor` 后必须调
+  `BackendFactory::attachSandboxBackends(m_monitor, m_config, this)`，否则 daemon 上报的 `updatable`
+  漏掉 linglong/snap/flatpak；`main.cpp` 用 `QLockFile`（RuntimeLocation 回退 /tmp，命名
+  `dtk-update-daemon.lock`）防多 daemon 抢 DBus service 名。GUI 侧 `main.cpp` 同理加 `dtk-update-gui.lock`。
+  （daemon 的 D-Bus `status/checkNow/applyUpdates` 当前无客户端调用，属架构预留：保留接口、勿删，但落地
+  实际调用前不要声称"daemon 已打通更新闭环"。）
 - **CI 脚本清单（防漂移）**：`ci/` 下**仅保留 `package-deb.sh`**——由 `build.yml` 在
   deepin beige chroot 内调用，执行 `dpkg-buildpackage` 产 `.deb`。**已删除
   `ci/multiarch-build.sh`**（旧 ubuntu:devel 交叉编译方案遗留，CI 不再调用）。
