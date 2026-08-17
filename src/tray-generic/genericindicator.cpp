@@ -1,29 +1,35 @@
 #include "genericindicator.h"
 
+#include <DGuiApplicationHelper>
 #include <QAction>
 #include <QApplication>
+#include <QIcon>
 #include <QMenu>
 #include <QProcess>
+#include <QStandardPaths>
 
-#include "common/translator.h"
 #include "indicator/updatedialogs.h"
 #include "logger.h"
+
+DGUI_USE_NAMESPACE
 
 namespace DtkUpdate
 {
 
     GenericIndicator::GenericIndicator(QObject* parent) : UpdateIndicator(parent)
     {
-        DtkUpdate::loadTranslator(QStringLiteral("dtk-update"));
         m_tray = new QSystemTrayIcon(this);
         buildMenu();
-        updateIcon(false);
+        updateIcon(hasUpdates());
         connect(m_tray, &QSystemTrayIcon::activated, this,
                 [this](QSystemTrayIcon::ActivationReason reason)
                 {
                     if (reason == QSystemTrayIcon::Trigger)
                         QProcess::startDetached(QStringLiteral("dtk-update-gui"), {});
                 });
+        // 亮/暗主题切换时刷新图标（DGui 提供跨 DTK 主题能力）
+        connect(DGuiApplicationHelper::instance(), &DGuiApplicationHelper::themeTypeChanged, this,
+                [this] { updateIcon(hasUpdates()); });
     }
 
     GenericIndicator::~GenericIndicator() = default;
@@ -31,7 +37,11 @@ namespace DtkUpdate
     void GenericIndicator::show()
     {
         if (m_tray)
+        {
+            if (!QSystemTrayIcon::isSystemTrayAvailable())
+                qCWarning(dtkUpdateTray) << "system tray unavailable; icon will not show";
             m_tray->show();
+        }
     }
 
     void GenericIndicator::buildMenu()
@@ -57,18 +67,28 @@ namespace DtkUpdate
     {
         const QString name =
             hasUpdates ? QStringLiteral("dtk-update-update") : QStringLiteral("dtk-update");
-        if (m_tray)
-            m_tray->setIcon(QIcon::fromTheme(name));
-    }
-
-    void GenericIndicator::onStateChanged(bool hasUpdates, int count)
-    {
-        updateIcon(hasUpdates);
+        // 主题图标不存在时回退到内置资源，避免空图标
+        QIcon icon = QIcon::fromTheme(name);
+        if (icon.isNull())
+            icon = QIcon(QStringLiteral(":/resources/%1.svg").arg(name));
         if (m_tray)
         {
-            m_tray->setToolTip(hasUpdates ? tr("%1 update(s) available").arg(count)
-                                          : tr("System up to date"));
-            if (hasUpdates)
+            if (icon.isNull())
+                qCWarning(dtkUpdateTray) << "icon not found:" << name;
+            else
+                m_tray->setIcon(icon);
+        }
+    }
+
+    void GenericIndicator::onStateChanged(UpdateMonitor::State state, int count)
+    {
+        const bool has = (state == UpdateMonitor::State::HasUpdates);
+        updateIcon(has);
+        if (m_tray)
+        {
+            m_tray->setToolTip(has ? tr("%1 update(s) available").arg(count)
+                                   : tr("System up to date"));
+            if (has)
             {
                 m_tray->showMessage(tr("Updates available"),
                                     tr("%1 package(s) can be updated.").arg(count),

@@ -30,10 +30,6 @@ namespace DtkUpdate
         m_summary->setWordWrap(true);
         root->addWidget(m_summary);
 
-        m_sevLabel = new QLabel;
-        m_sevLabel->setVisible(false);
-        root->addWidget(m_sevLabel);
-
         m_list = new DListView;
         m_list->setEditTriggers(QAbstractItemView::NoEditTriggers);
         m_list->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);

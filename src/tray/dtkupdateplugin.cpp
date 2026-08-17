@@ -173,8 +173,9 @@ namespace DtkUpdate
         return m_popup;
     }
 
-    void DtkUpdatePlugin::onStateChanged(bool /*hasUpdates*/, int count)
+    void DtkUpdatePlugin::onStateChanged(UpdateMonitor::State state, int count)
     {
+        Q_UNUSED(state)
         // 更新托盘控件状态（红点/角标依赖此调用，否则永远灰色）
         if (m_trayWidget)
             m_trayWidget->setState(count);

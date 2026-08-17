@@ -34,7 +34,6 @@ namespace DtkUpdate
         UpdateMonitor* m_monitor;
         Dtk::Widget::DListView* m_list;
         QLabel* m_summary;
-        QLabel* m_sevLabel;
         QPushButton* m_updateBtn;
     };
 

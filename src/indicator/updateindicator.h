@@ -21,8 +21,9 @@ namespace DtkUpdate
      * 具体前端只需实现少量钩子（状态变化/不可用提示/安全确认/后检），
      * 不必重复构建 AppConfig / UpdateMonitor / SecurityAdvisor / linyaps 接入。
      *
-     * 后端轮询由 dtk-update-daemon 统一负责；本指示器若 daemon 未运行则自建
-     * UpdateMonitor 作为兜底，保证无 daemon 时也能工作（单实例避免重复探测）。
+     * 构造时创建独立的 UpdateMonitor 实例（每个托盘前端实例各持一份），
+     * 用于聚合后端状态；若 dtk-update-daemon 已在运行，可经 D-Bus 复用其调度，
+     * 否则本指示器自建 Monitor 独立工作（非 daemon 单例，而是 per-indicator 实例）。
      */
     class UpdateIndicator : public QObject
     {
@@ -33,16 +34,15 @@ namespace DtkUpdate
 
         AppConfig* config() const { return m_config; }
         UpdateMonitor* monitor() const { return m_monitor; }
-
-      signals:
-        // 供前端刷新图标的轻量通知
-        void stateChanged();
-        // 发行版官方「最近新闻 / 通知」拉取完成（与包名无关，供前端弹出通知）
-        void distroNoticesReady(const QList<SecurityAdvisor::Notice>& notices);
+        SecurityAdvisor* advisor() const { return m_advisor; }
+        PackageBackend* backend() const { return m_backend; }
+        bool hasUpdates() const { return m_state == UpdateMonitor::State::HasUpdates; }
 
       protected:
         // 前端钩子：由子类实现具体 UI 表现
-        virtual void onStateChanged(bool hasUpdates, int count) = 0;
+        // state 透传 UpdateMonitor::State，便于托盘区分 Checking/Updating/Error 等状态；
+        // hasUpdates() 便捷方法可替代旧 (bool has) 语义。
+        virtual void onStateChanged(UpdateMonitor::State state, int count) = 0;
         virtual void onBackendUnavailable(const QString& backendId, const QString& reason) = 0;
         virtual void onSecurityPrompt(const QString& severity,
                                       const QList<SecurityAdvisor::Advisory>& advs,
@@ -57,6 +57,7 @@ namespace DtkUpdate
         AppConfig* m_config = nullptr;
         SecurityAdvisor* m_advisor = nullptr;
         UpdateMonitor* m_monitor = nullptr;
+        UpdateMonitor::State m_state = UpdateMonitor::State::Idle;
     };
 
 } // namespace DtkUpdate

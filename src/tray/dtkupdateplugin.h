@@ -31,6 +31,7 @@ namespace DtkUpdate
     {
         Q_OBJECT
         Q_INTERFACES(PluginsItemInterfaceV2)
+        Q_PLUGIN_METADATA(IID "com.deepin.dock.PluginsItemInterface_V2" FILE "tray.json")
 
       public:
         explicit DtkUpdatePlugin(QObject* parent = nullptr);
@@ -61,7 +62,7 @@ namespace DtkUpdate
         void refreshIcon(const QString& itemKey) override;
 
       protected:
-        void onStateChanged(bool hasUpdates, int count) override;
+        void onStateChanged(UpdateMonitor::State state, int count) override;
         void onBackendUnavailable(const QString& backendId, const QString& reason) override;
         void onSecurityPrompt(const QString& severity, const QList<SecurityAdvisor::Advisory>& advs,
                               const PreCheckReport& pre) override;

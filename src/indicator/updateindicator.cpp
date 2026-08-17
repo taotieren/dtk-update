@@ -33,7 +33,8 @@ namespace DtkUpdate
                 [this](const PackageList& pkgs)
                 {
                     Q_UNUSED(pkgs)
-                    emit stateChanged();
+                    const int count = m_monitor ? m_monitor->upgradable().size() : 0;
+                    onStateChanged(m_monitor->state(), count);
                 });
         connect(m_monitor, &UpdateMonitor::securityPrompt, this,
                 [this](const QString& sev, const QList<SecurityAdvisor::Advisory>& advs,
@@ -42,17 +43,13 @@ namespace DtkUpdate
                 [this](const PostCheckReport& rep) { onPostCheck(rep); });
         connect(m_advisor, &SecurityAdvisor::distroNoticesReady, this,
                 [this](const QList<SecurityAdvisor::Notice>& notices)
-                {
-                    emit distroNoticesReady(notices);
-                    onDistroNotices(notices);
-                });
+                { onDistroNotices(notices); });
         connect(m_monitor, &UpdateMonitor::stateChanged, this,
-                [this]
+                [this](UpdateMonitor::State state)
                 {
-                    const bool has =
-                        m_monitor && m_monitor->state() == UpdateMonitor::State::HasUpdates;
+                    m_state = state;
                     const int count = m_monitor ? m_monitor->upgradable().size() : 0;
-                    onStateChanged(has, count);
+                    onStateChanged(state, count);
                 });
         m_monitor->start();
     }
