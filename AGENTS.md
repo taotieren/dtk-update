@@ -360,6 +360,12 @@ DConfig appId 为 `org.deepin.dtk-update`。
   若硬编 `flatpak remote-info flathub <pkg>`，应用位于其他远端（fedora/gnome-nightly/verified 等）时
   remote-info 失败，`DependencyResolver::resolve` 直接 return false 阻断整条依赖解析。必须遍历
   `flatpak remotes --columns=name` 所有远端逐个尝试，最后才兜底 flathub。同理 snap 也应遍历已登录远端。
+- **DependencyResolver::parseSimulateOutput 须真分流（P2）**：原实现 if/else-if 链中 APT 正则
+  (`^Inst\s+`/`^Remv\s+`) 未受 `dnfFormat` 门控，DNF 格式下仍会先用 APT 正则匹配每行，存在跨格式
+  误命中风险（声明"按后端类型分流"、实现"APT 正则全局生效 + DNF 正则附加"，属声明/实现不符）。
+  已修复为对称门控（`!dnfFormat` 门控 APT 分支、`dnfFormat` 门控 DNF 分支），并补两条 DNF 单测
+  （`ParseSimulateOutputDnfFormat` / `ParseSimulateOutputDnfIgnoresAptLines`）锁定行为。新增后端复用
+  此函数时务必保持格式严格分流，勿让某一格式的正则越界吞掉另一格式的输出。
 - **SecurityAdvisor 三处 setFetchUpstream 接线必须同步（P1）**：`m_fetchUpstream` 由
   `AppConfig::fetchUpstreamAdvisories()` 驱动，UI（`ui/main.cpp`）、托盘（`indicator/updateindicator.cpp`）、
   daemon（`daemon/dtkupdated.cpp`）**三处**构造 SecurityAdvisor 后都须调 `setFetchUpstream(config.fetchUpstreamAdvisories())`。
