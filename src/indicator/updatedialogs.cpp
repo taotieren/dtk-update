@@ -76,8 +76,8 @@ namespace DtkUpdate
             QStringLiteral("\n\n") + tr("No changes will be made unless you choose to continue.");
         dlg->setMessage(body);
 
-        // 默认聚焦：取消（不主动替用户决定）；仅"Update Anyway"返回 Accepted。
-        dlg->addButton(tr("Cancel"), true, DDialog::ButtonNormal);
+        // 默认聚焦：取消（不主动替用户决定，硬约束 3）；ButtonRecommend 与 MainWindow 一致。
+        dlg->addButton(tr("Cancel"), true, DDialog::ButtonRecommend);
         dlg->addButton(tr("Update Anyway"), false, DDialog::ButtonWarning);
 
         const int ret = dlg->exec();
