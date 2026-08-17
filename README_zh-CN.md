@@ -45,15 +45,16 @@
 ```
 src/core      业务逻辑（与 UI 无关，完整单元测试）
   package/      PackageBackend(抽象接口) · AptBackend(apt/dpkg) · DnfBackend(dnf/rpm)
-                · LinyapsBackend(ll-cli/玲珑, 跨发行系) · BackendFactory(按发行系自动探测
-                  + 始终独立探测 Linyaps) · PackageParser(纯解析)
+                · LinyapsBackend(ll-cli/玲珑, 跨发行系) · SnapBackend(snap, 跨发行系)
+                · FlatpakBackend(flatpak, 跨发行系) · BackendFactory(按发行系自动探测
+                  + 始终独立探测沙箱后端) · PackageParser(纯解析)
   dependency/   DependencyResolver (后端 dry-run 解析)
   security/     SecurityAdvisor (deepin 安全中心 D-Bus + 发行版上游公告 + 最近通知抓取，可选)
   healthcheck/  PreUpdateCheck / PostUpdateCheck (预检/后检，只读探测)
-  monitor/      UpdateMonitor (状态机 + 定时调度，聚合 Linyaps)
+  monitor/      UpdateMonitor (状态机 + 定时调度，聚合沙箱后端)
 src/indicator  UpdateIndicator (与桌面环境解耦的共享核心，供两个托盘复用：构建后端 /
-               monitor / advisor / linyaps，向具体前端暴露钩子)
-               UpdateDialogs (共享 DDialog 构建器：玲珑不可用提示、安全公告确认、
+               monitor / advisor，向具体前端暴露钩子)
+               UpdateDialogs (共享 DDialog 构建器：沙箱后端不可用提示、安全公告确认、
                更新后报告——两个托盘共用)
 src/tray       dde-tray-loader 插件 (PluginsItemInterfaceV2，仅 deepin/UOS，依赖 dde-dock SDK)
 src/tray-generic  跨发行系 freedesktop 托盘 (QSystemTrayIcon，任意 DTK6 发行系，无 dde-dock 依赖)
@@ -78,10 +79,11 @@ tests          core 层 GoogleTest 测试
   会跳过宿主内核/服务的检查，避免误报。
 - 任何功能不替用户做选择：更新确认框默认聚焦「取消」，安全公告与预检结果展示后
   由用户显式确认才继续。
-- **后端接线集中化**：跨发行系的玲珑（Linyaps）沙箱后端经由唯一的工厂辅助方法
-  `BackendFactory::attachLinyaps` 接入 `UpdateMonitor`，前端（GUI / 两个托盘）只需一行
-  调用，不再重复探测与接线样板。该接线保持显式（由各前端调用），而非隐藏在
-  `UpdateMonitor` 构造内部，从而保证监视器的单元测试具备确定性。
+- **后端接线集中化**：跨发行系的沙箱应用后端（Linyaps / Snap / Flatpak）经由唯一的工厂
+  辅助方法 `BackendFactory::attachSandboxBackends` 接入 `UpdateMonitor`，前端（GUI / 两个
+  托盘）只需一行调用，不再重复探测与接线样板。该接线保持显式（由各前端调用），而非隐藏在
+  `UpdateMonitor` 构造内部，从而保证监视器的单元测试具备确定性。`attachLinyaps` 仅作为
+  只接玲珑的兼容封装保留。
 - **并发安全**：运行时目录单一的 `QLockFile` 防止 GUI 与托盘同时对系统发起写操作。
 
 两个托盘前端共用同一份 `UpdateIndicator` 核心：
@@ -116,26 +118,39 @@ tests          core 层 GoogleTest 测试
   （基类已内置 APT 与 DNF 两种格式解析；玲珑等无结构化事务输出的后端由 `resolve()`
   降级为仅目标包）。
 
-示例参考 `src/core/package/dnfbackend.cpp`（Fedora/RHEL 系）与
-`src/core/package/linyapsbackend.cpp`（玲珑沙箱应用系）。
+示例参考 `src/core/package/dnfbackend.cpp`（Fedora/RHEL 系，系统后端）与
+`src/core/package/linyapsbackend.cpp` / `snapbackend.cpp` / `flatpakbackend.cpp`
+（沙箱应用系）。
 
-### 跨发行版后端（如 Linyaps / 玲珑）
+### 沙箱应用后端（Linyaps / Snap / Flatpak，跨发行系）
 
-部分后端**不绑定单一发行版**，必须独立于发行系探测。玲珑（ll-cli）是跨发行系的
-沙箱应用管理器：只要安装了 `linglong` 运行时，在 deepin、Fedora、Ubuntu、Arch 等
-任意发行版上均可使用。因此：
+沙箱应用管理器**不绑定单一发行版**，必须独立于发行系探测。玲珑（ll-cli）只要安装
+`linglong` 运行时，即可在 deepin、Fedora、Ubuntu、Arch 等任意发行版上使用；Snap
+（snapd）与 Flatpak（flatpak + 至少一个远端）同理。它们与系统包管理器**正交**
+（系统包 vs 沙箱应用），关键点在于：一台机器上这类后端可能**一个都没有、也可能同时
+存在多个**——这与系统后端"某发行系恰好只有一个"的本质不同。因此：
 
-- `LinyapsBackend` **绝不能被 `DistroProbe::Family` 限制**：其 `isAvailable()`
-  只判断 `ll-cli` 是否存在、运行时是否健康。
-- `BackendFactory` 对玲珑采取**单独的、无条件的探测**（`createBackends()` /
-  `availableBackendIds()`），与发行系对应的系统后端并列。在 Debian/Fedora 主机上
-  可同时返回 `apt`/`dnf` 与 `linyaps`——二者正交（系统包 vs 沙箱应用）。
-- 当 `isAvailable()` 因"非未安装"的原因返回 false（如 `ll-cli` 存在但运行时损坏 /
-  权限不足），后端必须在 `availabilityError()` 中返回具体、可执行的诊断信息。
-  UI 与托盘通过 `UpdateMonitor::backendUnavailable` 信号把这个原因呈现给用户，
-  让用户知道**如何修复**，而不是笼统的"后端不可用"。
-- 新增跨发行系后端同样遵循此原则：在 `BackendFactory::registry()` 中登记，
-  并确保由 `createBackends()` 探测，而非隐藏在某个发行系的 `orderedEntries()` 之后。
+- 沙箱后端**绝不能被 `DistroProbe::Family` 限制**。`isAvailable()` 只判断 CLI 是否存在、
+  运行时是否健康（如 flatpak 需 `flatpak remotes` 至少有一个远端；snap 需 `snap list
+  --unicode=never` 冒烟通过）。缺失命令 / 运行时损坏必须返回 false，绝不能"命令存在即
+  可用"造成假阳性。
+- `BackendFactory::attachSandboxBackends` 对**每一个**沙箱 id（`sandboxIds()` =
+  `linyaps`、`snap`、`flatpak`）独立探测，`isAvailable()` 为真才接入。为假则**静默丢弃、
+  不报错、也不回退**到任何"默认"沙箱后端。UI / monitor 不得假设沙箱后端数量（0 / 1 /
+  N 皆合法）：可升级列表、更新确认、后检报告都按真实可用集合动态生成、按 `backendId`
+  路由，**绝不写死 `linyaps`**，也不假定 snap/flatpak 一定存在。
+- 四个健康探针（`checkRebootRequired` / `checkServicesNeedingRestart` /
+  `checkConfigFilesToReview` / `checkFailedUnits`）对沙箱后端一律 `support=false`——
+  它们不触内核 / 系统服务 / systemd unit。
+- `privilegedPrefix()` 对沙箱后端返回**空**：snapd / flatpak 经自身 polkit 策略提权，
+  不套 pkexec。
+- 当 `isAvailable()` 因"非未安装"的原因返回 false（如 CLI 存在但运行时损坏 / daemon 未起
+  / 权限不足），后端必须在 `availabilityError()` 中返回具体、可执行的诊断信息。UI 与两个
+  托盘通过 `UpdateMonitor::backendUnavailable`（现已是通用的按 `backendId` 提示，而非仅
+  玲珑）把这个原因呈现给用户，让用户知道**如何修复**，而不是笼统的"后端不可用"。
+- 新增沙箱后端同样遵循此原则：在 `BackendFactory::registry()` 登记，**并**把 id 追加进
+  `BackendFactory::sandboxIds()`，`attachSandboxBackends` 会自动探测接入——无需改动任何
+  前端调用点。
 
 ## 构建
 

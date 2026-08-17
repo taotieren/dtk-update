@@ -446,14 +446,20 @@ namespace DtkUpdate
 
     void MainWindow::onBackendUnavailable(const QString& backendId, const QString& reason)
     {
-        if (backendId != QStringLiteral("linyaps"))
-            return; // 目前仅玲珑为跨发行系可选后端，环境异常需提示用户
+        // 沙箱式应用商店后端（linyaps/snap/flatpak …）均为可选、且与系统后端正交：
+        // 一台机器可能一个都没有、也可能多个并存。任一沙箱后端环境异常都需提示用户，
+        // 而非只对 linyaps 处理、其余静默忽略。系统后端(apt/dnf)不可用亦走此提示。
+        const QString title = tr("%1 Environment Issue").arg(backendId);
+        const QString msg =
+            reason.isEmpty()
+                ? tr("The %1 runtime environment is abnormal; sandbox application updates via this "
+                     "backend are unavailable. Please check the backend's installation and "
+                     "runtime.")
+                      .arg(backendId)
+                : reason;
         DDialog dlg(this);
-        dlg.setTitle(tr("Linyaps Environment Issue"));
-        dlg.setMessage(reason.isEmpty() ? tr("The Linyaps (玲珑) runtime environment is abnormal; "
-                                             "sandbox application updates are unavailable. "
-                                             "Please check the ll-cli installation and runtime.")
-                                        : reason);
+        dlg.setTitle(title);
+        dlg.setMessage(msg);
         dlg.addButton(QStringLiteral("OK"), true, DDialog::ButtonRecommend);
         dlg.exec();
     }

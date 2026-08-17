@@ -25,14 +25,20 @@ namespace DtkUpdate
         }
     } // namespace
 
-    void UpdateDialogs::showLinyapsUnavailable(const QString& reason)
+    void UpdateDialogs::showSandboxUnavailable(const QString& backendId, const QString& reason)
     {
-        DDialog* dlg =
-            buildBaseDialog(tr("Linyaps Environment Issue"), QStringLiteral("dialog-warning"));
-        dlg->setMessage(reason.isEmpty() ? tr("The Linyaps (玲珑) runtime environment is abnormal; "
-                                              "sandbox application updates are unavailable. "
-                                              "Please check the ll-cli installation and runtime.")
-                                         : reason);
+        // 通用沙箱后端不可用提示：linyaps/snap/flatpak 均适用，按 backendId 显示标题，
+        // 不再硬编码 linyaps。沙箱后端可选且多实例共存，任一环境异常都提示用户。
+        const QString title = tr("%1 Environment Issue").arg(backendId);
+        const QString msg =
+            reason.isEmpty()
+                ? tr("The %1 runtime environment is abnormal; sandbox application updates via this "
+                     "backend are unavailable. Please check the backend's installation and "
+                     "runtime.")
+                      .arg(backendId)
+                : reason;
+        DDialog* dlg = buildBaseDialog(title, QStringLiteral("dialog-warning"));
+        dlg->setMessage(msg);
         dlg->addButton(tr("OK"), true, DDialog::ButtonRecommend);
         dlg->exec();
         dlg->deleteLater();

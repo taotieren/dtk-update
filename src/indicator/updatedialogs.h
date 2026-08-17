@@ -30,8 +30,9 @@ namespace DtkUpdate
     {
         Q_OBJECT
       public:
-        /// 玲珑运行环境异常提示（仅当 backendId == linyaps 时由前端调用）
-        static void showLinyapsUnavailable(const QString& reason);
+        /// 沙箱式应用商店后端运行环境异常提示（linyaps/snap/flatpak 等任意沙箱后端，
+        /// 按 backendId 显示标题，由前端在 onBackendUnavailable 中调用）
+        static void showSandboxUnavailable(const QString& backendId, const QString& reason);
 
         /// 升级前安全公告 + 预检确认。返回 true 表示用户选择继续（proceed）。
         static bool showSecurityPrompt(const QString& severity,

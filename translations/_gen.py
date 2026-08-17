@@ -105,9 +105,9 @@ zh["Working"] = "正在处理"
 # --- UpdateMonitor ---
 zh["Another update is already in progress"] = "已有其他更新正在进行中"
 
-# --- Linyaps availability dialog (shared) ---
-zh["Linyaps Environment Issue"] = "玲珑运行环境异常"
-zh["The Linyaps (玲珑) runtime environment is abnormal; sandbox application updates are unavailable. Please check the ll-cli installation and runtime."] = "玲珑（Linyaps）运行环境异常，沙箱应用更新不可用。请检查 ll-cli 的安装与运行环境。"
+# --- Sandbox backend availability dialog (shared, generic per backendId) ---
+zh["%1 Environment Issue"] = "%1 运行环境异常"
+zh["The %1 runtime environment is abnormal; sandbox application updates via this backend are unavailable. Please check the backend's installation and runtime."] = "%1 运行环境异常，经此后端的沙箱应用更新不可用。请检查该后端的安装与运行环境。"
 
 # --- Recent release notes & notices dialog (distro notices popup) ---
 zh["Recent release notes & notices"] = "近期发布说明与通知"
@@ -180,8 +180,8 @@ es["Removing orphans"] = "Eliminando huérfanos"
 es["Cleaning cache"] = "Limpiando caché"
 es["Working"] = "Trabajando"
 es["Another update is already in progress"] = "Ya hay otra actualización en curso"
-es["Linyaps Environment Issue"] = "Problema del entorno Linyaps"
-es["The Linyaps (玲珑) runtime environment is abnormal; sandbox application updates are unavailable. Please check the ll-cli installation and runtime."] = "El entorno de ejecución de Linyaps (玲珑) es anormal; las actualizaciones de aplicaciones en sandbox no están disponibles. Verifique la instalación y el entorno de ll-cli."
+es["%1 Environment Issue"] = "Problema del entorno %1"
+es["The %1 runtime environment is abnormal; sandbox application updates via this backend are unavailable. Please check the backend's installation and runtime."] = "El entorno de ejecución de %1 es anormal; las actualizaciones de aplicaciones en sandbox a través de este backend no están disponibles. Verifique la instalación y el entorno del backend."
 
 # --- Recent release notes & notices dialog (distro notices popup) ---
 es["Recent release notes & notices"] = "Notas de la versión y avisos recientes"
@@ -254,8 +254,8 @@ fr["Removing orphans"] = "Suppression des orphelins"
 fr["Cleaning cache"] = "Nettoyage du cache"
 fr["Working"] = "Traitement"
 fr["Another update is already in progress"] = "Une autre mise à jour est déjà en cours"
-fr["Linyaps Environment Issue"] = "Problème d'environnement Linyaps"
-fr["The Linyaps (玲珑) runtime environment is abnormal; sandbox application updates are unavailable. Please check the ll-cli installation and runtime."] = "L'environnement d'exécution Linyaps (玲珑) est anormal ; les mises à jour d'applications en sandbox sont indisponibles. Vérifiez l'installation et l'environnement de ll-cli."
+fr["%1 Environment Issue"] = "Problème d'environnement %1"
+fr["The %1 runtime environment is abnormal; sandbox application updates via this backend are unavailable. Please check the backend's installation and runtime."] = "L'environnement d'exécution de %1 est anormal ; les mises à jour d'applications en sandbox via ce backend sont indisponibles. Vérifiez l'installation et l'environnement du backend."
 
 # --- Recent release notes & notices dialog (distro notices popup) ---
 fr["Recent release notes & notices"] = "Notes de version et avis récents"
@@ -328,8 +328,8 @@ de["Removing orphans"] = "Verwaiste entfernen"
 de["Cleaning cache"] = "Cache bereinigen"
 de["Working"] = "Wird verarbeitet"
 de["Another update is already in progress"] = "Eine andere Aktualisierung läuft bereits"
-de["Linyaps Environment Issue"] = "Linyaps-Umgebungsproblem"
-de["The Linyaps (玲珑) runtime environment is abnormal; sandbox application updates are unavailable. Please check the ll-cli installation and runtime."] = "Die Linyaps-Laufzeitumgebung (玲珑) ist fehlerhaft; Sandbox-Anwendungsupdates sind nicht verfügbar. Bitte prüfen Sie die ll-cli-Installation und -Laufzeitumgebung."
+de["%1 Environment Issue"] = "Problem mit der %1-Umgebung"
+de["The %1 runtime environment is abnormal; sandbox application updates via this backend are unavailable. Please check the backend's installation and runtime."] = "Die Laufzeitumgebung von %1 ist fehlerhaft; Sandbox-Anwendungsupdates über dieses Backend sind nicht verfügbar. Bitte prüfen Sie die Installation und Laufzeitumgebung des Backends."
 
 # --- Recent release notes & notices dialog (distro notices popup) ---
 de["Recent release notes & notices"] = "Aktuelle Versionshinweise & Mitteilungen"

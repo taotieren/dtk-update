@@ -218,9 +218,8 @@ namespace DtkUpdate
 
     void DtkUpdatePlugin::onBackendUnavailable(const QString& backendId, const QString& reason)
     {
-        if (backendId != QStringLiteral("linyaps"))
-            return;
-        UpdateDialogs::showLinyapsUnavailable(reason);
+        // 沙箱后端可选且多实例共存，任一环境异常均提示；系统后端不可用亦走此路径。
+        UpdateDialogs::showSandboxUnavailable(backendId, reason);
     }
 
     void DtkUpdatePlugin::onSecurityPrompt(const QString& severity,

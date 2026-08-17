@@ -4,32 +4,32 @@
 <context>
     <name>DtkUpdate::DtkUpdatePlugin</name>
     <message>
-        <location filename="../src/tray/dtkupdateplugin.cpp" line="34"/>
+        <location filename="../src/tray/dtkupdateplugin.cpp" line="40"/>
         <source>Dtk Update</source>
         <translation>Dtk Update</translation>
     </message>
     <message>
-        <location filename="../src/tray/dtkupdateplugin.cpp" line="95"/>
+        <location filename="../src/tray/dtkupdateplugin.cpp" line="124"/>
         <source>Check for Updates</source>
         <translation>Rechercher des mises à jour</translation>
     </message>
     <message>
-        <location filename="../src/tray/dtkupdateplugin.cpp" line="96"/>
+        <location filename="../src/tray/dtkupdateplugin.cpp" line="125"/>
         <source>Update Now</source>
         <translation>Mettre à jour maintenant</translation>
     </message>
     <message>
-        <location filename="../src/tray/dtkupdateplugin.cpp" line="97"/>
+        <location filename="../src/tray/dtkupdateplugin.cpp" line="126"/>
         <source>Open Update Manager</source>
         <translation>Ouvrir le gestionnaire de mises à jour</translation>
     </message>
     <message>
-        <location filename="../src/tray/dtkupdateplugin.cpp" line="99"/>
+        <location filename="../src/tray/dtkupdateplugin.cpp" line="128"/>
         <source>Settings</source>
         <translation>Paramètres</translation>
     </message>
     <message>
-        <location filename="../src/tray/dtkupdateplugin.cpp" line="100"/>
+        <location filename="../src/tray/dtkupdateplugin.cpp" line="129"/>
         <source>About</source>
         <translation>À propos</translation>
     </message>
@@ -261,13 +261,13 @@
     </message>
     <message>
         <location filename="../src/ui/mainwindow.cpp" line="452"/>
-        <source>Linyaps Environment Issue</source>
-        <translation>Problème d'environnement Linyaps</translation>
+        <source>%1 Environment Issue</source>
+        <translation>Problème d'environnement %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="453"/>
-        <source>The Linyaps (玲珑) runtime environment is abnormal; sandbox application updates are unavailable. Please check the ll-cli installation and runtime.</source>
-        <translation>L'environnement d'exécution Linyaps (玲珑) est anormal ; les mises à jour d'applications en sandbox sont indisponibles. Vérifiez l'installation et l'environnement de ll-cli.</translation>
+        <location filename="../src/ui/mainwindow.cpp" line="455"/>
+        <source>The %1 runtime environment is abnormal; sandbox application updates via this backend are unavailable. Please check the backend&apos;s installation and runtime.</source>
+        <translation>L'environnement d'exécution de %1 est anormal ; les mises à jour d'applications en sandbox via ce backend sont indisponibles. Vérifiez l'installation et l'environnement du backend.</translation>
     </message>
 </context>
 <context>
@@ -319,13 +319,13 @@
 <context>
     <name>DtkUpdate::TrayPopup</name>
     <message>
-        <location filename="../src/tray/traypopup.cpp" line="28"/>
+        <location filename="../src/tray/traypopup.cpp" line="29"/>
         <location filename="../src/tray/traypopup.cpp" line="73"/>
         <source>Checking for updates…</source>
         <translation>Recherche de mises à jour…</translation>
     </message>
     <message>
-        <location filename="../src/tray/traypopup.cpp" line="44"/>
+        <location filename="../src/tray/traypopup.cpp" line="45"/>
         <source>Update Now</source>
         <translation>Mettre à jour maintenant</translation>
     </message>
@@ -358,91 +358,91 @@
 <context>
     <name>DtkUpdate::UpdateDialogs</name>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="31"/>
-        <source>Linyaps Environment Issue</source>
-        <translation>Problème d'environnement Linyaps</translation>
-    </message>
-    <message>
         <location filename="../src/indicator/updatedialogs.cpp" line="32"/>
-        <source>The Linyaps (玲珑) runtime environment is abnormal; sandbox application updates are unavailable. Please check the ll-cli installation and runtime.</source>
-        <translation>L'environnement d'exécution Linyaps (玲珑) est anormal ; les mises à jour d'applications en sandbox sont indisponibles. Vérifiez l'installation et l'environnement de ll-cli.</translation>
+        <source>%1 Environment Issue</source>
+        <translation>Problème d'environnement %1</translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="36"/>
-        <location filename="../src/indicator/updatedialogs.cpp" line="104"/>
-        <location filename="../src/indicator/updatedialogs.cpp" line="131"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="35"/>
+        <source>The %1 runtime environment is abnormal; sandbox application updates via this backend are unavailable. Please check the backend&apos;s installation and runtime.</source>
+        <translation>L'environnement d'exécution de %1 est anormal ; les mises à jour d'applications en sandbox via ce backend sont indisponibles. Vérifiez l'installation et l'environnement du backend.</translation>
+    </message>
+    <message>
+        <location filename="../src/indicator/updatedialogs.cpp" line="41"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="109"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="136"/>
         <source>OK</source>
         <translation>OK</translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="45"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="50"/>
         <source>Security advisory before update</source>
         <translation>Avis de sécurité avant la mise à jour</translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="49"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="54"/>
         <source>The following packages have security-relevant updates (overall severity: %1). Review the details and decide whether to proceed.</source>
         <translation>Les paquets suivants comportent des mises à jour liées à la sécurité (gravité globale : %1). Consultez les détails et décidez si vous continuez.</translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="63"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="68"/>
         <source>A system reboot will be required after this update.</source>
         <translation>Un redémarrage du système sera nécessaire après cette mise à jour.</translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="65"/>
-        <location filename="../src/indicator/updatedialogs.cpp" line="92"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="70"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="97"/>
         <source>Service needs restart: </source>
         <translation>Service à redémarrer : </translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="67"/>
-        <location filename="../src/indicator/updatedialogs.cpp" line="94"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="72"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="99"/>
         <source>Config file to review: </source>
         <translation>Fichier de configuration à vérifier : </translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="70"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="75"/>
         <source>No changes will be made unless you choose to continue.</source>
         <translation>Aucune modification ne sera effectuée à moins que vous ne choisissiez de continuer.</translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="74"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="79"/>
         <source>Cancel</source>
         <translation>Annuler</translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="75"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="80"/>
         <source>Update Anyway</source>
         <translation>Mettre à jour quand même</translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="85"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="90"/>
         <source>Update completed — attention required</source>
         <translation>Mise à jour terminée — attention requise</translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="89"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="94"/>
         <source>A system reboot is recommended (kernel or base library updated).</source>
         <translation>Un redémarrage du système est recommandé (noyau ou bibliothèque de base mise à jour).</translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="96"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="101"/>
         <source>Failed service unit: </source>
         <translation>Unité de service en échec : </translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="98"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="103"/>
         <source>Residual / orphan package: </source>
         <translation>Paquet résiduel / orphelin : </translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="100"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="105"/>
         <source>Download cache can be cleaned: %1 MB</source>
         <translation>Cache de téléchargement pouvant être nettoyé : %1 Mo</translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="113"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="118"/>
         <source>Recent release notes &amp; notices</source>
         <translation>Notes de version et avis récents</translation>
     </message>
@@ -450,7 +450,7 @@
 <context>
     <name>DtkUpdate::UpdateMonitor</name>
     <message>
-        <location filename="../src/core/monitor/updatemonitor.cpp" line="229"/>
+        <location filename="../src/core/monitor/updatemonitor.cpp" line="245"/>
         <source>Another update is already in progress</source>
         <translation>Une autre mise à jour est déjà en cours</translation>
     </message>

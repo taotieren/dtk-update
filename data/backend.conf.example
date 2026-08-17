@@ -9,8 +9,9 @@
 # 重要：所有写操作（安装/移除/清理）均需经 polkit 提权，且升级前会弹出
 #       确认对话框。本工具不会在未经您确认的情况下修改系统或移除依赖。
 
-# 您喜欢的后端（只能从已注册后端中选：apt / dnf / linyaps）。
-# 留空 = 按当前发行版预设自动选择。
+# 您喜欢的后端（只能从已注册后端中选：apt / dnf / linyaps / snap / flatpak）。
+# 留空 = 按当前发行版预设自动选择系统后端；沙箱后端(linyaps/snap/flatpak)独立探测，
+#       不在此处受 PreferredBackend 约束。
 PreferredBackend = apt
 
 # ---- 全局选项（对所有后端生效，可被下方 [段] 覆盖） ----

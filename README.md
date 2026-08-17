@@ -58,15 +58,16 @@ aligned with the deepin/UOS v25 ecosystem:
 ```
 src/core        business logic (UI-agnostic, fully unit-tested)
   package/      PackageBackend(abstract interface) · AptBackend(apt/dpkg) · DnfBackend(dnf/rpm)
-                · LinyapsBackend(ll-cli/玲珑, cross-distro) · BackendFactory(auto-detect by distro
-                  + always probe Linyaps independently) · PackageParser(pure parsing)
+                · LinyapsBackend(ll-cli/玲珑, cross-distro) · SnapBackend(snap, cross-distro)
+                · FlatpakBackend(flatpak, cross-distro) · BackendFactory(auto-detect by distro
+                  + always probe sandbox backends independently) · PackageParser(pure parsing)
   dependency/   DependencyResolver (backend dry-run parsing)
   security/     SecurityAdvisor (deepin security center D-Bus + per-distro upstream advisories + recent notices fetch, optional)
   healthcheck/  PreUpdateCheck / PostUpdateCheck (pre/post update, read-only probes)
-  monitor/      UpdateMonitor (state machine + periodic scheduling, aggregates linyaps)
+  monitor/      UpdateMonitor (state machine + periodic scheduling, aggregates sandbox backends)
 src/indicator  UpdateIndicator (desktop-agnostic core shared by both trays: builds backend /
-                monitor / advisor / linyaps, exposes hooks for front-ends)
-                UpdateDialogs (shared DDialog builders: linyaps-unavailable prompt,
+                monitor / advisor, exposes hooks for front-ends)
+                UpdateDialogs (shared DDialog builders: sandbox-unavailable prompt,
                 security/advisory confirm, post-update report — used by both trays)
 src/tray       dde-tray-loader plugin (PluginsItemInterfaceV2, deepin/UOS only; needs dde-dock SDK)
 src/tray-generic  cross-distro freedesktop tray (QSystemTrayIcon, any DTK6 distro; no dde-dock)
@@ -104,11 +105,13 @@ Design constraints:
 - No feature decides for the user: the update confirmation dialog focuses "Cancel"
   by default; security advisories and pre-check results are shown and the user must
   explicitly confirm to proceed.
-- **Backend wiring is centralized**: the Linyaps (cross-distro sandbox) backend is
-  attached to `UpdateMonitor` via the single factory helper `BackendFactory::attachLinyaps`,
-  so front-ends (GUI / both trays) only write one line and never repeat the probe / wire
-  boilerplate. The wiring stays explicit (called from each front-end) rather than hidden
-  inside `UpdateMonitor` construction, keeping unit tests of the monitor deterministic.
+- **Backend wiring is centralized**: sandbox-app backends (Linyaps / Snap / Flatpak, all
+  cross-distro) are attached to `UpdateMonitor` via the single factory helper
+  `BackendFactory::attachSandboxBackends`, so front-ends (GUI / both trays) only write one
+  line and never repeat the probe / wire boilerplate. The wiring stays explicit (called from
+  each front-end) rather than hidden inside `UpdateMonitor` construction, keeping unit tests
+  of the monitor deterministic. `attachLinyaps` is kept only as a Linyaps-only compatibility
+  shim.
 - **Concurrency safety**: a single `QLockFile` in the runtime dir guards against
   concurrent GUI + tray write operations on the same system. It is held as a **value
   member** (not heap-allocated) so it is released automatically when the monitor is
@@ -122,7 +125,12 @@ Design constraints:
 
 ### Adding a new package-manager backend
 
-Adapting to a new distribution takes three steps, with no changes to UI / monitor:
+There are **two distinct kinds** of backend. Pick the right pattern — they are
+treated differently by the monitor and UI.
+
+**A. System package managers (apt / dnf, distro-bound).** Exactly one is active for
+a given host, decided by the distro family (`DistroProbe::Family`). Adapting to a new
+distribution takes three steps, with no changes to UI / monitor:
 
 1. Subclass `PackageBackend` and implement the backend-specific virtuals
    (`fetchUpgradable`, `simulateInstall`, `listResidualPackages`, `cacheDirectories`,
@@ -136,42 +144,65 @@ Adapting to a new distribution takes three steps, with no changes to UI / monito
    escalate for your backend.
    **Also override the health-check probes** (`checkRebootRequired`,
    `checkServicesNeedingRestart`, `checkConfigFilesToReview`, `checkFailedUnits`) — return
-   `false` for `support` when a probe does not apply to your package manager (e.g. a
-   sandbox-app backend like Linyaps has no kernel/service/unit concept), but never silently
-   leave them as a no-op "unsupported" without reason. Remember container-awareness:
+   `false` for `support` when a probe does not apply, but never silently leave them as a
+   no-op "unsupported" without reason. Remember container-awareness:
    skip reboot / service / failed-unit probes when `SystemInfo::isContainer()` is true.
-2. Append a `{id, ctor}` entry to `BackendFactory::registry()` to set the detection priority.
+2. Append a `{id, ctor}` entry to `BackendFactory::registry()`.
 3. Add the new implementation files to `src/core/package/CMakeLists.txt`, and register the
    `id` in `PresetConfig::knownBackendIds()` for config validation.
    If the dependency-resolution output format differs from APT, branch in
    `DependencyResolver` by `backendId()` (the base implementation already handles APT
    and DNF; backends without structured transaction output fall back to target-only).
 
-See `src/core/package/dnfbackend.cpp` (Fedora/RHEL family) and
-`src/core/package/linyapsbackend.cpp` (linglong sandbox-app family) for examples.
+**B. Sandbox-app backends (Linyaps / Snap / Flatpak, cross-distro).** These are
+**orthogonal to the system package manager**: they are not tied to a distro, each runs
+its own daemon + runtime, and a single host may have **none, one, or several** of them
+installed at the same time. They must be probed **independently and unconditionally** —
+never gated by `DistroProbe::Family`, and never assumed to be "present and unique" the
+way a system backend is. Follow the same three steps as above, plus the sandbox rules in
+the next section.
 
-### Cross-distribution backends (e.g. Linyaps / 玲珑)
+See `src/core/package/dnfbackend.cpp` (Fedora/RHEL family, system backend) and
+`src/core/package/linyapsbackend.cpp` / `snapbackend.cpp` / `flatpakbackend.cpp`
+(sandbox-app family) for examples.
 
-Some backends are **not tied to a single distribution** and must be probed
-independently of the distro family. Linyaps (ll-cli) is a cross-distro sandbox-app
-manager: it is available on deepin, Fedora, Ubuntu, Arch, and more whenever the
-`linglong` runtime is installed. Therefore:
+### Sandbox-app backends (Linyaps / Snap / Flatpak, cross-distro)
 
-- `LinyapsBackend` must **never** be gated by `DistroProbe::Family`. Its
-  `isAvailable()` only checks whether `ll-cli` exists and the runtime is healthy.
-- `BackendFactory` probes Linyaps **separately and unconditionally** (via
-  `createBackends()` / `availableBackendIds()`), in addition to the
-  distro-specific system backend. On a Debian/Fedora host both `apt`/`dnf` and
-  `linyaps` can be returned together — they are orthogonal (system packages vs.
-  sandbox apps).
+Sandbox-app managers are **not tied to a single distribution** and must be probed
+independently of the distro family. Linyaps (ll-cli) is available on deepin, Fedora,
+Ubuntu, Arch, and more whenever the `linglong` runtime is installed; Snap (snapd) and
+Flatpak (flatpak + at least one remote) follow the same pattern. They are **orthogonal**
+to the system package manager (system packages vs. sandbox apps), and crucially a host
+can have **zero, one, or multiple** of them at once — this is the key difference from a
+system backend, which a given distro has exactly one of. Therefore:
+
+- A sandbox backend must **never** be gated by `DistroProbe::Family`. Its
+  `isAvailable()` only checks whether the CLI exists and the runtime is healthy
+  (e.g. flatpak requires `flatpak remotes` to report at least one remote; snap requires
+  a passing `snap list --unicode=never` smoke test). Missing commands / broken runtime
+  must return `false`, never a "command exists ⇒ available" false positive.
+- `BackendFactory::attachSandboxBackends` probes **every** sandbox id
+  (`sandboxIds()` = `linyaps`, `snap`, `flatpak`) and attaches only those whose
+  `isAvailable()` is true. A false result drops the backend **silently without error and
+  without falling back** to any "default" sandbox backend. The UI / monitor must make no
+  assumption about how many sandbox backends exist (0 / 1 / N are all valid): the
+  upgradable list, update confirmation, and post-check report are generated dynamically
+  from the set that is actually available, routed by `backendId`, and **never hard-code
+  `linyaps`** or assume snap/flatpak are present.
+- All four health-check probes (`checkRebootRequired` / `checkServicesNeedingRestart` /
+  `checkConfigFilesToReview` / `checkFailedUnits`) return `support=false` for sandbox
+  backends — they do not touch the kernel / system services / systemd units.
+- `privilegedPrefix()` returns **empty** for sandbox backends: snapd / flatpak escalate
+  through their own polkit policy, not `pkexec`.
 - When `isAvailable()` returns `false` for a reason other than "not installed"
-  (e.g. `ll-cli` exists but the runtime is broken / permission denied), the
-  backend must populate `availabilityError()` with a concrete, actionable
-  message. The UI and tray surface this through `UpdateMonitor::backendUnavailable`
-  so the user knows **how to fix it** rather than just "backend unavailable".
-- New cross-distro backends follow the same rule: register them in
-  `BackendFactory::registry()` but make sure they are probed by
-  `createBackends()` rather than hidden behind a single-family `orderedEntries()`.
+  (e.g. the CLI exists but the runtime is broken / daemon down / permission denied), the
+  backend must populate `availabilityError()` with a concrete, actionable message. The UI
+  and both trays surface this through `UpdateMonitor::backendUnavailable` (now a generic
+  per-`backendId` prompt, not linyaps-specific) so the user knows **how to fix it** rather
+  than just "backend unavailable".
+- New sandbox backends follow the same rule: register them in
+  `BackendFactory::registry()` **and** append the id to `BackendFactory::sandboxIds()` so
+  `attachSandboxBackends` picks them up automatically — no front-end call-site changes.
 
 ## Build
 
