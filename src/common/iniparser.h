@@ -46,7 +46,6 @@ namespace DtkUpdate
         const QMap<QString, SectionMap>& sections() const { return m_sections; }
 
       private:
-        static QString sectionKey(const QString& section, const QString& key);
         static QString stripComment(const QString& line);
         static QString stripQuotes(const QString& v);
 

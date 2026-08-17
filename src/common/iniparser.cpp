@@ -8,11 +8,6 @@
 namespace DtkUpdate
 {
 
-    QString IniParser::sectionKey(const QString& section, const QString& key)
-    {
-        return section.toLower() + QLatin1Char('.') + key.toLower();
-    }
-
     QString IniParser::stripComment(const QString& line)
     {
         // 不在引号内剥离 # / ; 注释
@@ -161,8 +156,13 @@ namespace DtkUpdate
                         return it.value();
             }
         }
-        const QString g = globalValue(key, QString());
-        return g.isEmpty() ? def : g;
+        // 全局段命中判定同样遵循"空值是合法覆盖"语义：用 globals() 大小写不敏感
+        // 遍历，命中（即使值为空字符串）即返回真实值，不回退到默认。
+        const QString k = key.toLower();
+        for (auto it = m_globals.constBegin(); it != m_globals.constEnd(); ++it)
+            if (it.key().toLower() == k)
+                return it.value();
+        return def;
     }
 
 } // namespace DtkUpdate
