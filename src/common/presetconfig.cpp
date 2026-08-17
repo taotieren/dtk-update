@@ -56,7 +56,8 @@ namespace DtkUpdate
         }
         else
         {
-            // 未知后端给出保守默认
+            // 沙箱式应用商店（linyaps/snap/flatpak）及未列入预设的后端：给出保守默认。
+            // 注意 linyaps/snap/flatpak 已登记于 knownBackendIds()，此处不应误称"未知后端"。
             opts["NoInstallRecommends"] = false;
             opts["AutoRemoveOrphans"] = false;
             opts["AutoCleanCache"] = false;
