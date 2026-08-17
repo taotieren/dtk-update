@@ -64,10 +64,17 @@ class MonitorFakeBackend : public PackageBackend
         emit operationFinished(true, QStringLiteral("ok"));
         return true;
     }
+    bool upgrade(const QStringList& packages, QString&) override
+    {
+        m_installed = packages;
+        emit operationFinished(true, QStringLiteral("ok"));
+        return true;
+    }
     bool remove(const QStringList&, QString&) override { return true; }
     bool purge(const QStringList&, QString&) override { return true; }
     bool autoremove(QString&) override { return true; }
     bool cleanCache(QString&) override { return true; }
+    QStringList privilegedPrefix() const override { return {}; }
 
     PackageList m_upgradable;
     bool m_fetchOk = true;
@@ -241,10 +248,17 @@ class MonitorFakeLinyaps : public PackageBackend
         emit operationFinished(true, QStringLiteral("ok"));
         return true;
     }
+    bool upgrade(const QStringList& packages, QString&) override
+    {
+        m_installed = packages;
+        emit operationFinished(true, QStringLiteral("ok"));
+        return true;
+    }
     bool remove(const QStringList&, QString&) override { return true; }
     bool purge(const QStringList&, QString&) override { return true; }
     bool autoremove(QString&) override { return true; }
     bool cleanCache(QString&) override { return true; }
+    QStringList privilegedPrefix() const override { return {}; }
 
     PackageList m_upgradable;
     QStringList m_installed;

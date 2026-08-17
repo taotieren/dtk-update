@@ -264,14 +264,15 @@ namespace DtkUpdate
             if (!isSb)
                 sysPkgs.append(p.name);
         }
-        // install 为异步后台执行，成功后经 operationFinished 信号回传 onBackendFinished。
-        // 此处不再阻塞主线程，故无需同步兜底。
+        // upgrade 为异步后台执行，成功后经 operationFinished 信号回传 onBackendFinished。
+        // 此处不再阻塞主线程，故无需同步兜底。系统后端 upgrade 回落 Install 语义，
+        // 沙箱后端（snap/flatpak/linyaps）各自覆盖为 refresh/update/upgrade。
         QString error;
         m_pendingOps = 0;
         if (m_backend && !sysPkgs.isEmpty())
         {
             ++m_pendingOps;
-            m_backend->install(sysPkgs, error);
+            m_backend->upgrade(sysPkgs, error);
         }
         for (const auto& sb : m_sandboxBackends)
         {
@@ -281,7 +282,7 @@ namespace DtkUpdate
             if (sbPkgs.contains(id) && !sbPkgs.value(id).isEmpty())
             {
                 ++m_pendingOps;
-                sb->install(sbPkgs.value(id), error);
+                sb->upgrade(sbPkgs.value(id), error);
             }
         }
         // 若本次没有可安装包（理论上不会发生，因 m_upgradable 非空才进入），

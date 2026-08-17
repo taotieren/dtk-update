@@ -181,14 +181,24 @@ namespace DtkUpdate
             }));
     }
 
-    QStringList PackageBackend::operationArgs(Op, const QStringList&, QString&)
+    QStringList PackageBackend::operationArgs(Op op, const QStringList& packages, QString& error)
     {
-        return {}; // 默认不支持任何写操作
+        // 未覆盖 Upgrade 的子系统后端（apt/dnf/pacman/zypper）install 含 upgrade 语义，
+        // 回落到子类实现的 Install 分支；沙箱后端（snap/flatpak/linyaps）应在各自
+        // operationArgs 的 switch 中显式覆盖 Op::Upgrade 为 refresh/update/upgrade。
+        if (op == Op::Upgrade)
+            return operationArgs(Op::Install, packages, error);
+        return {}; // 默认不支持其它写操作
     }
 
     bool PackageBackend::install(const QStringList& packages, QString& error)
     {
         return runWriteOperation(Op::Install, packages, error);
+    }
+
+    bool PackageBackend::upgrade(const QStringList& packages, QString& error)
+    {
+        return runWriteOperation(Op::Upgrade, packages, error);
     }
 
     bool PackageBackend::remove(const QStringList& packages, QString& error)
@@ -219,6 +229,7 @@ namespace DtkUpdate
         // 进度文案按操作语义映射（与历史行为一致）
         static const QHash<Op, QString> stage = {
             {Op::Install, tr("Installing")},
+            {Op::Upgrade, tr("Upgrading")},
             {Op::Remove, tr("Removing")},
             {Op::Purge, tr("Purging")},
             {Op::Autoremove, tr("Removing orphans")},

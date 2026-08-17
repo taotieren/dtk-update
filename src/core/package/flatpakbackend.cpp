@@ -184,6 +184,13 @@ namespace DtkUpdate
             args.append(packages);
             return args;
         }
+        case Op::Upgrade:
+        {
+            // flatpak 升级用 update，无需指定远端（install 对已装 ref 报 already installed）
+            QStringList args{QStringLiteral("update"), QStringLiteral("-y")};
+            args.append(packages);
+            return args;
+        }
         case Op::Remove:
         case Op::Purge: // flatpak 无独立 purge，remove 即卸载
         {

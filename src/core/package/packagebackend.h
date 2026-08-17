@@ -40,6 +40,8 @@ namespace DtkUpdate
     enum class Op
     {
         Install,    ///< 安装并保留配置
+        Upgrade,    ///< 升级已装包（系统后端 install 含 upgrade 语义；沙箱后端须覆盖为
+                    ///< refresh/update）
         Remove,     ///< 移除但保留配置
         Purge,      ///< 移除并删除配置
         Autoremove, ///< 清理孤儿依赖
@@ -202,6 +204,7 @@ namespace DtkUpdate
         // 不再各自重复 install/remove/... 的异步骨架（模板方法模式）。
         // linyaps 因沙箱同步语义不同，仍按需覆盖。
         virtual bool install(const QStringList& packages, QString& error);
+        virtual bool upgrade(const QStringList& packages, QString& error);
         virtual bool remove(const QStringList& packages, QString& error); // 保留配置
         virtual bool purge(const QStringList& packages, QString& error);  // 删除配置
         virtual bool autoremove(QString& error);                          // 移除孤儿依赖
@@ -283,12 +286,9 @@ namespace DtkUpdate
         /**
          * @brief 各后端应返回的提权命令前缀（含 pkexec 与本机包管理器）。
          *        例如 APT 返回 {"pkexec","apt-get"}，DNF 返回 {"pkexec","dnf"}。
-         *        默认回退为 {"pkexec","sudo"}，具体后端必须覆盖。
+         *        纯虚强制子类实现，避免新增后端忘记覆盖时静默回落到 sudo 的隐患。
          */
-        virtual QStringList privilegedPrefix() const
-        {
-            return {QStringLiteral("pkexec"), QStringLiteral("sudo")};
-        }
+        virtual QStringList privilegedPrefix() const = 0;
 
         /**
          * @brief 扫描待审阅配置文件的公共实现（被 apt/dnf 的后处理探针共用）。

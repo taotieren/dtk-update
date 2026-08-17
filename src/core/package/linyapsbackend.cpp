@@ -203,6 +203,13 @@ namespace DtkUpdate
             args.append(packages);
             return args;
         }
+        case Op::Upgrade:
+        {
+            // 玲珑升级用 upgrade（install 对已装应用报已安装，不会升级到新版本）
+            QStringList args{QStringLiteral("upgrade")};
+            args.append(packages);
+            return args;
+        }
         case Op::Remove:
         case Op::Purge:
             // 玲珑无 purge 概念，uninstall 即彻底移除沙箱应用。
