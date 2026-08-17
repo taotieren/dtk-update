@@ -169,7 +169,13 @@ namespace DtkUpdate
             if (sb->isAvailable())
             {
                 if (sb->fetchUpgradable(apps, err))
+                {
+                    // 聚合期兜底：强制标记来源 backendId，避免某沙箱后端
+                    // fetchUpgradable 漏填 backendId 导致 proceedUpdate 误路由进系统后端。
+                    for (PackageInfo& p : apps)
+                        p.backendId = sb->backendId();
                     list.append(apps);
+                }
                 else
                     emit backendUnavailable(sb->backendId(), err);
             }
