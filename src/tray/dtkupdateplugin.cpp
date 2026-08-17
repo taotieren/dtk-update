@@ -160,7 +160,7 @@ namespace DtkUpdate
                              QStringLiteral("-p"), QStringLiteral("update")};
             QProcess::startDetached(QStringLiteral("dde-am"), args);
         }
-        // "about" 暂由系统处理，可后续扩展
+        // "about" 由 dde-dock 框架统一拦截并弹出系统关于页，本插件无需单独处理。
     }
 
     QWidget* DtkUpdatePlugin::itemPopupApplet(const QString& itemKey)

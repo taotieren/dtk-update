@@ -136,7 +136,28 @@ namespace DtkUpdate
 
     bool FlatpakBackend::simulateInstall(const QString& pkg, QString& resolution, QString& error)
     {
-        // flatpak 无原生 dry-run；remote-info 可验证 ref 存在即可用，作为可行性兜底。
+        // flatpak 无原生 dry-run；用 remote-info 验证 ref 存在作为可行性兜底。
+        // 不能写死 flathub：应用可能位于任意已配置远端（fedora/gnome-nightly/verified 等），
+        // 写死会导致非 flathub 远端的应用 remote-info 失败、依赖解析整体 false。
+        // 先列出所有远端，逐个尝试 remote-info；任一成功即视为可用。
+        QString remotesOut;
+        QString remotesErr;
+        if (runQuery({QStringLiteral("flatpak"), QStringLiteral("remotes"),
+                      QStringLiteral("--columns=name")},
+                     remotesOut, remotesErr))
+        {
+            const QStringList remotes = remotesOut.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+            for (const QString& remote : remotes)
+            {
+                const QString r = remote.trimmed();
+                if (r.isEmpty())
+                    continue;
+                if (runQuery({QStringLiteral("flatpak"), QStringLiteral("remote-info"), r, pkg},
+                             resolution, error))
+                    return true;
+            }
+        }
+        // 无可用远端或列远端失败时，最后尝试 flathub（兜底常见默认远端）。
         return runQuery({QStringLiteral("flatpak"), QStringLiteral("remote-info"),
                          QStringLiteral("flathub"), pkg},
                         resolution, error);

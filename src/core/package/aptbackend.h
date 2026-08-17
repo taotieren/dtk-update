@@ -34,6 +34,12 @@ namespace DtkUpdate
         bool supportsResidualConfig() const override { return true; }
         QVariantMap backendOptions() const override;
 
+      protected:
+        QStringList privilegedPrefix() const override
+        {
+            return {QStringLiteral("pkexec"), QStringLiteral("apt-get")};
+        }
+
         bool fetchUpgradable(PackageList& out, QString& error) override;
         bool listInstalled(PackageList& out, const QString& filter, QString& error) override;
         bool simulateInstall(const QString& pkg, QString& resolution, QString& error) override;

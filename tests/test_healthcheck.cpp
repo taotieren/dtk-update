@@ -62,15 +62,15 @@ TEST(HealthCheckTest, PreCheckAggregatesFromAptBackend)
 {
     AptBackend be;
     PreCheckReport r = PreUpdateCheck::run(&be);
-    // 不崩溃且返回结构有效（本机 apt 探测结果可能为空，但聚合逻辑稳定）
-    EXPECT_TRUE(r.rebootRequired || !r.rebootRequired); // 恒真，仅验证无异常
+    // 聚合逻辑稳定：未执行实际操作，报告默认不应含任何需确认项（仅验证聚合不崩溃且结构有效）。
+    EXPECT_FALSE(r.hasAnything());
 }
 
 TEST(HealthCheckTest, PostCheckAggregatesFromAptBackend)
 {
     AptBackend be;
     PostCheckReport r = PostUpdateCheck::run(&be);
-    EXPECT_TRUE(r.rebootRequired || !r.rebootRequired);
+    EXPECT_FALSE(r.hasAnything());
 }
 
 // 新增：失败的 systemd units 探针——本机无 systemd 时应安全返回 support=false。

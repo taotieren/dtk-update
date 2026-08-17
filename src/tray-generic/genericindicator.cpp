@@ -67,10 +67,10 @@ namespace DtkUpdate
     {
         const QString name =
             hasUpdates ? QStringLiteral("dtk-update-update") : QStringLiteral("dtk-update");
-        // 主题图标不存在时回退到内置资源，避免空图标
+        // 主题图标不存在时回退到内置资源（resources.qrc 的 /icons 前缀），避免空图标
         QIcon icon = QIcon::fromTheme(name);
         if (icon.isNull())
-            icon = QIcon(QStringLiteral(":/resources/%1.svg").arg(name));
+            icon = QIcon(QStringLiteral(":/icons/%1.svg").arg(name));
         if (m_tray)
         {
             if (icon.isNull())

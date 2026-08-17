@@ -8,6 +8,10 @@
 
 int main(int argc, char* argv[])
 {
+    // 资源初始化：本可执行文件直接编译了 resources.qrc，须在全局命名空间显式初始化，
+    // 否则 QSystemTrayIcon 的回退图标（:/icons/*.svg）在运行时取不到。
+    Q_INIT_RESOURCE(resources);
+
     QApplication app(argc, argv);
     app.setQuitOnLastWindowClosed(false);
     DtkUpdate::loadTranslator(QStringLiteral("dtk-update"));
