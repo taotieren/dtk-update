@@ -13,11 +13,9 @@ using namespace DtkUpdate;
 
 // gtest 主函数不含 Qt 事件循环；QFutureWatcher 的跨线程 finished 信号需要
 // QCoreApplication 实例才能分发。
-// 关键：QCoreApplication 必须是「进程级全局」而非函数内 static 局部。函数内 static
-// 会在首次调用时才构造，进程退出时按「后构造先析构」被提前销毁，而此时 Qt 自身的
-// 全局静态对象（日志类别、事件派发器等）仍在，析构顺序错位会在 teardown 阶段触发
-// use-after-free 段错误（CI 容器以 root 运行、无 XDG_RUNTIME_DIR 时必现，本地桌面
-// 偶发）。改为命名空间级全局，在程序加载期即构造、进程退出时最后析构，彻底规避。
+// 必须是一个「进程级全局」的 QCoreApplication：在程序加载期即构造、进程退出时最后析构，
+// 而非函数内 static 局部（首次测试调用才构造，退出时按「后构造先析构」被提前销毁，
+// Qt 自身全局静态仍在，析构顺序错位会触发 teardown use-after-free 段错误）。
 static int g_argc = 1;
 static char g_arg0[] = "test-runprivasync";
 static char* g_argv[] = {g_arg0, nullptr};

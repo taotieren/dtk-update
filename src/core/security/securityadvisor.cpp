@@ -189,10 +189,13 @@ namespace DtkUpdate
         }
 
         // 异步 GET（带超时）：完成/超时后 safeDelete，回调通过 functor 投递
-        void asyncGet(const QString& url, int timeoutMs,
+        // owner 必须传入 SecurityAdvisor 自身：nam/timer/reply 全部挂到 owner 下，
+        // 一旦 SecurityAdvisor 先于异步完成被析构，整条异步链随父对象一起销毁，
+        // 杜绝「对象已亡、定时器却在进程退出时才触发 [this] 回调」的 use-after-free 段错误。
+        void asyncGet(QObject* owner, const QString& url, int timeoutMs,
                       std::function<void(const QByteArray&, bool ok)> onDone)
         {
-            auto* nam = new QNetworkAccessManager;
+            auto* nam = new QNetworkAccessManager(owner);
             QNetworkRequest req{QUrl(url)};
             req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                              QNetworkRequest::NoLessSafeRedirectPolicy);
@@ -299,7 +302,7 @@ namespace DtkUpdate
             emit upstreamAdvisoriesReady(m_upstreamCache);
             return;
         }
-        asyncGet(feedUrl, kUpstreamTimeoutMs,
+        asyncGet(this, feedUrl, kUpstreamTimeoutMs,
                  [this, packages](const QByteArray& data, bool ok)
                  {
                      if (ok)
@@ -318,7 +321,7 @@ namespace DtkUpdate
         }
         const QString source = DistroProbe::familyName(DistroProbe::detectFamily());
         asyncGet(
-            feedUrl, kUpstreamTimeoutMs, [this, source](const QByteArray& data, bool ok)
+            this, feedUrl, kUpstreamTimeoutMs, [this, source](const QByteArray& data, bool ok)
             { emit distroNoticesReady(ok ? parseNoticeFeed(data, source) : QList<Notice>()); });
     }
 

@@ -241,17 +241,20 @@ DConfig appId 为 `org.deepin.dtk-update`。
   并在当日工作记忆与提交说明里记录，避免再犯这类问题。clang-format 门禁对全量 `src/tests`
   文件生效——哪怕只改了一行注释，只要该文件进入 diff 就要过 `--dry-run --Werror`，
   故提交前对所有改动文件跑 `clang-format -i` 是硬前提。
-- **测试 teardown 段错误（CI 容器必现，本地偶发）**：`tests/test_runprivasync.cpp` 的
-  `ensureApp()` 原把 `QCoreApplication` 写成**函数内 static 局部**，首次测试调用时才构造，
-  进程退出按「后构造先析构」被提前销毁；此时 Qt 自身全局静态（日志类别、事件派发器）仍在，
-  析构顺序错位 → teardown 阶段 `use-after-free` 段错误，**所有 74 个用例全 OK 却 ctest 报
-  `***Exception: SegFault`**。`gh run view` 表现为 `0% tests passed, 1 tests failed out of 1`
-  且 `test-core` 标注 `SegFault`。根因：Qt 应用对象必须是**进程级全局**而非局部 static。
-  修复（见提交 `fix(test)`）：改为命名空间级全局 `static QCoreApplication g_app(g_argc, g_argv)`，
-  程序加载期即构造、退出时最后析构，彻底规避。复发判定：CI `unit-test` 仍 `SegFault` 或本地
-  `ctest` 偶发崩溃 → 先怀疑是否又把 `QCoreApplication` 退回函数内 static / 新增了依赖 Qt
-  事件循环的全局静态且早于 app 析构。验证：本地 `ctest` 全绿后，必须 `gh run view <id> --log`
-  确认 CI 两架构 `unit-test` 均 `success` 才算闭环。
+- **异步网络悬挂导致退出段错误（CI 容器必现，本地偶发）**：根因在
+  `src/core/security/securityadvisor.cpp` 的 `asyncGet()`——它 `new QNetworkAccessManager`
+  **不带父对象**，定时器/reply 挂在 `nam` 下；其 `finished` 回调用 `[this]` 捕获
+  `SecurityAdvisor`。当 `SecurityAdvisor` 在被测函数中是**栈对象**、且 CI 容器（root、无外网）
+  下网络请求迟迟不返回时，对象已析构、异步链却拖到**进程退出**才触发 `[this]` 回调 →
+  use-after-free 段错误。表象：**全部 74 个用例全 OK，ctest 却报 `***Exception: SegFault`**
+  （`gh run view` 见 `0% tests passed, 1 tests failed out of 1`）。修复（提交 `fix(security)`）：
+  `asyncGet()` 增 `owner` 参数并把 `nam` 挂到 `owner`（`this`）；`SecurityAdvisor` 析构时整条
+  异步链随父对象一起销毁，悬挂回调永不触发。配套：`tests/test_runprivasync.cpp` 的
+  `ensureApp()` 须是**进程级全局** `QCoreApplication`（非函数内 static 局部，否则退出时 Qt
+  全局静态析构顺序错位也会崩），仅此一项不足以修复本问题，真正根因是上面的父对象悬挂。
+  复发判定：CI `unit-test` 仍 `SegFault` 或本地 `ctest` 偶崩 → 先查是否有「无父 `QObject` +
+  捕获 `[this]` 的异步 lambda」（网络/定时器/D-Bus），务必给异步对象挂父对象。验证：本地
+  `ctest` 全绿后必须 `gh run view <id> --log` 确认 CI 两架构 `unit-test` 均 `success` 才算闭环。
 - **CI 脚本清单（防漂移）**：`ci/` 下**仅保留 `package-deb.sh`**——由 `build.yml` 在
   deepin beige chroot 内调用，执行 `dpkg-buildpackage` 产 `.deb`。**已删除
   `ci/multiarch-build.sh`**（旧 ubuntu:devel 交叉编译方案遗留，CI 不再调用）。
