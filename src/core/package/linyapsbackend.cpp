@@ -22,10 +22,10 @@ namespace DtkUpdate
         if (!commandExists(QStringLiteral("ll-cli")))
         {
             // ll-cli 未安装：给出明确的安装/获取指引，而不是笼统"不可用"。
-            m_availabilityError = QStringLiteral(
-                "未找到 ll-cli 命令。玲珑(linglong)运行环境未安装；"
-                "请按你的发行版安装 linglong 运行时（如 deepin/fedora 的 linglong 包、"
-                "或参考 https://linglong.dev 的跨发行版安装指南）。");
+            m_availabilityError =
+                tr("未找到 ll-cli 命令。玲珑(linglong)运行环境未安装；"
+                   "请按你的发行版安装 linglong 运行时（如 deepin/fedora 的 linglong 包、"
+                   "或参考 https://linglong.dev 的跨发行版安装指南）。");
             return false;
         }
         // 轻量冒烟：能真正执行 `ll-cli list` 才视为可用。
@@ -34,10 +34,8 @@ namespace DtkUpdate
         if (!runQuery(QStringList{QStringLiteral("ll-cli"), QStringLiteral("list")}, out, err))
         {
             m_availabilityError =
-                QStringLiteral(
-                    "ll-cli 命令存在，但执行 `ll-cli list` 失败，玲珑运行环境可能异常：") +
-                (err.isEmpty() ? QStringLiteral("（无错误输出，可能是权限不足或运行时未初始化）")
-                               : err);
+                tr("ll-cli 命令存在，但执行 `ll-cli list` 失败，玲珑运行环境可能异常：") +
+                (err.isEmpty() ? tr("（无错误输出，可能是权限不足或运行时未初始化）") : err);
             return false;
         }
         return true;
@@ -129,15 +127,15 @@ namespace DtkUpdate
         if (!runQuery(QStringList{QStringLiteral("ll-cli"), QStringLiteral("search"), pkg}, raw,
                       error))
         {
-            resolution = QStringLiteral("无法查询 %1（ll-cli search 失败）").arg(pkg);
+            resolution = tr("无法查询 %1（ll-cli search 失败）").arg(pkg);
             return false;
         }
         if (raw.trimmed().isEmpty())
         {
-            resolution = QStringLiteral("未找到可安装的应用：%1").arg(pkg);
+            resolution = tr("未找到可安装的应用：%1").arg(pkg);
             return false;
         }
-        resolution = QStringLiteral("%1 可经 ll-cli 安装").arg(pkg);
+        resolution = tr("%1 可经 ll-cli 安装").arg(pkg);
         return true;
     }
 

@@ -267,15 +267,22 @@ namespace DtkUpdate
         // install 为异步后台执行，成功后经 operationFinished 信号回传 onBackendFinished。
         // 此处不再阻塞主线程，故无需同步兜底。
         QString error;
+        m_pendingOps = 0;
         if (m_backend && !sysPkgs.isEmpty())
+        {
+            ++m_pendingOps;
             m_backend->install(sysPkgs, error);
+        }
         for (const auto& sb : m_sandboxBackends)
         {
             if (!sb)
                 continue;
             const QString id = sb->backendId();
             if (sbPkgs.contains(id) && !sbPkgs.value(id).isEmpty())
+            {
+                ++m_pendingOps;
                 sb->install(sbPkgs.value(id), error);
+            }
         }
         // 若本次没有可安装包（理论上不会发生，因 m_upgradable 非空才进入），
         // 主动结束更新态避免卡在 Updating。
@@ -348,6 +355,13 @@ namespace DtkUpdate
             qCInfo(dtkUpdateCore) << "ignoring backend result after user cancelled";
             return;
         }
+        // 多后端并存时每个后端独立 emit 一次；仅当本轮所有异步写都完成才统一收尾，
+        // 否则提前 emit 会导致重复 upgradeFinished / 重复解锁 / 重复后检。
+        if (m_pendingOps > 0)
+            --m_pendingOps;
+        if (m_pendingOps > 0)
+            return;
+
         if (success)
         {
             m_upgradable.clear();

@@ -37,6 +37,13 @@ namespace DtkUpdate
 
       protected:
         QStringList operationArgs(Op op, const QStringList& packages, QString& error) override;
+
+        // 沙箱后端：命令名由 prefix 提供，flatpak 自身处理 polkit，不套 pkexec。
+        QStringList privilegedPrefix() const override;
+        bool checkRebootRequired(bool& required, QString& error) override;
+        bool checkServicesNeedingRestart(QStringList& services, QString& error) override;
+        bool checkConfigFilesToReview(QStringList& paths, QString& error) override;
+        bool checkFailedUnits(QStringList& units, QString& error) override;
     };
 
 } // namespace DtkUpdate

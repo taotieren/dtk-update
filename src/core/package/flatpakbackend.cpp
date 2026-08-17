@@ -12,6 +12,41 @@ namespace DtkUpdate
 
     FlatpakBackend::FlatpakBackend(QObject* parent) : PackageBackend(parent) {}
 
+    QStringList FlatpakBackend::privilegedPrefix() const
+    {
+        // flatpak 写操作命令名由 prefix 提供（operationArgs 只给子命令）；
+        // flatpak 自身处理 polkit，不套 pkexec，故 prefix 仅含 flatpak 命令名。
+        return {QStringLiteral("flatpak")};
+    }
+
+    bool FlatpakBackend::checkRebootRequired(bool& required, QString& error)
+    {
+        Q_UNUSED(error)
+        required = false;
+        return false; // support=false：沙箱应用不触内核，无需重启
+    }
+
+    bool FlatpakBackend::checkServicesNeedingRestart(QStringList& services, QString& error)
+    {
+        Q_UNUSED(error)
+        services.clear();
+        return false; // support=false：与系统服务无关
+    }
+
+    bool FlatpakBackend::checkConfigFilesToReview(QStringList& paths, QString& error)
+    {
+        Q_UNUSED(error)
+        paths.clear();
+        return false; // support=false：沙箱无系统级配置文件残留
+    }
+
+    bool FlatpakBackend::checkFailedUnits(QStringList& units, QString& error)
+    {
+        Q_UNUSED(error)
+        units.clear();
+        return false; // support=false：与系统服务无关
+    }
+
     bool FlatpakBackend::isAvailable() const
     {
         // flatpak 命令存在还不够：纯净最小化系统可能装了 flatpak 但没有任何远端，

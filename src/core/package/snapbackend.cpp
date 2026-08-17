@@ -11,6 +11,41 @@ namespace DtkUpdate
 
     SnapBackend::SnapBackend(QObject* parent) : PackageBackend(parent) {}
 
+    QStringList SnapBackend::privilegedPrefix() const
+    {
+        // snap 写操作命令名由 prefix 提供（operationArgs 只给子命令）；
+        // snapd 自身经 polkit 策略提权，不套 pkexec，故 prefix 仅含 snap 命令名。
+        return {QStringLiteral("snap")};
+    }
+
+    bool SnapBackend::checkRebootRequired(bool& required, QString& error)
+    {
+        Q_UNUSED(error)
+        required = false;
+        return false; // support=false：沙箱应用不触内核，无需重启
+    }
+
+    bool SnapBackend::checkServicesNeedingRestart(QStringList& services, QString& error)
+    {
+        Q_UNUSED(error)
+        services.clear();
+        return false; // support=false：与系统服务无关
+    }
+
+    bool SnapBackend::checkConfigFilesToReview(QStringList& paths, QString& error)
+    {
+        Q_UNUSED(error)
+        paths.clear();
+        return false; // support=false：沙箱无系统级配置文件残留
+    }
+
+    bool SnapBackend::checkFailedUnits(QStringList& units, QString& error)
+    {
+        Q_UNUSED(error)
+        units.clear();
+        return false; // support=false：与系统服务无关
+    }
+
     bool SnapBackend::isAvailable() const
     {
         // 沙箱应用商店：不仅要求 snap 命令存在，还要 snapd 守护真正可用。

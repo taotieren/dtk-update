@@ -73,6 +73,39 @@
     </message>
 </context>
 <context>
+    <name>DtkUpdate::LinyapsBackend</name>
+    <message>
+        <location filename="../src/core/package/linyapsbackend.cpp" line="25"/>
+        <source>未找到 ll-cli 命令。玲珑(linglong)运行环境未安装；请按你的发行版安装 linglong 运行时（如 deepin/fedora 的 linglong 包、或参考 https://linglong.dev 的跨发行版安装指南）。</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/core/package/linyapsbackend.cpp" line="37"/>
+        <source>ll-cli 命令存在，但执行 `ll-cli list` 失败，玲珑运行环境可能异常：</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/core/package/linyapsbackend.cpp" line="38"/>
+        <source>（无错误输出，可能是权限不足或运行时未初始化）</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/core/package/linyapsbackend.cpp" line="131"/>
+        <source>无法查询 %1（ll-cli search 失败）</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/core/package/linyapsbackend.cpp" line="136"/>
+        <source>未找到可安装的应用：%1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/core/package/linyapsbackend.cpp" line="139"/>
+        <source>%1 可经 ll-cli 安装</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>DtkUpdate::MainWindow</name>
     <message>
         <location filename="../src/ui/mainwindow.cpp" line="68"/>
@@ -368,81 +401,81 @@
         <translation>L'environnement d'exécution de %1 est anormal ; les mises à jour d'applications en sandbox via ce backend sont indisponibles. Vérifiez l'installation et l'environnement du backend.</translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="41"/>
-        <location filename="../src/indicator/updatedialogs.cpp" line="109"/>
-        <location filename="../src/indicator/updatedialogs.cpp" line="136"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="42"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="110"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="137"/>
         <source>OK</source>
         <translation>OK</translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="50"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="51"/>
         <source>Security advisory before update</source>
         <translation>Avis de sécurité avant la mise à jour</translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="54"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="55"/>
         <source>The following packages have security-relevant updates (overall severity: %1). Review the details and decide whether to proceed.</source>
         <translation>Les paquets suivants comportent des mises à jour liées à la sécurité (gravité globale : %1). Consultez les détails et décidez si vous continuez.</translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="68"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="69"/>
         <source>A system reboot will be required after this update.</source>
         <translation>Un redémarrage du système sera nécessaire après cette mise à jour.</translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="70"/>
-        <location filename="../src/indicator/updatedialogs.cpp" line="97"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="71"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="98"/>
         <source>Service needs restart: </source>
         <translation>Service à redémarrer : </translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="72"/>
-        <location filename="../src/indicator/updatedialogs.cpp" line="99"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="73"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="100"/>
         <source>Config file to review: </source>
         <translation>Fichier de configuration à vérifier : </translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="75"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="76"/>
         <source>No changes will be made unless you choose to continue.</source>
         <translation>Aucune modification ne sera effectuée à moins que vous ne choisissiez de continuer.</translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="79"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="80"/>
         <source>Cancel</source>
         <translation>Annuler</translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="80"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="81"/>
         <source>Update Anyway</source>
         <translation>Mettre à jour quand même</translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="90"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="91"/>
         <source>Update completed — attention required</source>
         <translation>Mise à jour terminée — attention requise</translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="94"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="95"/>
         <source>A system reboot is recommended (kernel or base library updated).</source>
         <translation>Un redémarrage du système est recommandé (noyau ou bibliothèque de base mise à jour).</translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="101"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="102"/>
         <source>Failed service unit: </source>
         <translation>Unité de service en échec : </translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="103"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="104"/>
         <source>Residual / orphan package: </source>
         <translation>Paquet résiduel / orphelin : </translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="105"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="106"/>
         <source>Download cache can be cleaned: %1 MB</source>
         <translation>Cache de téléchargement pouvant être nettoyé : %1 Mo</translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="118"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="119"/>
         <source>Recent release notes &amp; notices</source>
         <translation>Notes de version et avis récents</translation>
     </message>

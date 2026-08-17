@@ -47,12 +47,6 @@ namespace DtkUpdate
       protected:
         // 写操作经基类 runWriteOperation 模板执行，本类仅描述"操作→参数"
         QStringList operationArgs(Op op, const QStringList& packages, QString& error) override;
-
-      private:
-        bool runUpdate(bool* cancelled);
-        bool runUpgrade(bool* cancelled);
-        bool runInstall(const QStringList& packages, bool* cancelled);
-        bool runRemove(const QStringList& packages, bool purge, bool* cancelled);
     };
 
 } // namespace DtkUpdate

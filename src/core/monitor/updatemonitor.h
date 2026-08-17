@@ -114,6 +114,10 @@ namespace DtkUpdate
         // 用户已取消升级标志：install 为异步后台执行，cancelUpdate 后子线程仍可能 emit
         // operationFinished，此时必须忽略（不再弹后检/重查），否则会与"已取消"矛盾。
         bool m_cancelled = false;
+        // 本轮升级发起的异步写操作计数：系统后端 + 各可用沙箱后端各计 1。
+        // onBackendFinished 每完成一个减 1，全部完成（=0）才统一收尾并 emit upgradeFinished，
+        // 避免多后端并存时各后端独立 emit 导致重复收尾/重复解锁/重复后检的竞态。
+        int m_pendingOps = 0;
     };
 
 } // namespace DtkUpdate
