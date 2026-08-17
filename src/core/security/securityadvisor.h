@@ -49,6 +49,12 @@ namespace DtkUpdate
             QString source;  // 来源发行系名
         };
 
+        // 跨线程信号（upstreamAdvisoriesReady / distroNoticesReady）携带 QList<自定义结构体>，
+        // 必须注册元类型，否则 queued 连接会在运行时静默失败、QSignalSpy 取 value<>() 为空。
+        // 此处声明，定义在 securityadvisor.cpp 顶部 qRegisterMetaType 完成注册。
+        using AdvisoryList = QList<Advisory>;
+        using NoticeList = QList<Notice>;
+
         // 是否到上游官方源获取公告（默认 false，需用户显式开启）
         void setFetchUpstream(bool on) { m_fetchUpstream = on; }
         bool fetchUpstream() const { return m_fetchUpstream; }
@@ -73,9 +79,9 @@ namespace DtkUpdate
 
       signals:
         // 上游公告预取完成（异步，可能为空列表）
-        void upstreamAdvisoriesReady(const QList<SecurityAdvisor::Advisory>& advs);
+        void upstreamAdvisoriesReady(const AdvisoryList& advs);
         // 发行版最近新闻/通知拉取完成（异步，可能为空列表）
-        void distroNoticesReady(const QList<SecurityAdvisor::Notice>& notices);
+        void distroNoticesReady(const NoticeList& notices);
 
       private:
         // 返回某发行版对应的上游官方安全公告索引 URL（无则空）。URL 均经核实可机读。
