@@ -63,7 +63,8 @@ namespace DtkUpdate
             if (line.startsWith(QStringLiteral("Available")) || line.trimmed().isEmpty())
                 continue;
             PackageInfo info;
-            // 解析 "name.arch  version  repo"
+            // 解析 "name.arch  version"（repo 列当前数据模型未承载，故不提取；
+            // 若未来 PackageInfo 增 repo 成员需在此回填 cols.at(2)）。
             const QStringList cols = line.split(QLatin1Char(' '), Qt::SkipEmptyParts);
             if (cols.size() < 2)
                 continue;
