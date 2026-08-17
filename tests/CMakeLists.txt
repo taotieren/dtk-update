@@ -51,11 +51,12 @@ if(HAVE_GTEST)
         Qt${QT_VERSION_MAJOR}::Core
         Qt${QT_VERSION_MAJOR}::DBus
     )
-    # GTest 链接：优先使用 imported target，否则回退原始库路径
+    # GTest 链接：仅链接 gtest（不链接 gtest_main），由 tests/test_runprivasync.cpp
+    # 提供的自定义 main() 管理 QCoreApplication 生命周期，避免 teardown 段错误。
     if(GTest_FOUND AND TARGET GTest::gtest)
-        target_link_libraries(test-core PRIVATE GTest::gtest GTest::gtest_main)
+        target_link_libraries(test-core PRIVATE GTest::gtest)
     else()
-        target_link_libraries(test-core PRIVATE ${GTEST_LIB} ${GTEST_MAIN_LIB})
+        target_link_libraries(test-core PRIVATE ${GTEST_LIB})
     endif()
     # Qt Test 模块（QSignalSpy）可选：存在则链接
     if(TARGET Qt${QT_VERSION_MAJOR}::Test)

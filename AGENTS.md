@@ -241,20 +241,24 @@ DConfig appId 为 `org.deepin.dtk-update`。
   并在当日工作记忆与提交说明里记录，避免再犯这类问题。clang-format 门禁对全量 `src/tests`
   文件生效——哪怕只改了一行注释，只要该文件进入 diff 就要过 `--dry-run --Werror`，
   故提交前对所有改动文件跑 `clang-format -i` 是硬前提。
-- **异步网络悬挂导致退出段错误（CI 容器必现，本地偶发）**：根因在
-  `src/core/security/securityadvisor.cpp` 的 `asyncGet()`——它 `new QNetworkAccessManager`
-  **不带父对象**，定时器/reply 挂在 `nam` 下；其 `finished` 回调用 `[this]` 捕获
-  `SecurityAdvisor`。当 `SecurityAdvisor` 在被测函数中是**栈对象**、且 CI 容器（root、无外网）
-  下网络请求迟迟不返回时，对象已析构、异步链却拖到**进程退出**才触发 `[this]` 回调 →
-  use-after-free 段错误。表象：**全部 74 个用例全 OK，ctest 却报 `***Exception: SegFault`**
-  （`gh run view` 见 `0% tests passed, 1 tests failed out of 1`）。修复（提交 `fix(security)`）：
-  `asyncGet()` 增 `owner` 参数并把 `nam` 挂到 `owner`（`this`）；`SecurityAdvisor` 析构时整条
-  异步链随父对象一起销毁，悬挂回调永不触发。配套：`tests/test_runprivasync.cpp` 的
-  `ensureApp()` 须是**进程级全局** `QCoreApplication`（非函数内 static 局部，否则退出时 Qt
-  全局静态析构顺序错位也会崩），仅此一项不足以修复本问题，真正根因是上面的父对象悬挂。
-  复发判定：CI `unit-test` 仍 `SegFault` 或本地 `ctest` 偶崩 → 先查是否有「无父 `QObject` +
-  捕获 `[this]` 的异步 lambda」（网络/定时器/D-Bus），务必给异步对象挂父对象。验证：本地
-  `ctest` 全绿后必须 `gh run view <id> --log` 确认 CI 两架构 `unit-test` 均 `success` 才算闭环。
+- **teardown 段错误：QCoreApplication 静态全局析构顺序错位（CI 容器必现，本地偶发）**：
+  表象：**全部 74 个用例全 OK，ctest 却报 `***Exception: SegFault`**（`gh run view` 见
+  `0% tests passed, 1 tests failed out of 1`）。真实根因**不是** SecurityAdvisor 异步链，
+  而是 `QCoreApplication` 曾被写成**静态全局对象**（`static QCoreApplication g_app`），
+  在 `gtest_main` 的 `RUN_ALL_TESTS()` 返回后随其他全局静态一起无序析构；而
+  `runPrivilegedAsync` 走 `QtConcurrent::run`，依赖 Qt 全局静态 `QThreadPool`，二者析构
+  顺序错位 → teardown 期 use-after-free。注意 `SecurityAdvisor::asyncGet` 给
+  `QNetworkAccessManager` 挂父对象（`this`）是**正确且必要的防护**（避免栈对象早析构时
+  异步回调访问已亡对象），但它**不是**本次段错误的根因，勿混淆。
+  **正确修复（已落地）**：在 `tests/test_runprivasync.cpp` 提供自定义 `main()` 取代
+  `gtest_main`，且 `tests/CMakeLists.txt` 改为只链接 `GTest::gtest`（不链 `gtest_main`）。
+  `main()` 在栈上构造唯一的 `QCoreApplication`（`g_appInstance` 全局指针供其他 TU 的
+  `ensureApp()` 引用），`RUN_ALL_TESTS()` 返回后**先 `QThreadPool::globalInstance()->waitForDone()`
+  耗尽后台任务、再 `processEvents()`/`sendPostedEvents()` 排空事件、最后才让 app 随 main 栈帧
+  自然析构**（晚于所有全局静态）。`main()` 开头必须 `testing::InitGoogleTest(&argc, argv)`。
+  复发判定：CI `unit-test` 仍 `SegFault` 或本地 `ctest` 偶崩 → 先查是否把 `QCoreApplication`
+  当静态全局、或是否再次链回 `gtest_main` 导致双 main/析构错位。验证：本地 `ctest` 全绿后
+  必须 `gh run view <id> --log` 确认 CI 两架构 `unit-test` 均 `success` 才算闭环。
 - **CI 脚本清单（防漂移）**：`ci/` 下**仅保留 `package-deb.sh`**——由 `build.yml` 在
   deepin beige chroot 内调用，执行 `dpkg-buildpackage` 产 `.deb`。**已删除
   `ci/multiarch-build.sh`**（旧 ubuntu:devel 交叉编译方案遗留，CI 不再调用）。
