@@ -12,6 +12,10 @@ set(PACKAGE_SOURCES
     dnfbackend.cpp
     linyapsbackend.h
     linyapsbackend.cpp
+    pacmanbackend.h
+    pacmanbackend.cpp
+    zypperbackend.h
+    zypperbackend.cpp
     snapbackend.h
     snapbackend.cpp
     flatpakbackend.h

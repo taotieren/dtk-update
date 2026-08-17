@@ -7,7 +7,7 @@ namespace DtkUpdate
     {
         // 与 BackendFactory::registry() 保持一致；此处仅用于配置文件合法性校验。
         // 沙箱式应用商店（linyaps/snap/flatpak）跨发行系、与系统包管理正交，均列入已知后端。
-        return {"apt", "dnf", "linyaps", "snap", "flatpak"};
+        return {"apt", "dnf", "linyaps", "snap", "flatpak", "pacman", "zypper"};
     }
 
     QString PresetConfig::defaultBackendFor(DistroProbe::Family family)
@@ -43,6 +43,14 @@ namespace DtkUpdate
         else if (backendId == "dnf")
         {
             opts["NoInstallRecommends"] = false; // dnf 默认即不装弱依赖之外
+            opts["AutoRemoveOrphans"] = true;
+            opts["AutoCleanCache"] = false;
+        }
+        else if (backendId == "pacman" || backendId == "zypper")
+        {
+            // pacman/zypper 无 recommends 概念（选项在 backendOptions 被移除），
+            // 保守默认：开启孤儿清理、不自动清缓存。
+            opts["NoInstallRecommends"] = false;
             opts["AutoRemoveOrphans"] = true;
             opts["AutoCleanCache"] = false;
         }

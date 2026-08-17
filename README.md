@@ -3,14 +3,14 @@
 DTK tray applet for monitoring and managing system package updates across
 distributions, with correct dependency resolution, install / remove / purge /
 autoremove / cleanup operations. Package operations delegate to the system's
-package manager (apt/dpkg, dnf/rpm, linyaps/玲珑, …) behind a **pluggable backend abstraction**,
+package manager (apt/dpkg, dnf/rpm, pacman, zypper, linyaps/玲珑, …) behind a **pluggable backend abstraction**,
 so the project is no longer tied to a single distribution or package manager.
 
 ## Features
 
 - System tray plugin for `dde-tray-loader` (V2 interface)
 - Update / install / remove / purge / autoremove / clean operations
-- Distribution-agnostic **multi-backend** design (APT, DNF, Linyaps; easy to extend),
+- Distribution-agnostic **multi-backend** design (APT, DNF, Pacman, Zypper, Linyaps; easy to extend),
   with **cross-distro Linyaps** probed independently of the system package manager
 - Dependency resolution via backend dry-run parsing
 - Residual config & cache cleanup (`rc` packages, orphan configs)
@@ -58,6 +58,7 @@ aligned with the deepin/UOS v25 ecosystem:
 ```
 src/core        business logic (UI-agnostic, fully unit-tested)
   package/      PackageBackend(abstract interface) · AptBackend(apt/dpkg) · DnfBackend(dnf/rpm)
+                · PacmanBackend(pacman, Arch) · ZypperBackend(zypper/rpm, openSUSE)
                 · LinyapsBackend(ll-cli/玲珑, cross-distro) · SnapBackend(snap, cross-distro)
                 · FlatpakBackend(flatpak, cross-distro) · BackendFactory(auto-detect by distro
                   + always probe sandbox backends independently) · PackageParser(pure parsing)

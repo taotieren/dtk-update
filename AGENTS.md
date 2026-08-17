@@ -17,8 +17,8 @@ DConfig appId 为 `org.deepin.dtk-update`。
 - `src/core` — 与 UI 无关的纯业务逻辑，已完整单元测试覆盖。**严禁**在此引入
   Dock/Tray/UI 头文件。
   - `package/` — `PackageBackend`（抽象基类，公共实现已下沉此处）·
-    `AptBackend` · `DnfBackend` · `LinyapsBackend` · `SnapBackend` · `FlatpakBackend`
-    · `BackendFactory`（注册表 + 自动探测）· `PackageParser`。
+    `AptBackend` · `DnfBackend` · `PacmanBackend` · `ZypperBackend` · `LinyapsBackend`
+    · `SnapBackend` · `FlatpakBackend` · `BackendFactory`（注册表 + 自动探测）· `PackageParser`。
   - `monitor/` — `UpdateMonitor`（聚合后端、状态机、并发锁、D-Bus/网络监听）。
   - `dependency/` — `DependencyResolver`（后端 dry-run 输出解析）。
   - `healthcheck/` — `PreUpdateCheck` / `PostUpdateCheck`（仅检查，不修改）。
@@ -55,10 +55,13 @@ DConfig appId 为 `org.deepin.dtk-update`。
   4. `PresetConfig::knownBackendIds()` 加入该 id（与 registry 对齐）；
   5. 若该后端属**沙箱式应用商店**（见下），还需在 `BackendFactory::sandboxIds()` 列表追加 id，
      并由 `attachSandboxBackends` 自动探测接入（无需改 UI 调用点）。
-  - **预留 id 提示**：`PresetConfig::defaultBackendFor()` 中已为 `arch→pacman`、`suse→zypper`
-    预留默认值，但对应的 `PacmanBackend`/`ZypperBackend` 尚未实现，二者既不在 `registry()`
-    也不在 `knownBackendIds()`。这是**单向预留**：当前仅影响"未知发行系的默认后端猜测"，
-    不会参与聚合；新增这两个后端时必须按上面 5 项完整登记，切勿只加 `defaultBackendFor` 分支。
+  - **系统级后端登记完成提示**：`PacmanBackend`（Arch/Manjaro）与 `ZypperBackend`
+    （openSUSE/SLES）**已实现并完整登记**：`registry()`、`knownBackendIds()`、
+    `package/CMakeLists.txt` 源列表、`BackendType` 枚举均含二者，且 `PresetConfig::defaultBackendFor()`
+    的 `arch→pacman` / `suse→zypper` 预留已连通。它们与 apt/dnf 同为**系统级后端**
+    （强绑定发行系），**不**进入 `sandboxIds()`，无需改 `attachSandboxBackends`。pacman 无 recommends
+    概念、`backendOptions()` 已移除 `noInstallRecommends`；zypper 复用 rpm 查询并支持
+    `checkConfigFilesToReview`（*.rpmnew/*.rpmsave/*.rpmorig）。
 - `isAvailable()` 必须探测**全部**关键命令**并**做轻量冒烟测试——缺失 `rpm`/`dpkg-query`
   必须返回 false，而非“命令存在即可用”（即“伪可用”陷阱）。
 - 健康探针默认 `support=false`，按后端覆盖。`needs-restarting` 退出码 `1` 表示建议重启、

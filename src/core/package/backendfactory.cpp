@@ -12,7 +12,9 @@
 #include "flatpakbackend.h"
 #include "linyapsbackend.h"
 #include "logger.h"
+#include "pacmanbackend.h"
 #include "snapbackend.h"
+#include "zypperbackend.h"
 
 namespace DtkUpdate
 {
@@ -40,6 +42,10 @@ namespace DtkUpdate
                              [](QObject* p) -> PackageBackend* { return new SnapBackend(p); }},
                 BackendEntry{QStringLiteral("flatpak"),
                              [](QObject* p) -> PackageBackend* { return new FlatpakBackend(p); }},
+                BackendEntry{QStringLiteral("pacman"),
+                             [](QObject* p) -> PackageBackend* { return new PacmanBackend(p); }},
+                BackendEntry{QStringLiteral("zypper"),
+                             [](QObject* p) -> PackageBackend* { return new ZypperBackend(p); }},
             };
             return entries;
         }

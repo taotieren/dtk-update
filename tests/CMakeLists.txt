@@ -31,6 +31,8 @@ if(HAVE_GTEST)
         test_backendconfig.cpp
         test_healthcheck.cpp
         test_runprobe.cpp
+        test_pacmanbackend.cpp
+        test_zypperbackend.cpp
     )
     # QSignalSpy 需要 Qt Test 模块；缺失时（如本地未装）跳过信号相关用例
     if(TARGET Qt${QT_VERSION_MAJOR}::Test)

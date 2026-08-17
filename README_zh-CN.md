@@ -2,13 +2,13 @@
 
 跨发行版的 DTK 托盘小程序，用于监控系统软件包更新并管理更新操作，具备正确的依赖解析、
 安装 / 卸载 / 清除 / 自动移除 / 清理等能力。包管理操作在 **可插拔后端抽象** 之下委托给系统
-包管理器（apt/dpkg、dnf/rpm、linyaps/玲珑 等），因此项目不再局限于单一发行版或包管理器。
+包管理器（apt/dpkg、dnf/rpm、pacman、zypper、linyaps/玲珑 等），因此项目不再局限于单一发行版或包管理器。
 
 ## 功能特性
 
 - 面向 `dde-tray-loader` 的系统托盘插件（V2 接口）
 - 更新 / 安装 / 卸载 / 清除 / 自动移除 / 清理操作
-- 与发行版无关的 **多后端** 设计（APT、DNF、Linyaps，易于扩展）；**跨发行系的 Linyaps（玲珑）**
+- 与发行版无关的 **多后端** 设计（APT、DNF、Pacman、Zypper、Linyaps，易于扩展）；**跨发行系的 Linyaps（玲珑）**
   独立于系统包管理器单独探测，不受发行版限制
 - 基于后端 dry-run 解析的依赖解析
 - 残留配置与缓存清理（`rc` 包、孤儿配置）
@@ -45,6 +45,7 @@
 ```
 src/core      业务逻辑（与 UI 无关，完整单元测试）
   package/      PackageBackend(抽象接口) · AptBackend(apt/dpkg) · DnfBackend(dnf/rpm)
+                · PacmanBackend(pacman, Arch) · ZypperBackend(zypper/rpm, openSUSE)
                 · LinyapsBackend(ll-cli/玲珑, 跨发行系) · SnapBackend(snap, 跨发行系)
                 · FlatpakBackend(flatpak, 跨发行系) · BackendFactory(按发行系自动探测
                   + 始终独立探测沙箱后端) · PackageParser(纯解析)
