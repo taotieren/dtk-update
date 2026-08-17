@@ -307,6 +307,23 @@ DConfig appId 为 `org.deepin.dtk-update`。
   `dtk-update-daemon.lock`）防多 daemon 抢 DBus service 名。GUI 侧 `main.cpp` 同理加 `dtk-update-gui.lock`。
   （daemon 的 D-Bus `status/checkNow/applyUpdates` 当前无客户端调用，属架构预留：保留接口、勿删，但落地
   实际调用前不要声称"daemon 已打通更新闭环"。）
+- **AptBackend 必须覆盖 privilegedPrefix（P0）**：基类 `PackageBackend::privilegedPrefix()` 默认返回
+  `{pkexec, sudo}`，拼出 `pkexec sudo apt-get`——在 pkexec 已提权后内部再 sudo，多余且在无 sudo 环境失败。
+  APT 后端**必须**覆盖为 `{pkexec, apt-get}`（或 `{pkexec, aptitude}` 视实现）。新增任何系统级后端时，
+  先核对基类默认值是否可用，否则必须覆盖。`DnfBackend`/`PacmanBackend`/`ZypperBackend` 同理需各自正确返回。
+- **通用托盘资源静态链接陷阱（P1）**：`src/tray-generic` 是独立可执行文件，静态链接 `dtk-update-indicator`
+  静态库里的 `resources.qrc` 会被链接器惰性丢弃（`undefined reference to qInitResources_resources`）。
+  正确做法：generic 自身用 `qt_add_resources` 直接编译 `resources.qrc` 进可执行文件，并在
+  `main.cpp` **全局命名空间**调 `Q_INIT_RESOURCE(resources)`（`Q_INIT_RESOURCE` 在 `namespace DtkUpdate`
+  内展开会错位符号名→链接失败）。图标回退路径真实前缀是 `/icons`（`resources.qrc` 定义）与
+  `/dsg/built-in-icons/`（dde-dock loader 要求），**不是** `/resources`——`QIcon::fromTheme` 取不到时
+  回退 `:/icons/%1.svg`。
+- **Flatpak simulateInstall 不可写死 flathub（P1）**：`FlatpakBackend::simulateInstall`（依赖解析可行性兜底）
+  若硬编 `flatpak remote-info flathub <pkg>`，应用位于其他远端（fedora/gnome-nightly/verified 等）时
+  remote-info 失败，`DependencyResolver::resolve` 直接 return false 阻断整条依赖解析。必须遍历
+  `flatpak remotes --columns=name` 所有远端逐个尝试，最后才兜底 flathub。同理 snap 也应遍历已登录远端。
+- **测试恒真断言是伪通过（P2）**：`EXPECT_TRUE(x || !x)` 永远 true，掩盖逻辑未验证。健康/探针类测试应断言
+  确定性结构（如未执行实际操作时 `report.hasAnything()` 应为 false），或 SKIP 环境缺失分支，勿用恒真占位。
 - **CI 脚本清单（防漂移）**：`ci/` 下**仅保留 `package-deb.sh`**——由 `build.yml` 在
   deepin beige chroot 内调用，执行 `dpkg-buildpackage` 产 `.deb`。**已删除
   `ci/multiarch-build.sh`**（旧 ubuntu:devel 交叉编译方案遗留，CI 不再调用）。
