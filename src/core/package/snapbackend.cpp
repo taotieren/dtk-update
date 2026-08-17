@@ -170,6 +170,13 @@ namespace DtkUpdate
             args.append(packages);
             return args;
         }
+        case Op::Upgrade:
+        {
+            // snap 升级用 refresh（install 对已装包报 already installed 会失败）
+            QStringList args{QStringLiteral("refresh")};
+            args.append(packages);
+            return args;
+        }
         case Op::Remove:
         case Op::Purge: // snap 无独立 purge，remove 即卸载应用
         {
