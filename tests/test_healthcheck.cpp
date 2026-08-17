@@ -147,7 +147,12 @@ TEST(HealthCheckTest, DnfProbesGraceful)
     QStringList svcs, cfgs, units;
     QString err;
     const bool rebootSupported = be.checkRebootRequired(required, err);
-    EXPECT_TRUE(rebootSupported); // 本机有 /usr/lib/modules，内核比对分支必支持
+    // 内核比对分支仅在 /usr/lib/modules 存在时 support=true；无内核模块目录的 CI 容器
+    // 不可判定该分支，仅验证调用不崩溃，不约束 rebootSupported，避免环境强假设误红。
+    if (QDir(QStringLiteral("/usr/lib/modules")).exists())
+        EXPECT_TRUE(rebootSupported);
+    else
+        SUCCEED() << "no /usr/lib/modules, reboot-probe support branch not decidable here";
     const bool svcSupported = be.checkServicesNeedingRestart(svcs, err);
     EXPECT_TRUE(svcSupported || svcs.isEmpty());
     ASSERT_TRUE(be.checkConfigFilesToReview(cfgs, err)); // 扫描 /etc 总是可做的
