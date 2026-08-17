@@ -1,50 +1,26 @@
-dtk-update (0.1.2) unstable; urgency=medium
+dtk-update (0.0.1) beige; urgency=medium
 
-  * feat: implement distro upstream security advisories + recent notices fetching.
-    SecurityAdvisor now pulls per-family feeds (Debian DSA RDF, Ubuntu USN RSS,
-    openSUSE security-announce, Arch news) for upstream advisories matched to
-    upgradable packages, plus optional per-distro "recent news/notices" feeds.
-  * fix: make all SecurityAdvisor network access asynchronous (QNetworkAccessManager
-    + QTimer::singleShot timeout), removing QEventLoop::exec() blocking of the host
-    thread; prefetchUpstream caches and applyUpdates merges synchronously with no
-    network call.
-  * fix: drop redundant m_available snapshot in favor of live
-    QDBusConnection::systemBus().interface()->isServiceRegistered() probing.
-  * docs: expand README (en/zh-CN) with per-distro upstream feed and recent
-    notices behavior; update AGENTS.md security/advisor description and add the
-    "verify upstream feed URLs for staleness" long-task checklist item.
+  * Initial stable release.
+  * Distribution-agnostic DTK tray applet for package update management, with a
+    pluggable backend abstraction over apt/dpkg, dnf/rpm, pacman, zypper and the
+    sandboxed app ecosystems (linyaps/linglong, snap, flatpak).
+  * Two tray integrations: native dde-dock plugin (Deepin/UOS, via
+    dde-tray-loader PluginsItemInterfaceV2) and a generic freedesktop
+    QSystemTrayIcon (no dde-dock dependency); plus a standalone GUI and an
+    optional D-Bus/systemd user daemon.
+  * Pre-update / post-update health checks (reboot-required, services-needing-
+    restart, config-files-to-review, failed systemd units) — read-only probes,
+    container-aware, never auto-applies.
+  * Per-distribution upstream security advisories (Debian DSA / Ubuntu USN /
+    openSUSE / Arch) with asynchronous prefetch and graceful timeout fallback;
+    optional per-distro "recent news/notices" fetching.
+  * Dependency resolution from backend dry-run output; residual package and
+    download-cache reporting for explicit user cleanup.
+  * Process-level concurrency lock (QLockFile) prevents concurrent GUI/tray
+    system writes; all privileged writes go through pkexec/polkit.
+  * Transparent configuration via DConfig + user-editable backend.conf;
+    five-language localization (zh_CN/en_US/es/fr/de).
+  * Multi-architecture deb packaging (amd64/arm64/loong64) via debootstrap deepin
+    beige chroot + qemu; GitHub Actions build/test/lint pipelines.
 
- -- dtk-update taotieren <admin@taotieren.com>  Thu, 14 Aug 2026 00:00:00 +0000
-
-dtk-update (0.1.1) unstable; urgency=medium
-
-  * cleanup: remove stray empty src/core/cleanup directory (no source, not in
-    CMakeLists); residual/cache cleanup lives in healthcheck + PackageBackend
-    CleanCache/Autoremove operations.
-  * fix: drop redundant const_cast in LinyapsBackend::runQuery stream parsing.
-  * refactor: remove redundant SecurityAdvisor::m_available snapshot, probe deepin
-    SecurityCenter availability at call time via isServiceRegistered.
-  * docs: align AGENTS.md with implementation; add post-task verification
-    checklist to prevent missing / unimplemented / dead code.
-
- -- dtk-update taotieren <admin@taotieren.com>  Fri, 14 Aug 2026 00:00:00 +0000
-
-dtk-update (0.1.0) unstable; urgency=medium
-
-  * refactor: centralize Linyaps backend wiring in BackendFactory::attachLinyaps,
-    eliminating duplicated probe/connect boilerplate in GUI and both trays.
-  * refactor: route DependencyResolver dry-run parsing by real backendId (APT/DNF
-    formats) and degrade gracefully to target-only packages for backends without
-    structured transaction output (fixes false failures on dnf/linyaps).
-  * docs: align README (en/zh-CN) packaging script reference, design constraints and
-    backend-extension guide with the actual implementation; clarify attachLinyaps wiring.
-  * debian: add dtk-update.install, expand control Description, refresh changelog.
-  * ci: fix arm64 runner label typo (ubuntu-24.04-arm64 -> ubuntu-24.04-arm) and add a
-    120-minute timeout guard for the loong64 qemu build job.
-  * refactor: decouple multi-backend wiring, modularize upgrade flow,
-    synchronize docs, translations, CI and debian packaging.
-  * Initial release: tray plugin skeleton, package backend abstraction,
-    dependency resolver, health checks, security advisor, monitor,
-    systemd user service and debian packaging.
-
- -- dtk-update taotieren <admin@taotieren.com>  Thu, 13 Aug 2026 00:00:00 +0000
+ -- dtk-update taotieren <admin@taotieren.com>  Mon, 17 Aug 2026 00:00:00 +0000

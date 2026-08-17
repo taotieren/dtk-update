@@ -83,12 +83,13 @@ jobs:
       - name: Package deb
         id: pkg
         run: |
-          # 版本号：tag 触发用 tag 名（去 v 前缀），分支触发交由脚本从 changelog 读取
-          VER="${GITHUB_REF_NAME#v}"
+          # 版本号：tag 触发用 tag 名原样（本项目 tag 不带 v 前缀，如 0.0.1），
+          # 分支触发交由脚本从 changelog 读取
+          VER="${GITHUB_REF_NAME}"
           IS_TAG="false"
           case "$VER" in
             0.*|1.*|2.*) IS_TAG="true" ;;  # 形如 0.1.0 的 tag
-            *) VER="0.1.0"; IS_TAG="false" ;;
+            *) VER="0.0.1"; IS_TAG="false" ;;
           esac
           sudo mkdir -p /tmp/artifacts
           # 不再用 `|| true` 吞掉失败：打包失败必须让本步骤红掉，
@@ -155,7 +156,7 @@ jobs:
   # ============ tag 触发：构建成功后自动发布 Release ============
   release:
     name: Publish Release
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/')
     needs: build
     runs-on: ubuntu-24.04
     permissions:

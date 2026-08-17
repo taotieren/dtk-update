@@ -670,3 +670,70 @@ libdtk6widget-dev libdtk6log-dev libgtest-dev libpolkit-qt6-1-dev libxkbcommon-d
 - 本模式是模式一/二的**元层闭环**——保证 AGENTS.md 不会随代码演进而静默过时，是项目长期可靠性
   的兜底机制。后续凡涉及"更新维护相关内容"的请求，默认走本模式，无需用户重复说明。
 
+## 发行要求与把控（Release 纪律，所有发行必读）
+
+本节沉淀 dtk-update 的版本号权威来源、发行流程与发布前门禁，后续每一次发行（打 tag /
+发 Release）都必须严格照此执行，避免版本倒挂、文档漂移、漏测发布。
+
+### 1. 版本号唯一事实源与三处一致性
+
+- **权威来源**：`CMakeLists.txt` 顶部的 `project(dtk-update VERSION X.Y.Z)` 是版本号的
+  唯一事实源（当前 `0.0.1`）。所有对外版本均由此派生，不得在其他地方硬编码不同版本。
+- **三处必须同步**（任一不一致即视为发行阻断）：
+  1. `CMakeLists.txt` 的 `VERSION`；
+  2. `debian/changelog` **顶部首段**版本号（且必须降序、不得倒挂；打包脚本
+     `ci/package-deb.sh` 会改写首行 suite 为 `beige`，但版本号须手动与其对齐）；
+  3. `.github/workflows/build.yml` 中分支触发 fallback 的默认版本
+     （`*) VER="0.0.1"; IS_TAG="false" ;;`，仅当推送非 `X.Y.Z` 形态的 ref 时生效）。
+- **tag 即版本**：正式发布一律用 **不带 `v` 前缀**的 `X.Y.Z` 形态 tag（如 `0.0.1`，不是 `v0.0.1`）。
+  `build.yml` 的 release job 对 `refs/tags/*` 触发，直接取 `GITHUB_REF_NAME` 原样作版本号
+  （无需去前缀），`debian/changelog` 顶部版本须与之相等。严禁用分支 push 冒充发布。
+
+### 2. debian/changelog 维护纪律
+
+- changelog 顶部段必须为**最新**版本，且版本号严格降序；倒挂会导致 `dpkg-buildpackage`
+  告警甚至失败（呼应 `ci/package-deb.sh` 注释）。
+- 每个发布版本在 changelog 写一段，条目用词前缀遵循 Debian 惯例：`feat:` / `fix:` /
+  `refactor:` / `docs:` / `cleanup:` / `debian:` / `ci:`。
+- **首个正式发布标记**（如 `0.0.1`）之前若有过内部开发快照段（如 0.1.x），发行时**重置
+  changelog**：只保留首发段，不再保留开发期快照，避免版本号语义倒挂。用户级发行日志见
+  顶层 `CHANGELOG.md`（与 `debian/changelog` 顶部版本对齐，但面向用户、含能力/限制/安装）。
+
+### 3. 发布前门禁清单（PR 合并 + 打 tag 前必过）
+
+发行前必须逐项确认，任一未过不得打 tag：
+
+1. **CI 全绿**：`build.yml`（三架构 deb 构建）、`test.yml`（ubuntu:devel 跑 `ctest`，
+   全量用例 passed/SKIPPED 无失败）、`lint.yml` 的 `format` job（`clang-format --dry-run
+   --Werror` 对全部 `src/tests` 改动文件通过）。本机改动至少本地先跑 `clang-format -i` +
+   `git diff` 复核。
+2. **测试无伪通过**：回归用例真实执行（非恒真断言）；新修复点必须有对应回归用例锁定
+   （见「已踩过的坑」P1/P2 缺口纪律）。
+3. **版本号三处一致**（见上 §1）。
+4. **i18n 同步**：本期改动触及的 `tr()` 可见字符串已 `lupdate` + `python3 translations/_gen.py`
+   回填五语言，无 unfinished 孤立条目；`backend.conf.example`、README（en/zh-CN）引用同步。
+5. **文档无漂移**：AGENTS.md 的「架构地图」「硬性约束」「已踩过的坑」「约定」与源码实况一致；
+   本轮新增约束/坑已回流（模式三 T2）。
+6. **无构建产物入库**：`git status` 暂存区仅含源码/doc/配置，绝无 `build*/`、`.o`、`*_autogen`、
+   CTest 日志等（见「提交卫生」硬纪律）；严禁 `git add -A`。
+7. **changelog 与 CHANGELOG.md 已更新**：顶部版本对齐，条目准确反映本期变更。
+
+### 4. 发行执行流程
+
+1. 本地完成上述门禁自检，所有改动按功能拆独立语义 commit 提交（未 push 亦可先本地校验）。
+2. 推送到 `main`（`git push`），确认 `build.yml`/`test.yml`/`lint.yml` 在 CI 实际跑绿
+   （提交即结束是大忌，必须查 CI 结果，见「提交后必须关注 CI 结果」）。
+3. 打 annotated tag（**不带 v 前缀**）：`git tag -a X.Y.Z -m "dtk-update X.Y.Z"`，`git push origin X.Y.Z`。
+4. CI 自动触发三架构 deb 构建 → release job 创建/复用 `X.Y.Z` Release 并上传 deb 资产。
+5. 复核 Release 资产含 amd64/arm64/loong64 三个 `.deb`，Release Notes 与 `CHANGELOG.md`
+   本期内容一致。
+6. 发行记录写入当日工作记忆与（必要时）`MEMORY.md` 速查表。
+
+### 5. 回滚与补发
+
+- 若 Release 资产缺失某架构或 CI 红：修复后**递增修订号**（如 `0.0.2`）重新打 tag，
+  不得复用已发布 tag（GitHub Release 资产覆盖有 gh clobber 404 风险，脚本已做删旧上传处理，
+  但语义上仍应以新版本号发布）。
+- 已发布 tag 仅在有严重安全/数据问题且用户明确授权时才 `git tag -d` + `push --delete` +
+  强推，共享分支强推需确认无人基于旧历史开发。
+
