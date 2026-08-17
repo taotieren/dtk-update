@@ -28,6 +28,12 @@ namespace DtkUpdate
         void checkNow();
         QVariantMap status() const;
 
+      private slots:
+        // 系统唤醒（login1 PrepareForSleep 由 true→false）后触发一次检查。
+        void onPrepareForSleep(bool sleeping);
+        // 网络由断到连（NetworkManager StateChanged 达到全局连通）后触发一次检查。
+        void onNmStateChanged(uint state);
+
       signals:
         // 状态变更信号（架构预留：当前无客户端调用，故本类未主动 emit；
         // 若未来 GUI/tray 需经 daemon 订阅状态推送再连接 monitor 信号并发射）。

@@ -153,15 +153,23 @@ namespace DtkUpdate
         {
             units.clear();
             Q_UNUSED(error);
-            // 通用实现：systemctl --failed 解析（apt/dnf 完全一致）。
+            // 通用实现：systemctl --failed 解析。
+            // 退出码 1 表示存在 failed unit（unit 名在 stdout），0 表示无；
+            // 必须用 runProbe 读取退出码，严禁 runQuery（runQuery 在非零退出时
+            // 丢弃 stdout 返回 false，会导致 failed unit 永远漏报、support 误判为 false）。
             // 容器内多为宿主服务，failed unit 不应归咎于本次升级，跳过。
             if (!SystemInfo::hasSystemd() || SystemInfo::isContainer())
                 return false;
-            QString raw;
-            if (!runQuery({QStringLiteral("systemctl"), QStringLiteral("--failed"),
-                           QStringLiteral("--no-legend"), QStringLiteral("--no-pager")},
-                          raw, error))
+            if (!commandExists(QStringLiteral("systemctl")))
                 return false;
+            QString raw;
+            int exitCode = -1;
+            if (!runProbe({QStringLiteral("systemctl"), QStringLiteral("--failed"),
+                           QStringLiteral("--no-legend"), QStringLiteral("--no-pager")},
+                          raw, exitCode))
+                return false;
+            if (exitCode == 0 && raw.trimmed().isEmpty())
+                return true; // 无 failed unit
             units = parseFailedUnits(raw);
             return true;
         }
