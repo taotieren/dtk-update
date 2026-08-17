@@ -29,6 +29,30 @@ TEST(DependencyResolverTest, ParseSimulateOutputRemoves)
     EXPECT_TRUE(toRemove.contains(QStringLiteral("libbaz")));
 }
 
+TEST(DependencyResolverTest, ParseSimulateOutputDnfFormat)
+{
+    // DNF 干跑输出用 Installing:/Removing: 行，且不应被 APT 正则误吞。
+    QString text = "Installing: libfoo\n"
+                   "Installing: libbar\n"
+                   "Removing:  libbaz\n";
+    QStringList toInstall, toRemove;
+    ASSERT_TRUE(DependencyResolver::parseSimulateOutput(text, toInstall, toRemove, true));
+    EXPECT_TRUE(toInstall.contains(QStringLiteral("libfoo")));
+    EXPECT_TRUE(toInstall.contains(QStringLiteral("libbar")));
+    EXPECT_TRUE(toRemove.contains(QStringLiteral("libbaz")));
+}
+
+TEST(DependencyResolverTest, ParseSimulateOutputDnfIgnoresAptLines)
+{
+    // dnfFormat=true 时，含 "Inst"/"Remv" 的噪声行不应被 APT 正则误判为事务。
+    QString text = "Inst something unrelated\n"
+                   "Installing: libfoo\n";
+    QStringList toInstall, toRemove;
+    ASSERT_TRUE(DependencyResolver::parseSimulateOutput(text, toInstall, toRemove, true));
+    EXPECT_TRUE(toInstall.contains(QStringLiteral("libfoo")));
+    EXPECT_FALSE(toInstall.contains(QStringLiteral("something")));
+}
+
 TEST(DependencyResolverTest, ParseSimulateOutputEmpty)
 {
     QStringList toInstall, toRemove;

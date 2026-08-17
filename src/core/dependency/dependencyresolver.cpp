@@ -60,12 +60,14 @@ namespace DtkUpdate
         for (const QString& line : lines)
         {
             QRegularExpressionMatch m;
-            if ((m = instRe.match(line)).hasMatch())
+            // 按格式严格分流：APT 与 DNF 事务行互不越界，避免某一格式的正则
+            // 误命中另一格式的输出（如 DNF 包名恰好以 "Inst" 起首）。
+            if (!dnfFormat && (m = instRe.match(line)).hasMatch())
             {
                 outToInstall.append(m.captured(1));
                 found = true;
             }
-            else if ((m = remRe.match(line)).hasMatch())
+            else if (!dnfFormat && (m = remRe.match(line)).hasMatch())
             {
                 outToRemove.append(m.captured(1));
                 found = true;
