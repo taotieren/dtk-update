@@ -362,9 +362,9 @@ namespace DtkUpdate
             text += QStringLiteral("<br><br><b>%1</b>").arg(tr("Pre-update checks:")) + preText;
 
         dlg.setMessage(text);
-        dlg.addButton(QStringLiteral("Cancel"), false, DDialog::ButtonNormal);
-        const int updateId =
-            dlg.addButton(QStringLiteral("Update"), true, DDialog::ButtonRecommend);
+        // 默认焦点必须落在「取消」按钮：绝不替用户做决定，避免误触确认升级。
+        const int updateId = dlg.addButton(QStringLiteral("Update"), false, DDialog::ButtonNormal);
+        dlg.addButton(QStringLiteral("Cancel"), true, DDialog::ButtonRecommend);
         return dlg.exec() == updateId;
     }
 

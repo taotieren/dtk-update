@@ -142,16 +142,20 @@ namespace DtkUpdate
     QString IniParser::value(const QString& key, const QString& def) const
     {
         // 支持 "Section.Key" 点号查询。
-        // 注意：用 isEmpty() 而非 isNull() 判断"命中"——空字符串值（Key =）也应视为
-        // 命中并覆盖全局；否则空值会被误判为未命中而错误回退到全局默认值。
+        // 命中判定：空字符串值是合法覆盖（如 "Key =" 意为显式置空），必须视为命中并返回，
+        // 不能因 isEmpty() 而错误回退到全局默认值（见 AGENTS.md：空字符串是合法值）。
         const int dot = key.indexOf(QLatin1Char('.'));
         if (dot > 0)
         {
             const QString sec = key.left(dot);
             const QString k = key.mid(dot + 1);
-            const QString v = sectionValue(sec, k, QString());
-            if (!v.isEmpty())
-                return v;
+            // 段内确实存在该键（即使值为空）即视为命中，优先返回其值。
+            const SectionMap* secMap = nullptr;
+            const auto sit = m_sections.constFind(sec.toLower());
+            if (sit != m_sections.constEnd())
+                secMap = &sit.value();
+            if (secMap && secMap->contains(k.toLower()))
+                return secMap->value(k.toLower());
         }
         const QString g = globalValue(key, QString());
         return g.isEmpty() ? def : g;

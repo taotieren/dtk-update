@@ -49,12 +49,8 @@ namespace DtkUpdate
         bool checkConfigFilesToReview(QStringList& paths, QString& error) override;
         bool checkFailedUnits(QStringList& units, QString& error) override;
 
-        // ---- 写操作 ----
-        bool install(const QStringList& packages, QString& error) override;
-        bool remove(const QStringList& packages, QString& error) override;
-        bool purge(const QStringList& packages, QString& error) override;
-        bool autoremove(QString& error) override;
-        bool cleanCache(QString& error) override;
+        // ---- 写操作：复用基类 runWriteOperation 异步模板，仅映射 ll-cli 命令 ----
+        QStringList operationArgs(Op op, const QStringList& packages, QString& error) override;
 
       protected:
         // linyaps 写操作经 pkexec + ll-cli 提权（由基类 runPrivileged 调用）

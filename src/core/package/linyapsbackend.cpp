@@ -192,52 +192,27 @@ namespace DtkUpdate
         return false; // support=false：与系统服务无关
     }
 
-    bool LinyapsBackend::install(const QStringList& packages, QString& error)
+    QStringList LinyapsBackend::operationArgs(Op op, const QStringList& packages, QString& error)
     {
-        QString out;
-        QStringList args{QStringLiteral("install")};
-        args.append(packages);
-        if (!runPrivileged(args, out, error))
-            return false;
-        emit operationFinished(true, out);
-        return true;
-    }
-
-    bool LinyapsBackend::remove(const QStringList& packages, QString& error)
-    {
-        QString out;
-        QStringList args{QStringLiteral("uninstall")};
-        args.append(packages);
-        if (!runPrivileged(args, out, error))
-            return false;
-        emit operationFinished(true, out);
-        return true;
-    }
-
-    bool LinyapsBackend::purge(const QStringList& packages, QString& error)
-    {
-        // 玲珑无 purge 概念，uninstall 即彻底移除沙箱应用。
-        return remove(packages, error);
-    }
-
-    bool LinyapsBackend::autoremove(QString& error)
-    {
-        // 玲珑无 apt 式 autoremove；用 prune 清理无用的旧版本层（等价"回收空间"）。
-        QString out;
-        if (!runPrivileged(QStringList{QStringLiteral("prune")}, out, error))
-            return false;
-        emit operationFinished(true, out);
-        return true;
-    }
-
-    bool LinyapsBackend::cleanCache(QString& error)
-    {
-        // 清理 linglong 缓存层。
-        QString out;
-        if (!runPrivileged(QStringList{QStringLiteral("prune")}, out, error))
-            return false;
-        emit operationFinished(true, out);
-        return true;
+        Q_UNUSED(error);
+        switch (op)
+        {
+        case Op::Install:
+        {
+            QStringList args{QStringLiteral("install")};
+            args.append(packages);
+            return args;
+        }
+        case Op::Remove:
+        case Op::Purge:
+            // 玲珑无 purge 概念，uninstall 即彻底移除沙箱应用。
+            return QStringList{QStringLiteral("uninstall")} + packages;
+        case Op::Autoremove:
+        case Op::CleanCache:
+            // 玲珑无 apt 式 autoremove；prune 清理无用旧版本层（等价"回收空间/清缓存"）。
+            return {QStringLiteral("prune")};
+        }
+        return {};
     }
 
 } // namespace DtkUpdate

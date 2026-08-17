@@ -19,6 +19,10 @@ namespace DtkUpdate
         m_advisor = new SecurityAdvisor(this);
         m_monitor = new UpdateMonitor(m_backend, m_config, this);
         m_monitor->setSecurityAdvisor(m_advisor);
+        // 聚合沙箱式应用商店后端（linglong/snap/flatpak）：与系统后端正交、跨发行系，
+        // 必须显式接入 monitor 才能参与可升级列表聚合，否则 daemon 上报的 updatable
+        // 会漏掉沙箱应用。
+        BackendFactory::attachSandboxBackends(m_monitor, m_config, this);
         m_monitor->start();
     }
 
