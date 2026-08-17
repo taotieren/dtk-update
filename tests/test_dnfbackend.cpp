@@ -18,7 +18,7 @@ TEST(DnfBackendTest, Identifiers)
     EXPECT_NO_THROW(backend.backendOptions());
 }
 
-// 回归测试：缺 rpm（仅存在 dnf 占位脚本）时 isAvailable 必须返回 false，
+// 回归测试：缺 rpm（仅存在 dnf 命令但 rpm 缺失）时 isAvailable 必须返回 false，
 // 不能虚假报告可用。
 TEST(DnfBackendTest, NotAvailableWhenRpmMissing)
 {

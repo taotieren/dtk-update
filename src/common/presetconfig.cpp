@@ -19,9 +19,9 @@ namespace DtkUpdate
         case DistroProbe::Family::Fedora:
             return "dnf";
         case DistroProbe::Family::Arch:
-            return "pacman"; // 预留，尚未实现后端
+            return "pacman";
         case DistroProbe::Family::Suse:
-            return "zypper"; // 预留，尚未实现后端
+            return "zypper";
         case DistroProbe::Family::Unknown:
         default:
             return QString();

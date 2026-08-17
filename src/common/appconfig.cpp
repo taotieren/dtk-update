@@ -61,7 +61,7 @@ namespace DtkUpdate
             if (!fromDc.isEmpty() && registered.contains(fromDc))
                 d->effectiveBackendId = fromDc;
             else
-                // 否则按发行版预设选择；若预设后端未实现（如无 pacman/zypper 后端），
+                // 否则按发行版预设选择；若该预设后端当前不可用，
                 // 保持为空，交由 BackendFactory 据实探测，绝不静默回退到无关后端。
                 d->effectiveBackendId = PresetConfig::defaultBackendFor(d->family);
         }

@@ -41,7 +41,7 @@ TEST(BackendFactoryTest, AvailableIdsDoesNotThrow)
         GTEST_SKIP() << "apt backend not available on this system";
 }
 
-// 回归测试：对于尚无后端实现的发行系（如 Arch，预设为 pacman 但未实现），
+// 回归测试：对于当前宿主环境无可用预设后端的发行系（如 Arch 宿主缺 pacman 命令），
 // 工厂绝不能静默回退到 apt/dnf，应如实返回 nullptr。
 TEST(BackendFactoryTest, NoSilentFallbackOnUnsupportedFamily)
 {

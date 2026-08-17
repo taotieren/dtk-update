@@ -206,6 +206,19 @@ DConfig appId 为 `org.deepin.dtk-update`。
   不可只覆盖其中两个。
 - **死代码**：删除功能时，要连其 config 键、getter/setter、DConfig 条目、`showConfig()`
   行一起删。不要留下“虚拟”开关却无人读取。诚实的零/空胜过看起来合理但实际的占位数字。
+- **陈旧注释 / 虚代码 / 占位标记（开发完成必清理，防漂移复发）**：功能开发**完成**后，必须
+  把对应的"预留 / 尚未实现 / 占位脚本 / TODO / FIXME / 临时"等标记清理掉——否则下一轮
+  agent 会基于"未实现"的过期注释误判，重复开发或漏接文档，这是本轮（pacman/zypper）暴露的
+  高频复发问题。具体纪律：
+  - 后端 `isAvailable()` 注释里"仅提供 `xxx` 占位脚本"描述的是**真实探测陷阱**（如 Arch 上
+    tinyget 仿真），属有效技术背景，可保留；但 `presetconfig.cpp` / `backendfactory.cpp` 里
+    "Arch→pacman 尚未实现" 之类指向上游已落地功能的注释，必须改为"当前宿主环境命令缺失即
+    如实返回 nullptr"等现状描述。
+  - 凡 `// 预留，尚未实现后端`、`// 占位` 等指向上游已实现/已删除功能的注释，视为**死注释**，
+    与死代码同等处理：实现到位即删除或改写为现状。
+  - 收尾自查用 `grep -rnE "尚未|未实现|占位|not yet|not implemented|TODO|FIXME|HACK" src tests`
+    扫一遍，确认无指向"已做却说没做"的残留；历史审计报告（`research_report_*.md`）里提到的
+    "占位符/未实现"是已修复记录，不算活跃代码残留，无需改。
 - **CI lint 门禁（clang-format dry-run）**：build.yml 有
   `find src tests \( -name '*.cpp' -o -name '*.h' \) | xargs clang-format --dry-run --Werror`，
   **任一文件不符合即 exit 123 红 CI**。曾因手改 include 顺序（`backendfactory.cpp` 里
@@ -220,6 +233,25 @@ DConfig appId 为 `org.deepin.dtk-update`。
   凡文档/代码引用到它的都属漂移须清理）、接线
   （`BackendFactory::attachLinyaps`，不是构造内自接）、以及 `backendId()` 与
   `backendType()` 的引用都曾发生过漂移。
+- **提交后必须关注 CI 结果（引入新问题要修并在文档说明）**：每次 `git push` 后，必须主动
+  查看 GitHub Actions（`build.yml` 打包 + `test.yml` 单测，`lint.yml` 静态检查）的实际
+  运行结果，**绝不能"提交即结束"**。若 CI 因本轮改动挂红，必须：① 定位根因（优先排查 clang-format
+  版本差异、clang-tidy 新告警、测试断言在 CI 容器/多架构下行为差异）；② 本地复现并修复；
+  ③ 把该 CI 坑**追加进「已踩过的坑」**（用坑登记模板，标注触发场景/根因/修复 commit/复发判定），
+  并在当日工作记忆与提交说明里记录，避免再犯这类问题。clang-format 门禁对全量 `src/tests`
+  文件生效——哪怕只改了一行注释，只要该文件进入 diff 就要过 `--dry-run --Werror`，
+  故提交前对所有改动文件跑 `clang-format -i` 是硬前提。
+- **测试 teardown 段错误（CI 容器必现，本地偶发）**：`tests/test_runprivasync.cpp` 的
+  `ensureApp()` 原把 `QCoreApplication` 写成**函数内 static 局部**，首次测试调用时才构造，
+  进程退出按「后构造先析构」被提前销毁；此时 Qt 自身全局静态（日志类别、事件派发器）仍在，
+  析构顺序错位 → teardown 阶段 `use-after-free` 段错误，**所有 74 个用例全 OK 却 ctest 报
+  `***Exception: SegFault`**。`gh run view` 表现为 `0% tests passed, 1 tests failed out of 1`
+  且 `test-core` 标注 `SegFault`。根因：Qt 应用对象必须是**进程级全局**而非局部 static。
+  修复（见提交 `fix(test)`）：改为命名空间级全局 `static QCoreApplication g_app(g_argc, g_argv)`，
+  程序加载期即构造、退出时最后析构，彻底规避。复发判定：CI `unit-test` 仍 `SegFault` 或本地
+  `ctest` 偶发崩溃 → 先怀疑是否又把 `QCoreApplication` 退回函数内 static / 新增了依赖 Qt
+  事件循环的全局静态且早于 app 析构。验证：本地 `ctest` 全绿后，必须 `gh run view <id> --log`
+  确认 CI 两架构 `unit-test` 均 `success` 才算闭环。
 - **CI 脚本清单（防漂移）**：`ci/` 下**仅保留 `package-deb.sh`**——由 `build.yml` 在
   deepin beige chroot 内调用，执行 `dpkg-buildpackage` 产 `.deb`。**已删除
   `ci/multiarch-build.sh`**（旧 ubuntu:devel 交叉编译方案遗留，CI 不再调用）。
@@ -339,7 +371,7 @@ libdtk6widget-dev libdtk6log-dev libgtest-dev libpolkit-qt6-1-dev libxkbcommon-d
    之类空话。
 3. **纳入计划**：起草实现 / 修复计划时，把命中本轮范围的 Issue / PR **显式列入任务清单**，
    安排修复或文档更新，并在收尾时逐条勾掉，保证"有问题有闭环"。
-4. **闭环验证**：修复后必须 `cmake + make + ctest` 全绿（预期 66 passed + 3 skipped）并
+4. **闭环验证**：修复后必须 `cmake + make + ctest` 全绿（当前共 73 个 TEST 用例，SKIP 数随宿主环境变化，非固定 3 个）并
    `clang-format --dry-run --Werror` 零违规，再在 Issue / PR 中贴出验证结论与 commit 号，
    最后按用户意愿关闭或请求作者验证。未验证不得宣称已解决。
 5. **不越界**：PR review 只针对本项目代码与约定；不替作者做未授权的强制推送，merge / 强制

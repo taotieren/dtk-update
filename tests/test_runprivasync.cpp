@@ -12,15 +12,21 @@
 using namespace DtkUpdate;
 
 // gtest 主函数不含 Qt 事件循环；QFutureWatcher 的跨线程 finished 信号需要
-// QCoreApplication 实例才能分发。首次调用时构造单例 QCoreApplication。
-// 定义为普通函数（非 static），供多个测试 TU 共享同一进程级单例。
+// QCoreApplication 实例才能分发。
+// 关键：QCoreApplication 必须是「进程级全局」而非函数内 static 局部。函数内 static
+// 会在首次调用时才构造，进程退出时按「后构造先析构」被提前销毁，而此时 Qt 自身的
+// 全局静态对象（日志类别、事件派发器等）仍在，析构顺序错位会在 teardown 阶段触发
+// use-after-free 段错误（CI 容器以 root 运行、无 XDG_RUNTIME_DIR 时必现，本地桌面
+// 偶发）。改为命名空间级全局，在程序加载期即构造、进程退出时最后析构，彻底规避。
+static int g_argc = 1;
+static char g_arg0[] = "test-runprivasync";
+static char* g_argv[] = {g_arg0, nullptr};
+static QCoreApplication g_app(g_argc, g_argv);
+
+// 暴露为普通函数（非 static），供多个测试 TU 共享同一进程级单例。
 void ensureApp()
 {
-    static int argc = 1;
-    static char arg0[] = "test-runprivasync";
-    static char* argv[] = {arg0, nullptr};
-    static QCoreApplication app(argc, argv);
-    Q_UNUSED(app);
+    Q_UNUSED(g_app);
 }
 
 // runPrivilegedAsync 是 PackageBackend 的 protected 方法；子类化暴露以便测试。

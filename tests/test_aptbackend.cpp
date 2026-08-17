@@ -35,11 +35,11 @@ TEST(AptBackendTest, ParseUpgradableLine)
     EXPECT_EQ(info.currentVersion, QStringLiteral("119.0"));
 }
 
-// 回归测试：当关键命令缺失（如仅存在 apt 占位脚本、缺 apt-get/dpkg-query）时，
+// 回归测试：当关键命令缺失（如 apt 仅指向 tinyget 占位脚本、缺 apt-get/dpkg-query）时，
 // isAvailable 必须返回 false，绝不能虚假报告可用。
 TEST(AptBackendTest, NotAvailableWhenKeyCommandsMissing)
 {
-    // 本机（Arch 仿真环境）无 apt-get/dpkg-query，apt 只是 tinyget 占位脚本
+    // 本机（Arch 仿真环境）无 apt-get/dpkg-query，apt 只是 tinyget 占位脚本/无真实 apt
     AptBackend backend;
     const bool avail = backend.isAvailable();
 #ifdef __linux__

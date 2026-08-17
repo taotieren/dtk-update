@@ -53,8 +53,8 @@ namespace DtkUpdate
         // 按发行系对"系统级"后端探测排序并裁剪：
         //  - 若该系预设后端已实现（在 registry 中），则只探测该后端（找不到即 nullptr，
         //    不静默回退到其它不相关后端）；
-        //  - 若该系预设后端未实现（如 Arch→pacman、Suse→zypper），ordered 为空，
-        //    createBackend 直接返回 nullptr，如实反映"无可用后端"；
+        //  - 若该系预设后端不可用（如当前宿主环境缺 pacman/zypper 命令），ordered 仍含该
+        //    预设项但探测失败返回 nullptr，createBackend 如实反映"无可用后端"；
         //  - 仅当发行系未知（Unknown，预设为空）时，回退为按 registry 全部顺序自动探测。
         //
         // 注意：玲珑(linyaps) 是跨发行版的沙箱应用层包管理器，与系统包管理器(apt/dnf)正交，
@@ -70,7 +70,8 @@ namespace DtkUpdate
                 for (const auto& e : all)
                     if (e.id == pref)
                         ordered.append(&e);
-                return ordered; // 可能为空（预设后端未实现）→ 不 fallthrough 到其它后端
+                return ordered; // 可能为空（预设后端在 registry 中不存在）→ 不 fallthrough
+                                // 到其它后端
             }
             for (const auto& e : all)
                 ordered.append(&e);
@@ -130,7 +131,7 @@ namespace DtkUpdate
                                      << ", fall back to auto detection";
         }
         // 2) 否则按「发行系预设优先」的顺序自动探测系统级后端。
-        //    关键：若发行系对应的预设后端不存在（如 Arch/Suse 尚未实现 pacman/zypper），
+        //    关键：若发行系对应的预设后端在当前环境不可用（如宿主缺 pacman/zypper 命令），
         //    探测会如实失败并返回 nullptr，而不会静默回退到 apt/dnf 造成虚假可用。
         for (const auto* e : orderedEntries(family))
         {
