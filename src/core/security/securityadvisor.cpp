@@ -89,25 +89,36 @@ namespace DtkUpdate
             QString date; // pubDate / updated
         };
 
+        // 取 <tag>...</tag> 之间的内容（非贪婪，允许标签含属性、内容含子标签如 HTML）。
+        // 例如 description 经常含 <p>/<a> 等 HTML，用 [^<]* 会截断，故匹配到首个闭标签为止。
+        QString grabTag(const QString& scope, const QString& tag)
+        {
+            // 注意：先匹配自闭合/带属性的开标签 <tag ...>;闭标签 </tag>
+            const QRegularExpression re(QStringLiteral("<") + tag +
+                                            QStringLiteral("[^>]*>(.*?)</") + tag +
+                                            QStringLiteral(">"),
+                                        QRegularExpression::DotMatchesEverythingOption);
+            const QRegularExpressionMatch m = re.match(scope);
+            return m.hasMatch() ? m.captured(1).trimmed() : QString();
+        }
+
         FeedItem grabItem(const QString& raw)
         {
             FeedItem it;
-            const QString item = raw.section(QStringLiteral("</item>"), 0, 0)
-                                     .section(QStringLiteral("</entry>"), 0, 0);
-            const auto grab = [&](const QString& tag) -> QString
-            {
-                const QRegularExpression re(tag + QStringLiteral(">([^<]*)</") + tag);
-                const QRegularExpressionMatch m = re.match(item);
-                return m.hasMatch() ? m.captured(1).trimmed() : QString();
-            };
-            it.title = grab(QStringLiteral("title"));
-            it.desc = grab(QStringLiteral("description"));
+            // 限定到当前 item/entry 闭标签为止，避免描述中字面 "</item>" 造成的越界截断。
+            const QRegularExpression bound(
+                QStringLiteral("<(?:item|entry)[^>]*>(.*)(?:</(?:item|entry)>|$)"),
+                QRegularExpression::DotMatchesEverythingOption);
+            const QRegularExpressionMatch bm = bound.match(raw);
+            const QString item = bm.hasMatch() ? bm.captured(1) : raw;
+            it.title = grabTag(item, QStringLiteral("title"));
+            it.desc = grabTag(item, QStringLiteral("description"));
             if (it.desc.isEmpty())
-                it.desc = grab(QStringLiteral("summary"));
-            it.date = grab(QStringLiteral("pubDate"));
+                it.desc = grabTag(item, QStringLiteral("summary"));
+            it.date = grabTag(item, QStringLiteral("pubDate"));
             if (it.date.isEmpty())
-                it.date = grab(QStringLiteral("updated"));
-            it.link = grab(QStringLiteral("link"));
+                it.date = grabTag(item, QStringLiteral("updated"));
+            it.link = grabTag(item, QStringLiteral("link"));
             if (it.link.isEmpty())
             {
                 // Atom 形式：<link href="..."/>
