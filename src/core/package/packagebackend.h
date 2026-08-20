@@ -276,13 +276,6 @@ namespace DtkUpdate
         bool runPrivileged(const QStringList& args, QString& output, int timeoutMs = 600000,
                            bool* cancelled = nullptr) const;
 
-        /** 便利重载：args 为本机管理器参数（不含提权前缀），error 由 output 回传。 */
-        bool runPrivileged(const QStringList& args, QString& output, QString& error) const
-        {
-            Q_UNUSED(error);
-            return runPrivileged(args, output, 600000, nullptr);
-        }
-
         /**
          * @brief runPrivileged 的纯执行体（static 成员），不依赖 this 存活。
          * 供 runWriteOperation 的异步任务以值捕获 prefix 后安全调用，避免对象析构后

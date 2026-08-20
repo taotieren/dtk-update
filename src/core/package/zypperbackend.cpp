@@ -71,10 +71,11 @@ namespace DtkUpdate
                     const QString h = cols.at(i).toLower();
                     if (h.contains(QStringLiteral("name")) && nameCol < 0)
                         nameCol = i;
-                    else if ((h.contains(QStringLiteral("available")) ||
-                              h.contains(QStringLiteral("version"))) &&
-                             availCol < 0 && i > nameCol)
-                        availCol = i; // 取 Name 之后首个 version 列作候选版本
+                    else if (h.contains(QStringLiteral("available")) && availCol < 0 && i > nameCol)
+                        availCol = i; // 优先 Available Version 列
+                    else if (h.contains(QStringLiteral("version")) &&
+                             !h.contains(QStringLiteral("current")) && availCol < 0 && i > nameCol)
+                        availCol = i; // 兜底其它 Version 列（排除 Current Version）
                     else if (h.contains(QStringLiteral("arch")) && archCol < 0)
                         archCol = i;
                 }
@@ -163,10 +164,10 @@ namespace DtkUpdate
         case Op::Remove:
         case Op::Purge: // zypper/rpm 无独立 purge；remove 已删配置（-u 清依赖）
             return QStringList{QStringLiteral("remove"), QStringLiteral("-y")} + packages;
-        case Op::Autoremove: // -u = --clean-deps 移除不再被需要的依赖
-            return QStringList{QStringLiteral("remove"), QStringLiteral("-y"),
-                               QStringLiteral("-u")} +
-                   packages;
+        case Op::Autoremove:
+            // zypper remove -u 需显式目标包；孤儿列表（zypper packages --orphaned）需先
+            // 查询，不适合纯参数模式；明确返回空表示不支持（诚实而非无目标失败）。
+            return {};
         case Op::CleanCache:
             return {QStringLiteral("clean"), QStringLiteral("-a")};
         }

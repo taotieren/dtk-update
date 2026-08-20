@@ -110,6 +110,14 @@ zh["Another update is already in progress"] = "已有其他更新正在进行中
 zh["%1 Environment Issue"] = "%1 运行环境异常"
 zh["The %1 runtime environment is abnormal; sandbox application updates via this backend are unavailable. Please check the backend's installation and runtime."] = "%1 运行环境异常，经此后端的沙箱应用更新不可用。请检查该后端的安装与运行环境。"
 
+# --- Linyaps backend availability messages ---
+zh["ll-cli command not found. The linglong runtime is not installed. Please install the linglong runtime for your distribution (e.g. the linglong package on deepin/fedora, or follow the cross-distribution installation guide at https://linglong.dev)."] = "未找到 ll-cli 命令。玲珑(linglong)运行环境未安装；请按你的发行版安装 linglong 运行时（如 deepin/fedora 的 linglong 包、或参考 https://linglong.dev 的跨发行版安装指南）。"
+zh["ll-cli exists but `ll-cli list` failed; the linglong runtime may be broken: "] = "ll-cli 命令存在，但执行 `ll-cli list` 失败，玲珑运行环境可能异常："
+zh["(no error output; possibly insufficient permissions or uninitialized runtime)"] = "（无错误输出，可能是权限不足或运行时未初始化）"
+zh["Cannot query %1 (ll-cli search failed)"] = "无法查询 %1（ll-cli search 失败）"
+zh["No installable application found: %1"] = "未找到可安装的应用：%1"
+zh["%1 can be installed via ll-cli"] = "%1 可经 ll-cli 安装"
+
 # --- Periodic check & auto-update settings dialog (UpdateDialogs / tray menus) ---
 zh["Update Settings"] = "更新设置"
 zh["Periodic update check"] = "定时检测更新"
@@ -203,6 +211,14 @@ es["Working"] = "Trabajando"
 es["Another update is already in progress"] = "Ya hay otra actualización en curso"
 es["%1 Environment Issue"] = "Problema del entorno %1"
 es["The %1 runtime environment is abnormal; sandbox application updates via this backend are unavailable. Please check the backend's installation and runtime."] = "El entorno de ejecución de %1 es anormal; las actualizaciones de aplicaciones en sandbox a través de este backend no están disponibles. Verifique la instalación y el entorno del backend."
+
+# --- Linyaps backend availability messages ---
+es["ll-cli command not found. The linglong runtime is not installed. Please install the linglong runtime for your distribution (e.g. the linglong package on deepin/fedora, or follow the cross-distribution installation guide at https://linglong.dev)."] = "No se encontró el comando ll-cli. El entorno de ejecución de linglong no está instalado. Instale el entorno de ejecución de linglong para su distribución (p. ej., el paquete linglong en deepin/fedora, o siga la guía de instalación multiplataforma en https://linglong.dev)."
+es["ll-cli exists but `ll-cli list` failed; the linglong runtime may be broken: "] = "ll-cli existe, pero `ll-cli list` falló; el entorno de ejecución de linglong puede estar dañado: "
+es["(no error output; possibly insufficient permissions or uninitialized runtime)"] = "(sin salida de error; posiblemente permisos insuficientes o entorno no inicializado)"
+es["Cannot query %1 (ll-cli search failed)"] = "No se puede consultar %1 (falló ll-cli search)"
+es["No installable application found: %1"] = "No se encontró ninguna aplicación instalable: %1"
+es["%1 can be installed via ll-cli"] = "%1 se puede instalar mediante ll-cli"
 
 # --- Periodic check & auto-update settings dialog (UpdateDialogs / tray menus) ---
 es["Update Settings"] = "Configuración de actualizaciones"
@@ -298,6 +314,14 @@ fr["Another update is already in progress"] = "Une autre mise à jour est déjà
 fr["%1 Environment Issue"] = "Problème d'environnement %1"
 fr["The %1 runtime environment is abnormal; sandbox application updates via this backend are unavailable. Please check the backend's installation and runtime."] = "L'environnement d'exécution de %1 est anormal ; les mises à jour d'applications en sandbox via ce backend sont indisponibles. Vérifiez l'installation et l'environnement du backend."
 
+# --- Linyaps backend availability messages ---
+fr["ll-cli command not found. The linglong runtime is not installed. Please install the linglong runtime for your distribution (e.g. the linglong package on deepin/fedora, or follow the cross-distribution installation guide at https://linglong.dev)."] = "Commande ll-cli introuvable. L'environnement d'exécution linglong n'est pas installé. Installez l'environnement d'exécution linglong pour votre distribution (p. ex. le paquet linglong sur deepin/fedora, ou suivez le guide d'installation multi-distributions sur https://linglong.dev)."
+fr["ll-cli exists but `ll-cli list` failed; the linglong runtime may be broken: "] = "ll-cli existe mais `ll-cli list` a échoué ; l'environnement d'exécution linglong est peut-être endommagé : "
+fr["(no error output; possibly insufficient permissions or uninitialized runtime)"] = "(aucune sortie d'erreur ; permissions insuffisantes ou environnement non initialisé)"
+fr["Cannot query %1 (ll-cli search failed)"] = "Impossible d'interroger %1 (échec de ll-cli search)"
+fr["No installable application found: %1"] = "Aucune application installable trouvée : %1"
+fr["%1 can be installed via ll-cli"] = "%1 peut être installé via ll-cli"
+
 # --- Periodic check & auto-update settings dialog (UpdateDialogs / tray menus) ---
 fr["Update Settings"] = "Paramètres de mise à jour"
 fr["Periodic update check"] = "Vérification périodique des mises à jour"
@@ -391,6 +415,14 @@ de["Working"] = "Wird verarbeitet"
 de["Another update is already in progress"] = "Eine andere Aktualisierung läuft bereits"
 de["%1 Environment Issue"] = "Problem mit der %1-Umgebung"
 de["The %1 runtime environment is abnormal; sandbox application updates via this backend are unavailable. Please check the backend's installation and runtime."] = "Die Laufzeitumgebung von %1 ist fehlerhaft; Sandbox-Anwendungsupdates über dieses Backend sind nicht verfügbar. Bitte prüfen Sie die Installation und Laufzeitumgebung des Backends."
+
+# --- Linyaps backend availability messages ---
+de["ll-cli command not found. The linglong runtime is not installed. Please install the linglong runtime for your distribution (e.g. the linglong package on deepin/fedora, or follow the cross-distribution installation guide at https://linglong.dev)."] = "Befehl ll-cli nicht gefunden. Die linglong-Laufzeitumgebung ist nicht installiert. Installieren Sie die linglong-Laufzeitumgebung für Ihre Distribution (z. B. das linglong-Paket auf deepin/fedora oder folgen Sie der distributionsübergreifenden Installationsanleitung unter https://linglong.dev)."
+de["ll-cli exists but `ll-cli list` failed; the linglong runtime may be broken: "] = "ll-cli ist vorhanden, aber `ll-cli list` schlug fehl; die linglong-Laufzeitumgebung ist möglicherweise beschädigt: "
+de["(no error output; possibly insufficient permissions or uninitialized runtime)"] = "(keine Fehlerausgabe; möglicherweise unzureichende Berechtigungen oder nicht initialisierte Laufzeitumgebung)"
+de["Cannot query %1 (ll-cli search failed)"] = "Abfrage von %1 fehlgeschlagen (ll-cli search fehlgeschlagen)"
+de["No installable application found: %1"] = "Keine installierbare Anwendung gefunden: %1"
+de["%1 can be installed via ll-cli"] = "%1 kann über ll-cli installiert werden"
 
 # --- Periodic check & auto-update settings dialog (UpdateDialogs / tray menus) ---
 de["Update Settings"] = "Aktualisierungseinstellungen"

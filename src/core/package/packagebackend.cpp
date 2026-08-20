@@ -238,7 +238,14 @@ namespace DtkUpdate
         emit operationProgress(stage.value(op, tr("Working")), 0);
         const QStringList args = operationArgs(op, packages, error);
         if (args.isEmpty())
-            return true; // 后端不支持该操作（如 linyaps 未覆盖）
+        {
+            // 后端不支持该操作：以"成功且无事可做"回传，维持 operationFinished 必达契约，
+            // 避免调用方（如 monitor 升级后清理）只收到进度而无结果回调而卡住。
+            emit operationProgress(stage.value(op, tr("Working")), 100);
+            emit operationFinished(true, QStringLiteral("operation not supported by backend, "
+                                                        "skipped"));
+            return true;
+        }
         // 后台线程执行，避免阻塞 UI/tray 主线程；结果经 operationFinished 回传。
         // 同步取出 prefix（此时 this 有效），异步任务仅依赖值捕获，避免对象析构后 this
         // 悬空（segfault）。

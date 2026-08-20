@@ -47,67 +47,67 @@
 <context>
     <name>DtkUpdate::GenericIndicator</name>
     <message>
-        <location filename="../src/tray-generic/genericindicator.cpp" line="52"/>
+        <location filename="../src/tray-generic/genericindicator.cpp" line="66"/>
         <source>Check for Updates</source>
         <translation>Nach Aktualisierungen suchen</translation>
     </message>
     <message>
-        <location filename="../src/tray-generic/genericindicator.cpp" line="59"/>
+        <location filename="../src/tray-generic/genericindicator.cpp" line="73"/>
         <source>Open Update Manager</source>
         <translation>Update-Manager öffnen</translation>
     </message>
     <message>
-        <location filename="../src/tray-generic/genericindicator.cpp" line="65"/>
+        <location filename="../src/tray-generic/genericindicator.cpp" line="79"/>
         <source>Periodic Check</source>
         <translation>Periodische Prüfung</translation>
     </message>
     <message>
-        <location filename="../src/tray-generic/genericindicator.cpp" line="70"/>
+        <location filename="../src/tray-generic/genericindicator.cpp" line="85"/>
         <source>Off</source>
         <translation>Aus</translation>
     </message>
     <message>
-        <location filename="../src/tray-generic/genericindicator.cpp" line="71"/>
+        <location filename="../src/tray-generic/genericindicator.cpp" line="86"/>
         <source>Every hour</source>
         <translation>Jede Stunde</translation>
     </message>
     <message>
-        <location filename="../src/tray-generic/genericindicator.cpp" line="72"/>
+        <location filename="../src/tray-generic/genericindicator.cpp" line="87"/>
         <source>Every day</source>
         <translation>Jeden Tag</translation>
     </message>
     <message>
-        <location filename="../src/tray-generic/genericindicator.cpp" line="73"/>
+        <location filename="../src/tray-generic/genericindicator.cpp" line="88"/>
         <source>Every month</source>
         <translation>Jeden Monat</translation>
     </message>
     <message>
-        <location filename="../src/tray-generic/genericindicator.cpp" line="90"/>
+        <location filename="../src/tray-generic/genericindicator.cpp" line="105"/>
         <source>Auto Update</source>
         <translation>Automatische Aktualisierung</translation>
     </message>
     <message>
-        <location filename="../src/tray-generic/genericindicator.cpp" line="101"/>
+        <location filename="../src/tray-generic/genericindicator.cpp" line="118"/>
         <source>Quit</source>
         <translation>Beenden</translation>
     </message>
     <message>
-        <location filename="../src/tray-generic/genericindicator.cpp" line="129"/>
+        <location filename="../src/tray-generic/genericindicator.cpp" line="145"/>
         <source>%1 update(s) available</source>
         <translation>%1 Aktualisierungen verfügbar</translation>
     </message>
     <message>
-        <location filename="../src/tray-generic/genericindicator.cpp" line="130"/>
+        <location filename="../src/tray-generic/genericindicator.cpp" line="146"/>
         <source>System up to date</source>
         <translation>System ist aktuell</translation>
     </message>
     <message>
-        <location filename="../src/tray-generic/genericindicator.cpp" line="133"/>
+        <location filename="../src/tray-generic/genericindicator.cpp" line="149"/>
         <source>Updates available</source>
         <translation>Aktualisierungen verfügbar</translation>
     </message>
     <message>
-        <location filename="../src/tray-generic/genericindicator.cpp" line="134"/>
+        <location filename="../src/tray-generic/genericindicator.cpp" line="150"/>
         <source>%1 package(s) can be updated.</source>
         <translation>%1 Paket(e) können aktualisiert werden.</translation>
     </message>
@@ -116,229 +116,229 @@
     <name>DtkUpdate::LinyapsBackend</name>
     <message>
         <location filename="../src/core/package/linyapsbackend.cpp" line="26"/>
-        <source>未找到 ll-cli 命令。玲珑(linglong)运行环境未安装；请按你的发行版安装 linglong 运行时（如 deepin/fedora 的 linglong 包、或参考 https://linglong.dev 的跨发行版安装指南）。</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../src/core/package/linyapsbackend.cpp" line="37"/>
-        <source>ll-cli 命令存在，但执行 `ll-cli list` 失败，玲珑运行环境可能异常：</source>
-        <translation type="unfinished"></translation>
+        <source>ll-cli command not found. The linglong runtime is not installed. Please install the linglong runtime for your distribution (e.g. the linglong package on deepin/fedora, or follow the cross-distribution installation guide at https://linglong.dev).</source>
+        <translation>Befehl ll-cli nicht gefunden. Die linglong-Laufzeitumgebung ist nicht installiert. Installieren Sie die linglong-Laufzeitumgebung für Ihre Distribution (z. B. das linglong-Paket auf deepin/fedora oder folgen Sie der distributionsübergreifenden Installationsanleitung unter https://linglong.dev).</translation>
     </message>
     <message>
         <location filename="../src/core/package/linyapsbackend.cpp" line="38"/>
-        <source>（无错误输出，可能是权限不足或运行时未初始化）</source>
-        <translation type="unfinished"></translation>
+        <source>ll-cli exists but `ll-cli list` failed; the linglong runtime may be broken: </source>
+        <translation>ll-cli ist vorhanden, aber `ll-cli list` schlug fehl; die linglong-Laufzeitumgebung ist möglicherweise beschädigt: </translation>
     </message>
     <message>
-        <location filename="../src/core/package/linyapsbackend.cpp" line="130"/>
-        <source>无法查询 %1（ll-cli search 失败）</source>
-        <translation type="unfinished"></translation>
+        <location filename="../src/core/package/linyapsbackend.cpp" line="40"/>
+        <source>(no error output; possibly insufficient permissions or uninitialized runtime)</source>
+        <translation>(keine Fehlerausgabe; möglicherweise unzureichende Berechtigungen oder nicht initialisierte Laufzeitumgebung)</translation>
     </message>
     <message>
-        <location filename="../src/core/package/linyapsbackend.cpp" line="135"/>
-        <source>未找到可安装的应用：%1</source>
-        <translation type="unfinished"></translation>
+        <location filename="../src/core/package/linyapsbackend.cpp" line="133"/>
+        <source>Cannot query %1 (ll-cli search failed)</source>
+        <translation>Abfrage von %1 fehlgeschlagen (ll-cli search fehlgeschlagen)</translation>
     </message>
     <message>
         <location filename="../src/core/package/linyapsbackend.cpp" line="138"/>
-        <source>%1 可经 ll-cli 安装</source>
-        <translation type="unfinished"></translation>
+        <source>No installable application found: %1</source>
+        <translation>Keine installierbare Anwendung gefunden: %1</translation>
+    </message>
+    <message>
+        <location filename="../src/core/package/linyapsbackend.cpp" line="141"/>
+        <source>%1 can be installed via ll-cli</source>
+        <translation>%1 kann über ll-cli installiert werden</translation>
     </message>
 </context>
 <context>
     <name>DtkUpdate::MainWindow</name>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="67"/>
+        <location filename="../src/ui/mainwindow.cpp" line="62"/>
         <source>Dtk Update</source>
         <translation>Dtk Update</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="72"/>
+        <location filename="../src/ui/mainwindow.cpp" line="67"/>
         <source>Backend: %1</source>
         <translation>Backend: %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="111"/>
-        <location filename="../src/ui/mainwindow.cpp" line="172"/>
+        <location filename="../src/ui/mainwindow.cpp" line="106"/>
+        <location filename="../src/ui/mainwindow.cpp" line="167"/>
         <source>Checking for updates…</source>
         <translation>Suche nach Aktualisierungen…</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="119"/>
+        <location filename="../src/ui/mainwindow.cpp" line="114"/>
         <source>Check</source>
         <translation>Prüfen</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="120"/>
+        <location filename="../src/ui/mainwindow.cpp" line="115"/>
         <source>Dependency</source>
         <translation>Abhängigkeiten</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="122"/>
+        <location filename="../src/ui/mainwindow.cpp" line="117"/>
         <source>Update Now</source>
         <translation>Jetzt aktualisieren</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="124"/>
+        <location filename="../src/ui/mainwindow.cpp" line="119"/>
         <source>Settings</source>
         <translation>Einstellungen</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="154"/>
+        <location filename="../src/ui/mainwindow.cpp" line="149"/>
         <source>Select a package and click &apos;Dependency&apos; to analyze.</source>
         <translation>Wählen Sie ein Paket und klicken Sie auf „Abhängigkeiten“, um es zu analysieren.</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="182"/>
+        <location filename="../src/ui/mainwindow.cpp" line="177"/>
         <source>Updating…</source>
         <translation>Aktualisierung…</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="186"/>
+        <location filename="../src/ui/mainwindow.cpp" line="181"/>
         <source>Last check failed. Click &apos;Check&apos; to retry.</source>
         <translation>Die letzte Prüfung ist fehlgeschlagen. Klicken Sie auf „Prüfen“, um es erneut zu versuchen.</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="206"/>
-        <location filename="../src/ui/mainwindow.cpp" line="234"/>
+        <location filename="../src/ui/mainwindow.cpp" line="201"/>
+        <location filename="../src/ui/mainwindow.cpp" line="229"/>
         <source>System up to date</source>
         <translation>System ist aktuell</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="236"/>
+        <location filename="../src/ui/mainwindow.cpp" line="231"/>
         <source>%1 updates available</source>
         <translation>%1 Aktualisierungen verfügbar</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="261"/>
+        <location filename="../src/ui/mainwindow.cpp" line="256"/>
         <source>Analyzing dependencies for %1 …</source>
         <translation>Analysiere Abhängigkeiten von %1…</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="268"/>
+        <location filename="../src/ui/mainwindow.cpp" line="263"/>
         <source>Failed to resolve: %1</source>
         <translation>Auflösung fehlgeschlagen: %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="275"/>
+        <location filename="../src/ui/mainwindow.cpp" line="270"/>
         <source>Packages to be installed:</source>
         <translation>Zu installierende Pakete:</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="277"/>
+        <location filename="../src/ui/mainwindow.cpp" line="272"/>
         <source>None</source>
         <translation>Keine</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="284"/>
+        <location filename="../src/ui/mainwindow.cpp" line="279"/>
         <source>Packages to be removed:</source>
         <translation>Zu entfernende Pakete:</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="322"/>
+        <location filename="../src/ui/mainwindow.cpp" line="317"/>
         <source>Confirm System Update</source>
         <translation>Systemaktualisierung bestätigen</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="325"/>
+        <location filename="../src/ui/mainwindow.cpp" line="320"/>
         <source>The following packages will be upgraded. This action modifies the system and may affect dependencies. Continue?</source>
         <translation>Folgende Pakete werden aktualisiert. Dieser Vorgang verändert das System und kann Abhängigkeiten beeinflussen. Fortfahren?</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="328"/>
+        <location filename="../src/ui/mainwindow.cpp" line="323"/>
         <source>No changes are made unless you choose to continue. Optional dependencies and orphan removal follow your settings.</source>
         <translation>Es werden keine Änderungen vorgenommen, sofern Sie nicht fortfahren. Optionale Abhängigkeiten und die Entfernung verwaister Pakete folgen Ihren Einstellungen.</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="333"/>
+        <location filename="../src/ui/mainwindow.cpp" line="328"/>
         <source>Security advisories:</source>
         <translation>Sicherheitshinweise:</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="339"/>
+        <location filename="../src/ui/mainwindow.cpp" line="334"/>
         <source>details</source>
         <translation>Details</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="349"/>
+        <location filename="../src/ui/mainwindow.cpp" line="344"/>
         <source>A system reboot will be required after this update (kernel or base library changed).</source>
         <translation>Nach dieser Aktualisierung ist ein Neustart des Systems erforderlich (Kernel oder Basisbibliothek geändert).</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="353"/>
-        <location filename="../src/ui/mainwindow.cpp" line="390"/>
+        <location filename="../src/ui/mainwindow.cpp" line="348"/>
+        <location filename="../src/ui/mainwindow.cpp" line="385"/>
         <source>Service needs restart</source>
         <translation>Neu zu startender Dienst</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="356"/>
-        <location filename="../src/ui/mainwindow.cpp" line="393"/>
+        <location filename="../src/ui/mainwindow.cpp" line="351"/>
+        <location filename="../src/ui/mainwindow.cpp" line="388"/>
         <source>Config file to review</source>
         <translation>Zu prüfende Konfigurationsdatei</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="359"/>
-        <location filename="../src/ui/mainwindow.cpp" line="396"/>
+        <location filename="../src/ui/mainwindow.cpp" line="354"/>
+        <location filename="../src/ui/mainwindow.cpp" line="391"/>
         <source>Failed service unit</source>
         <translation>Fehlgeschlagene Diensteinheit</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="361"/>
+        <location filename="../src/ui/mainwindow.cpp" line="356"/>
         <source>Pre-update checks:</source>
         <translation>Prüfungen vor der Aktualisierung:</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="381"/>
+        <location filename="../src/ui/mainwindow.cpp" line="376"/>
         <source>Update completed — attention required</source>
         <translation>Aktualisierung abgeschlossen — Beachtung erforderlich</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="387"/>
+        <location filename="../src/ui/mainwindow.cpp" line="382"/>
         <source>A system reboot is recommended (kernel or base library updated).</source>
         <translation>Ein Neustart des Systems wird empfohlen (Kernel oder Basisbibliothek aktualisiert).</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="399"/>
+        <location filename="../src/ui/mainwindow.cpp" line="394"/>
         <source>Residual / orphan package</source>
         <translation>Rest-/Waisenpaket</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="403"/>
+        <location filename="../src/ui/mainwindow.cpp" line="398"/>
         <source>Download cache can be cleaned: %1 MB</source>
         <translation>Bereinigbarer Download-Cache: %1 MB</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="418"/>
+        <location filename="../src/ui/mainwindow.cpp" line="413"/>
         <source>Updating… %1</source>
         <translation>Aktualisierung… %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="430"/>
+        <location filename="../src/ui/mainwindow.cpp" line="425"/>
         <source>Update Completed</source>
         <translation>Aktualisierung abgeschlossen</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="430"/>
+        <location filename="../src/ui/mainwindow.cpp" line="425"/>
         <source>Update Failed</source>
         <translation>Aktualisierung fehlgeschlagen</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="431"/>
+        <location filename="../src/ui/mainwindow.cpp" line="426"/>
         <source>System packages have been updated.</source>
         <translation>Die Systempakete wurden aktualisiert.</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="432"/>
+        <location filename="../src/ui/mainwindow.cpp" line="427"/>
         <source>Update failed: %1</source>
         <translation>Aktualisierung fehlgeschlagen: %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="448"/>
+        <location filename="../src/ui/mainwindow.cpp" line="443"/>
         <source>%1 Environment Issue</source>
         <translation>Problem mit der %1-Umgebung</translation>
     </message>
     <message>
-        <location filename="../src/ui/mainwindow.cpp" line="451"/>
+        <location filename="../src/ui/mainwindow.cpp" line="446"/>
         <source>The %1 runtime environment is abnormal; sandbox application updates via this backend are unavailable. Please check the backend&apos;s installation and runtime.</source>
         <translation>Die Laufzeitumgebung von %1 ist fehlerhaft; Sandbox-Anwendungsupdates über dieses Backend sind nicht verfügbar. Bitte prüfen Sie die Installation und Laufzeitumgebung des Backends.</translation>
     </message>
@@ -377,6 +377,7 @@
     </message>
     <message>
         <location filename="../src/core/package/packagebackend.cpp" line="238"/>
+        <location filename="../src/core/package/packagebackend.cpp" line="244"/>
         <source>Working</source>
         <translation>Wird verarbeitet</translation>
     </message>
@@ -567,12 +568,12 @@
         <translation>Stunde(n)</translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="199"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="198"/>
         <source>day(s)</source>
         <translation>Tag(e)</translation>
     </message>
     <message>
-        <location filename="../src/indicator/updatedialogs.cpp" line="200"/>
+        <location filename="../src/indicator/updatedialogs.cpp" line="199"/>
         <source>month(s)</source>
         <translation>Monat(e)</translation>
     </message>
@@ -595,7 +596,7 @@
 <context>
     <name>DtkUpdate::UpdateMonitor</name>
     <message>
-        <location filename="../src/core/monitor/updatemonitor.cpp" line="270"/>
+        <location filename="../src/core/monitor/updatemonitor.cpp" line="273"/>
         <source>Another update is already in progress</source>
         <translation>Eine andere Aktualisierung läuft bereits</translation>
     </message>

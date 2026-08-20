@@ -23,9 +23,10 @@ namespace DtkUpdate
         {
             // ll-cli 未安装：给出明确的安装/获取指引，而不是笼统"不可用"。
             m_availabilityError =
-                tr("未找到 ll-cli 命令。玲珑(linglong)运行环境未安装；"
-                   "请按你的发行版安装 linglong 运行时（如 deepin/fedora 的 linglong 包、"
-                   "或参考 https://linglong.dev 的跨发行版安装指南）。");
+                tr("ll-cli command not found. The linglong runtime is not installed. "
+                   "Please install the linglong runtime for your distribution (e.g. the "
+                   "linglong package on deepin/fedora, or follow the cross-distribution "
+                   "installation guide at https://linglong.dev).");
             return false;
         }
         // 轻量冒烟：能真正执行 `ll-cli list` 才视为可用。
@@ -34,8 +35,11 @@ namespace DtkUpdate
         if (!runQuery(QStringList{QStringLiteral("ll-cli"), QStringLiteral("list")}, out, err))
         {
             m_availabilityError =
-                tr("ll-cli 命令存在，但执行 `ll-cli list` 失败，玲珑运行环境可能异常：") +
-                (err.isEmpty() ? tr("（无错误输出，可能是权限不足或运行时未初始化）") : err);
+                tr("ll-cli exists but `ll-cli list` failed; the linglong runtime may be "
+                   "broken: ") +
+                (err.isEmpty() ? tr("(no error output; possibly insufficient permissions or "
+                                    "uninitialized runtime)")
+                               : err);
             return false;
         }
         return true;
@@ -43,14 +47,13 @@ namespace DtkUpdate
 
     QVariantMap LinyapsBackend::backendOptions() const
     {
-        QVariantMap m;
-        if (m_config)
-        {
-            m.insert(QStringLiteral("noInstallRecommends"), m_config->noInstallRecommends());
-            m.insert(QStringLiteral("autoRemoveOrphans"), m_config->autoRemoveOrphans());
-            m.insert(QStringLiteral("autoCleanCache"), m_config->autoCleanCache());
-        }
-        return m;
+        // 沙箱应用商店无系统级包选项（recommends/orphans/cache 均不适用），
+        // 与 snap/flatpak 一致剔除这三个键，避免"看起来可配置但行为不变"的虚开关。
+        QVariantMap opts = defaultBackendOptions();
+        opts.remove(QStringLiteral("noInstallRecommends"));
+        opts.remove(QStringLiteral("autoRemoveOrphans"));
+        opts.remove(QStringLiteral("autoCleanCache"));
+        return opts;
     }
 
     bool LinyapsBackend::parseList(const QString& raw, PackageList& out, bool onlyUpgradable) const
@@ -127,15 +130,15 @@ namespace DtkUpdate
         if (!runQuery(QStringList{QStringLiteral("ll-cli"), QStringLiteral("search"), pkg}, raw,
                       error))
         {
-            resolution = tr("无法查询 %1（ll-cli search 失败）").arg(pkg);
+            resolution = tr("Cannot query %1 (ll-cli search failed)").arg(pkg);
             return false;
         }
         if (raw.trimmed().isEmpty())
         {
-            resolution = tr("未找到可安装的应用：%1").arg(pkg);
+            resolution = tr("No installable application found: %1").arg(pkg);
             return false;
         }
-        resolution = tr("%1 可经 ll-cli 安装").arg(pkg);
+        resolution = tr("%1 can be installed via ll-cli").arg(pkg);
         return true;
     }
 
@@ -215,8 +218,10 @@ namespace DtkUpdate
             // 玲珑无 purge 概念，uninstall 即彻底移除沙箱应用。
             return QStringList{QStringLiteral("uninstall")} + packages;
         case Op::Autoremove:
+            // 玲珑无 apt 式孤儿依赖概念，明确返回空表示不支持（诚实而非伪装成 prune）。
+            return {};
         case Op::CleanCache:
-            // 玲珑无 apt 式 autoremove；prune 清理无用旧版本层（等价"回收空间/清缓存"）。
+            // prune 清理无用旧版本层（等价"回收空间/清缓存"）。
             return {QStringLiteral("prune")};
         }
         return {};

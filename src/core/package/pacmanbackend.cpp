@@ -139,11 +139,14 @@ namespace DtkUpdate
         case Op::Purge: // pacman 无独立 purge；-n 同时删除配置文件
             return QStringList{QStringLiteral("-R"), QStringLiteral("-y"), QStringLiteral("-n")} +
                    packages;
-        case Op::Autoremove: // pacman 无原生单命令 autoremove；-u 移除不再被需要的依赖
-            return QStringList{QStringLiteral("-R"), QStringLiteral("-y"), QStringLiteral("-u")} +
-                   packages;
+        case Op::Autoremove:
+            // pacman 无原生单命令 autoremove，且孤儿列表需先查询（pacman -Qtdq）再移除，
+            // 不适合 operationArgs 纯参数模式；明确返回空表示不支持（诚实而非无目标失败）。
+            return {};
         case Op::CleanCache:
-            return {QStringLiteral("-Scc"), QStringLiteral("-y")};
+            // -Scc 会交互询问是否清理，非交互（pkexec）环境必须 --noconfirm 防挂起；
+            // -y 刷新数据库非清理所需，去掉避免多余网络操作。
+            return {QStringLiteral("-Scc"), QStringLiteral("--noconfirm")};
         }
         return {};
     }
