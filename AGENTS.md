@@ -61,7 +61,9 @@ DConfig appId 为 `org.deepin.dtk-update`。
     的 `arch→pacman` / `suse→zypper` 预留已连通。它们与 apt/dnf 同为**系统级后端**
     （强绑定发行系），**不**进入 `sandboxIds()`，无需改 `attachSandboxBackends`。pacman 无 recommends
     概念、`backendOptions()` 已移除 `noInstallRecommends`；zypper 复用 rpm 查询并支持
-    `checkConfigFilesToReview`（*.rpmnew/*.rpmsave/*.rpmorig）。
+    `checkConfigFilesToReview`（*.rpmnew/*.rpmsave/*.rpmorig）。pacman 亦已实现
+    `checkConfigFilesToReview`（扫描 /etc 下 *.pacnew/*.pacsave/*.pacorig，限定 /etc 防全盘
+    冻结），`supportsResidualConfig()` 返回 true——第十九轮补齐，勿再以"未实现"误报。
 - `isAvailable()` 必须探测**全部**关键命令**并**做轻量冒烟测试——缺失 `rpm`/`dpkg-query`
   必须返回 false，而非“命令存在即可用”（即“伪可用”陷阱）。
 - 健康探针默认 `support=false`，按后端覆盖。`needs-restarting` 退出码 `1` 表示建议重启、
@@ -125,7 +127,55 @@ DConfig appId 为 `org.deepin.dtk-update`。
 
 > 说明：技能会注入领域知识、标准化工作流（SOP）与可执行脚本/工具。加载技能后须遵循
 > 其指令。本项目的修复与开发任务均须优先加载对应技能（见上方硬性约束），仅当任务确无
-> 任何技能覆盖时才允许不加载。
+> 任何技能覆盖时才允许不加载。若本会话技能列表较上次有新增（如 `find-skills`/
+> `skill-creator`/`pdf`），须及时回流进本段，避免下一轮 agent 不知道可用技能。
+
+## 代码质量要求（提交前强制门禁，防低质量与严重漏洞代码）
+
+> **总则**：任何改动（无论 fix / feat / refactor / docs / cleanup）在 `git commit` 之前，
+> **必须**逐条满足下列要求；主 agent 验收与 CI 门禁共同把关。目标：绝不让"看起来合理、
+> 实际未实现 / 含严重漏洞 / 虚设开关 / 占位空壳"的代码进入 `main`。本门禁是「硬性约束」
+> 与「常态化审查工作流」的落地量化版，与「长任务后检查清单」互补。
+
+1. **绝不引入安全/可靠性严重漏洞（P0 红线）**：
+   - 提权路径只能走 `PackageBackend` 经 `pkexec`（见硬性约束 1），禁止进程内
+     `system("sudo ...")`、禁止拼接 `pkexec sudo ...`、禁止把密码写进命令行参数。
+   - 禁止主线程同步阻塞：安装/卸载/升级/清理必须经 `runPrivilegedAsync` 后台执行并走
+     `operationFinished` 信号回调；GUI/托盘主线程**禁止** `waitForFinished(-1)`，否则冻结桌面。
+   - 禁止 `QEventLoop::exec()` 阻塞网络/DBus 调用线程；所有网络访问异步 + 超时中断。
+   - 禁止 `const_cast`（尤其 `QTextStream` 无 const 构造，改用 `raw.split('\n')`）、禁止
+     裸 `new` 后不析构、禁止非 RAII 句柄泄漏、禁止无参 `SLOT()` 连接（会静默丢参）。
+2. **功能必须真实实现（声明 vs 实现一致）**：凡 README/AGENTS/commit 声称的能力，必须在
+   `src/` 有对应代码；禁止"虚拟开关"（config 键写了 getter 却无人读）、禁止"占位空壳"
+   （函数体只有 `return`/TODO 而无逻辑）、禁止"文档写了但代码没做"。新增/删除能力时
+   `tr()`/`ts`/`backend.conf.example`/README/AGENTS 须同步增删（见字符串变更联动纪律）。
+3. **用户安全优先（不替用户做决定）**：应用更新必须弹确认框且**默认焦点在取消**（硬性约束 3）；
+   手动/UI 触发的更新一律先征求确认，不因用户关闭某开关而绕过闸门（见已踩过的坑「手动更新
+   恒确认」）；升级后清理（autoremove/cleanCache）回调必须加身份守卫，防 cancel 后迟到回调
+   误判升级完成（见「升级后清理回调三重守卫」）。
+4. **零回归的自动化验证（必须跑）**：改动文件 `clang-format -i` 全过 + `clang-format --dry-run
+   --Werror` 零违规（CI 门禁 exit 123）；`cmake --build` 编译零错误；`ctest --output-on-failure`
+   无新增失败（SKIP 随宿主环境变化属正常）。任一失败**不提交、不推送**。
+5. **新增修复必须有回归用例锁定**：凡是修复了 P0/P1/P2 缺陷，必须同步补一个会失败的回归测试
+   （非恒真断言），锁定"缺陷不再复发"；删除"已修复但无测试"的脆弱点（见已踩过的坑「已修复点
+   必须有回归用例锁定」）。测试断言消息中的 `QString` 须 `.toStdString()`。
+6. **内存与并发安全**：跨对象裸指针由外部所有、持有方不得 `delete`；可选子对象后端用
+   `QPointer`；`QLockFile` 用值成员；`QCoreApplication` 禁静态全局（见 teardown 段错误坑）；
+   跨线程自定义结构体信号须 `qRegisterMetaType`。
+7. **解析稳健性**：解析机器可读包输出前注入 `LC_ALL=C`；健康探针（needs-restarting 退出码 1=
+   需重启、systemctl --failed 退出码 1=有 failed unit）必须用 `runProbe` 读退出码，禁用
+   `runQuery`（会丢非零输出）；沙箱后端解析（snap 跳表头取两列、flatpak 用 tab 分隔、版本空
+   视为最新）须严格按既定格式。
+8. **提交卫生与文档同步**：严禁 `git add -A`/整目录；暂存区只含源码/doc/配置，绝无 `build*/`、
+   `*.o`、`*_autogen`、CTest 日志（见「禁止提交编译产物」）；本仓库 AGENTS.md 的「硬性约束/
+   已踩过的坑/约定/技能清单」因改动而漂移时，必须随对应代码一并提交（见 AGENTS.md 更新纪律）。
+9. **变更按功能分组提交**：不同性质改动（fix/feat/refactor/docs/cleanup/ci）拆独立 commit，
+   前缀语义清晰；同一轮修复的 N 个文件若同属一个缺陷，可合成一笔 `fix:`。提交后必须 `git status`
+   复核工作区干净，并主动查 CI 结果（lint/test/build 三路），红则修到绿。
+10. **多 agent 交叉验证（防自欺闭环）**：跨文件 / 超 200 行 / 触及 `src/core` 抽象、后端注册、
+   提权、异步写的改动，提交前必须按「多 Agent 协作模式 · 模式二」拉起≥3 个独立审查子 agent
+   交叉验证；任一高危项未闭环前不提交。所有 claims 须有源码 diff/commit 证据，主 agent 亲自
+    `git diff` 复核，不接受子 agent 口头保证。
 
 ## 已踩过的坑（避免重犯）
 
