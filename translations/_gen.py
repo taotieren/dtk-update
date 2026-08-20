@@ -452,8 +452,11 @@ def fill_ts(lang: str, table: dict):
     src = BASE / "dtk-update_en_US.ts"
     out = BASE / f"dtk-update_{lang}.ts"
     text = src.read_text(encoding="utf-8")
-    # Replace header language
-    text = text.replace('language="en_US"', f'language="{lang}"')
+    # Replace header language. 必须精确匹配整个 TS 头：若只替换 'language="en_US"' 子串，
+    # 会把后面的 sourcelanguage="en_US" 一并误改为目标语言（sourcelanguage 应恒为源语言
+    # en_US，改错会导致 Qt Linguist/工具链将源语言误判为翻译语言）。
+    text = text.replace('<TS version="2.1" language="en_US" sourcelanguage="en_US">',
+                        f'<TS version="2.1" language="{lang}" sourcelanguage="en_US">')
     # For each source string present in the table, fill its translation.
     # The .ts stores apostrophes as &apos;, so also try the encoded form.
     missing = []
