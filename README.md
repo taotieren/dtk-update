@@ -31,6 +31,13 @@ so the project is no longer tied to a single distribution or package manager.
 - Background monitor via systemd user service
 - Transparent configuration through DConfig and a user-editable `backend.conf`
   (INI/conf style; see `--show-config`)
+- **Periodic update check**: Off / hourly / daily / monthly (off by default and must be
+  enabled explicitly; when off, checks only run on demand or on events such as wake-up /
+  network reconnect; config changes hot-reload the schedule)
+- **Automatic update**: disabled by default and must be enabled explicitly. When enabled,
+  only updates found by *periodic* checks are installed automatically; if a security
+  advisory or pre-update check recommends attention, your explicit confirmation is still
+  required first (focus defaults to Cancel) — never an implicit, unconfirmed change
 - **Localization**: Simplified Chinese, English, Spanish, French, German
 
 ## Development Skills
