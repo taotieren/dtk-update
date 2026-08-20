@@ -26,15 +26,33 @@
   （配置存在但升级后从不执行）；现升级成功收尾后按配置触发后端的 `autoremove` /
   `cleanCache`（apt/dnf 自动移除孤儿与清理缓存；pacman/zypper 明确不支持孤儿自动移除；
   沙箱后端无此概念，自动跳过）。清理为后台维护性操作，不打断升级结果。
-- **修复 DConfig 层布尔开关失效**：DConfig schema 键为小写（`showSecurityAdvisory`、
-  `fetchUpstreamAdvisories`、`noInstallRecommends`、`autoRemoveOrphans`、
-  `autoCleanCache`），而读取端误用大写键查询导致永不着中、全部回落到默认值；现已按
-  schema 键名读取（backend.conf 大写键不受影响）。
+- **修复 DConfig 层布尔开关失效（终版）**：DConfig schema 键为 camelCase（
+  `showSecurityAdvisory`、`fetchUpstreamAdvisories`、`noInstallRecommends`、
+  `autoRemoveOrphans`、`autoCleanCache`），而读取端此前误以全小写键查询
+  `keyList()`（大小写敏感永不命中），5 个布尔开关全部静默回落到默认值；现经显式映射
+  表把 backend.conf 的 PascalCase 键换算为 schema 的 camelCase 键后查询，并以回归
+  测试锁定 schema 一致性（backend.conf 大写键不受影响）。
+- **手动/UI 触发的更新一律先征求确认**：此前用户关闭「显示安全公告」后，手动更新会
+  绕过确认直接提权安装（确认闸门只保护自动更新路径）；现手动路径无条件弹出确认框
+  （默认焦点在取消），自动更新路径保持「有安全公告/预检建议才确认」。
+- **升级后清理回调防误判**：升级取消后，在途旧操作/清理的迟到回调曾可能被误判为本轮
+  升级完成，导致提前解锁并发锁、重复提示"更新完成"；现以取消前在途清理计数转存 +
+  无在途升级的游离回调守卫双重忽略。
+- **孤儿清理仅在系统后端实际升级后执行**：此前升级的仅是沙箱应用时也可能对系统执行
+  `autoremove`，有误删用户手动安装包的风险；现仅当系统后端本轮确实参与了升级才触发。
+- 修复通用托盘析构时的二次释放（`QActionGroup` 为 `QMenu` 子对象，`delete m_menu`
+  已级联释放，再 delete 即 double free）。
+- 修复 daemon 对 login1/NetworkManager 信号的重复订阅（monitor 构造已订阅，daemon
+  再订一遍导致同一事件触发两次检查）。
+- 移除开机自启中指向 GUI 主窗口的错误桌面文件（`dtk-update-tray.desktop` 的
+  `Exec=dtk-update-gui` 会让每次开机弹出主窗口并与通用托盘重复自启）。
 - **修复 openSUSE 候选版本误映射**：zypper `zypper list-updates` 表头解析此前把
   `Current Version` 当候选版本列，导致 `candidateVersion` 返回已装版本；现优先匹配
   `Available Version`。
 - 应用版本号修正为 `0.0.1`（此前 GUI 硬编码 `0.1.0`，与包版本不一致）。
 - 修复通用托盘菜单对象在重建时的内存泄漏（QMenu 无父对象托管）。
+- 修复翻译生成脚本误改写 `sourcelanguage`（把源语言也替换为目标语言）；无目标包/
+  空参数的后端写操作补齐操作结果回传（契约必达）。
 
 ---
 

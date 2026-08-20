@@ -262,6 +262,44 @@ DConfig appId 为 `org.deepin.dtk-update`。
   - 若误把构建产物纳入了某次提交：立即 `git rm --cached -r <路径>` 从索引移除（保留本地目录），
     amend 或新提交修正；若已 push 且需彻底清除历史，再走 rebase + `push --force-with-lease`
     （共享分支强推需谨慎，确认无人基于旧历史开发）。
+- **clang-format 只格式化 C/C++，绝不能用于 CMakeLists.txt/脚本/JSON**（第十八轮事故）：
+  CI lint 门禁只扫 `src tests` 的 `.cpp/.h`；若把 `tests/CMakeLists.txt` 也塞进
+  `clang-format -i` 列表，会把整个文件拆行拆乱（`find_package(...) if(...)` 挤一行、
+  Parse error），必须 `git checkout -- <文件>` 恢复重改。格式化命令只针对改动到的
+  `.cpp/.h`，且跑完后立即 `git diff` 复核。
+- **DConfig schema 键是 camelCase，backend.conf 键是 PascalCase（第十八轮 P1 修正）**：
+  `data/dconfig/org.deepin.dtk-update.json` 的键为 `showSecurityAdvisory`、
+  `noInstallRecommends` 等（首字母小写），而 backend.conf 为 `ShowSecurityAdvisory` 等。
+  `boolOption` 读 DConfig 前**必须经 `AppConfig::dConfigKeyFor()` 显式映射换算**再查
+  `keyList().contains()`（大小写敏感）；此前曾误判"schema 键均为小写"用 `key.toLower()`
+  查询，全小写与 camelCase 仍不匹配 → 5 个布尔开关静默失效，且单测无法暴露（DConfig
+  不可用）。新增 schema 一致性测试锁定映射（`tests/test_appconfig.cpp` 读 schema json）。
+  另注意 Qt6 `QTextStream` 只有非 const `QString*` 构造（无 const 重载），对 const
+  QString 按行解析改用 `raw.split('\n')` 遍历，勿用 const_cast。
+- **手动/UI 触发的更新一律先征求确认（硬约束 3 的完整落地）**：`applyUpdates` 的
+  `needConfirm` 表达式为 `autoTriggered ? (有安全公告/预检) : true`——手动路径无条件发
+  `securityPrompt` 弹确认框（默认焦点取消）；自动路径保持"有内容才确认"。此前手动路径
+  依赖 `showSecurityAdvisory`（用户关闭后即绕过确认直接提权），闸门只护住了自动路径。
+  修改后既有断言"无 advisor 直装"的测试须同步改为"无 advisor 也须确认后再 proceedUpdate"。
+- **升级后清理回调的"身份"防污染（onBackendFinished 三重守卫）**：升级收尾后触发的
+  autoremove/cleanCache 回调、cancel 后在途操作的迟到回调，都会从同一个
+  `operationFinished` 信号到达。守卫顺序：① `m_cancelled` 吞 cancel 后首发；②
+  `m_ignoredCleanupOps`（cancelUpdate 把在途清理计数转存）吞旧清理回调；③
+  `m_cleanupOps` 吞本轮清理回调；④ `m_pendingOps` 递减只在 >0 时进行、归零后到达的
+  游离回调直接 return（绝不进收尾/解锁/emit upgradeFinished）。改动后须新增
+  `StaleOperationFinishedIgnoredAfterCancel` 回归用例。
+- **autostart 桌面文件的 Exec 必须指向真正的自启程序**：`dtk-update-tray.desktop` 历史
+  上 `Exec=dtk-update-gui`（GUI 主窗口，无托盘驻留），安装在 `/etc/xdg/autostart` 导致
+  每次开机弹出主窗口并与 generic 托盘重复自启——已删除该文件并移除 `data/CMakeLists.txt`
+  与 `debian/install` 引用。dde-dock 插件由 Dock 加载、GUI 由用户手动打开，均不需要
+  autostart；非 deepin 环境仅 `dtk-update-tray-generic.desktop` 自启。
+- **`translations/_gen.py` 改 TS 头须精确匹配整个 `<TS ...>` 标签**：`replace('language="en_US"', ...)`
+  会命中后面的 `sourcelanguage="en_US"` 子串一并误改（源语言变成目标语言）；必须整串
+  `<TS version="2.1" language="en_US" sourcelanguage="en_US">` 替换。`_gen.py` 改动后
+  须重新跑 `lupdate + _gen.py` 验证生成的 ts 头正确。
+- **gtest 流输出 QString 需 `.toStdString()`**：`EXPECT_EQ(a, b) << qstring` 在 gtest 的
+  ostream 重载下无匹配（`operator<<` 不支持 QString），编译报
+  `no match for 'operator<<'`。测试断言的消息参数先转 `toStdString()`。
 
 ## 常态化严苛审查工作流（防垃圾代码污染源码）
 
