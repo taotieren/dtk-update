@@ -125,13 +125,34 @@ namespace DtkUpdate
         make(QStringLiteral("update"), tr("Update Now"), false, hasUpdates);
         make(QStringLiteral("open"), tr("Open Update Manager"));
         make(QString(), QString(), true); // 分隔符
+
+        // 「自动更新」可勾选菜单项：状态来自配置（默认关闭，需用户显式开启）
+        auto makeCheckable =
+            [&](const QString& id, const QString& text, bool checked, bool active = true)
+        {
+            QVariantMap m;
+            m[QStringLiteral("itemId")] = id;
+            m[QStringLiteral("itemText")] = text;
+            m[QStringLiteral("isCheckable")] = true;
+            m[QStringLiteral("isActive")] = active;
+            m[QStringLiteral("isSeparator")] = false;
+            m[QStringLiteral("checked")] = checked;
+            items.append(m);
+        };
+        make(QStringLiteral("periodic"), tr("Periodic Check…"));
+        makeCheckable(QStringLiteral("auto_update"), tr("Auto Update"),
+                      config() && config()->autoUpdateEnabled());
+
+        make(QString(), QString(), true); // 分隔符
         make(QStringLiteral("settings"), tr("Settings"));
         make(QStringLiteral("about"), tr("About"));
 
         QVariantMap root;
         root[QStringLiteral("items")] = items;
-        root[QStringLiteral("checkableMenu")] = false;
-        root[QStringLiteral("singleCheck")] = false;
+        // 菜单含可勾选项（Auto Update）：必须开启 checkableMenu，dde-dock 才会渲染
+        // isCheckable/checked 并把勾选状态经 invokedMenuItem 的 checked 参数回传。
+        root[QStringLiteral("checkableMenu")] = true;
+        root[QStringLiteral("singleCheck")] = false; // 允许多个独立勾选项
         return QString::fromUtf8(QJsonDocument::fromVariant(root).toJson());
     }
 
@@ -139,7 +160,6 @@ namespace DtkUpdate
                                           const bool checked)
     {
         Q_UNUSED(itemKey);
-        Q_UNUSED(checked)
         if (menuId == QStringLiteral("check") && monitor())
         {
             monitor()->checkNow();
@@ -151,6 +171,17 @@ namespace DtkUpdate
         else if (menuId == QStringLiteral("open"))
         {
             QProcess::startDetached(QStringLiteral("dtk-update-gui"), {});
+        }
+        else if (menuId == QStringLiteral("periodic"))
+        {
+            // 定时检测设置：不开启/按小时/按天/按月（默认不开启）
+            UpdateDialogs::showScheduleSettings(config());
+        }
+        else if (menuId == QStringLiteral("auto_update"))
+        {
+            // 自动更新开关：dde-dock 回传勾选状态；默认关闭，需用户显式开启
+            if (config())
+                config()->setAutoUpdateEnabled(checked);
         }
         else if (menuId == QStringLiteral("settings"))
         {

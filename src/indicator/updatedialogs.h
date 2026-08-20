@@ -14,6 +14,8 @@
 namespace DtkUpdate
 {
 
+    class AppConfig;
+
     /**
      * @brief 共享的更新提示对话框构建器。
      *
@@ -44,6 +46,11 @@ namespace DtkUpdate
 
         /// 发行版官方「最近新闻 / 通知」展示（与包名无关，纯信息，非阻塞）。
         static void showDistroNotices(const QList<SecurityAdvisor::Notice>& notices);
+
+        /// 更新设置对话框：定时检测（disabled/hour/day/month + 间隔值）与自动更新开关。
+        /// 两者默认均关闭，需要用户显式开启；确定后写 DConfig，经 configChanged 自动
+        /// 热更新各前端 monitor 的调度。
+        static void showScheduleSettings(AppConfig* config);
     };
 
 } // namespace DtkUpdate

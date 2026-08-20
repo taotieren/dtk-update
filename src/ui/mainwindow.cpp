@@ -12,7 +12,6 @@
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
-#include <QProcess>
 #include <QPushButton>
 #include <QStandardItemModel>
 #include <QTextBrowser>
@@ -437,11 +436,8 @@ namespace DtkUpdate
 
     void MainWindow::onOpenSettings()
     {
-        // 通过 dde-am 打开控制中心更新模块（Wayland 下正确激活窗口）
-        QStringList args{QStringLiteral("--by-user"),
-                         QStringLiteral("org.deepin.dde.control-center"), QStringLiteral("--"),
-                         QStringLiteral("-p"), QStringLiteral("update")};
-        QProcess::startDetached(QStringLiteral("dde-am"), args);
+        // 定时检测（不开启/按小时/按天/按月）与自动更新设置，两者默认均关闭
+        UpdateDialogs::showScheduleSettings(m_config);
     }
 
     void MainWindow::onBackendUnavailable(const QString& backendId, const QString& reason)

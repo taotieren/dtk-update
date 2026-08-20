@@ -2,9 +2,12 @@
 
 #include <DGuiApplicationHelper>
 #include <QAction>
+#include <QActionGroup>
 #include <QApplication>
 #include <QIcon>
+#include <QList>
 #include <QMenu>
+#include <QPair>
 #include <QProcess>
 #include <QStandardPaths>
 
@@ -19,7 +22,12 @@ namespace DtkUpdate
     GenericIndicator::GenericIndicator(QObject* parent) : UpdateIndicator(parent)
     {
         m_tray = new QSystemTrayIcon(this);
-        buildMenu();
+        m_menu = new QMenu;
+        rebuildMenu();
+        m_tray->setContextMenu(m_menu);
+        // 每次弹出前重建菜单，使「定时检测 / 自动更新」勾选状态与配置实时一致
+        // （配置可能经 GUI 设置对话框等其他途径修改）。
+        connect(m_menu, &QMenu::aboutToShow, this, &GenericIndicator::rebuildMenu);
         updateIcon(hasUpdates());
         connect(m_tray, &QSystemTrayIcon::activated, this,
                 [this](QSystemTrayIcon::ActivationReason reason)
@@ -32,7 +40,10 @@ namespace DtkUpdate
                 [this] { updateIcon(hasUpdates()); });
     }
 
-    GenericIndicator::~GenericIndicator() = default;
+    GenericIndicator::~GenericIndicator()
+    {
+        delete m_unitGroup; // 托盘菜单不拥有 QObject 子对象，需手动释放防泄漏
+    }
 
     void GenericIndicator::show()
     {
@@ -44,23 +55,68 @@ namespace DtkUpdate
         }
     }
 
-    void GenericIndicator::buildMenu()
+    void GenericIndicator::rebuildMenu()
     {
-        auto* menu = new QMenu;
-        auto* check = menu->addAction(tr("Check for Updates"));
+        if (!m_menu)
+            return;
+        // 先释放上次重建遗留的 QActionGroup（QMenu::clear 只删 QAction，不删 QObject 子对象）
+        if (m_unitGroup)
+            delete m_unitGroup;
+        m_menu->clear(); // 清空旧 action（QMenu 拥有并删除），保证重建后状态一致
+        auto* check = m_menu->addAction(tr("Check for Updates"));
         connect(check, &QAction::triggered, this,
                 [this]
                 {
                     if (monitor())
                         monitor()->checkNow();
                 });
-        auto* open = menu->addAction(tr("Open Update Manager"));
+        auto* open = m_menu->addAction(tr("Open Update Manager"));
         connect(open, &QAction::triggered, this,
                 [] { QProcess::startDetached(QStringLiteral("dtk-update-gui"), {}); });
-        menu->addSeparator();
-        auto* quit = menu->addAction(tr("Quit"));
+        m_menu->addSeparator();
+
+        // —— 定时检测（默认不开启，需用户显式开启；单选子菜单）——
+        auto* periodicMenu = m_menu->addMenu(tr("Periodic Check"));
+        m_unitGroup = new QActionGroup(m_menu);
+        m_unitGroup->setExclusive(true);
+        const QString curUnit =
+            config() ? config()->checkIntervalUnit() : QStringLiteral("disabled");
+        const QList<QPair<QString, QString>> units = {
+            {QStringLiteral("disabled"), tr("Off")},
+            {QStringLiteral("hour"), tr("Every hour")},
+            {QStringLiteral("day"), tr("Every day")},
+            {QStringLiteral("month"), tr("Every month")},
+        };
+        for (const auto& u : units)
+        {
+            auto* act = periodicMenu->addAction(u.second);
+            act->setCheckable(true);
+            act->setChecked(u.first == curUnit);
+            m_unitGroup->addAction(act);
+            connect(act, &QAction::triggered, this,
+                    [this, u]
+                    {
+                        if (config())
+                            config()->setCheckIntervalUnit(u.first);
+                    });
+        }
+
+        // —— 自动更新（默认关闭，需用户显式开启；可勾选）——
+        auto* autoAct = m_menu->addAction(tr("Auto Update"));
+        autoAct->setCheckable(true);
+        // 重建时同步勾选状态，但不触发写配置（triggered 仅用户点击才发，避免每次弹菜单冗余写
+        // DConfig）
+        autoAct->setChecked(config() && config()->autoUpdateEnabled());
+        connect(autoAct, &QAction::triggered, this,
+                [this](bool on)
+                {
+                    if (config())
+                        config()->setAutoUpdateEnabled(on);
+                });
+
+        m_menu->addSeparator();
+        auto* quit = m_menu->addAction(tr("Quit"));
         connect(quit, &QAction::triggered, &QApplication::quit);
-        m_tray->setContextMenu(menu);
     }
 
     void GenericIndicator::updateIcon(bool hasUpdates)

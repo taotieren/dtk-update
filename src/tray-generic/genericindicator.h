@@ -6,6 +6,8 @@
 
 #include "indicator/updateindicator.h"
 
+class QActionGroup; // 前置声明：仅成员裸指针，无需完整类型
+
 namespace DtkUpdate
 {
 
@@ -34,10 +36,12 @@ namespace DtkUpdate
         void onDistroNotices(const QList<SecurityAdvisor::Notice>& notices) override;
 
       private:
-        void buildMenu();
+        void rebuildMenu();
         void updateIcon(bool hasUpdates);
 
         QPointer<QSystemTrayIcon> m_tray;
+        QPointer<QMenu> m_menu; // 托盘菜单（aboutToShow 时重建，保证勾选状态反映最新配置）
+        QActionGroup* m_unitGroup = nullptr; // 定时单位单选组（重建时先释放，防泄漏）
     };
 
 } // namespace DtkUpdate

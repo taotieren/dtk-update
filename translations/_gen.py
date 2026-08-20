@@ -110,6 +110,25 @@ zh["Another update is already in progress"] = "已有其他更新正在进行中
 zh["%1 Environment Issue"] = "%1 运行环境异常"
 zh["The %1 runtime environment is abnormal; sandbox application updates via this backend are unavailable. Please check the backend's installation and runtime."] = "%1 运行环境异常，经此后端的沙箱应用更新不可用。请检查该后端的安装与运行环境。"
 
+# --- Periodic check & auto-update settings dialog (UpdateDialogs / tray menus) ---
+zh["Update Settings"] = "更新设置"
+zh["Periodic update check"] = "定时检测更新"
+zh["Off — check only when I ask or on events"] = "关闭 — 仅手动检查或事件触发时检查"
+zh["Every hour"] = "每小时"
+zh["Every day"] = "每天"
+zh["Every month"] = "每月"
+zh["Check every"] = "每"
+zh["hour(s)"] = "小时"
+zh["day(s)"] = "天"
+zh["month(s)"] = "个月"
+zh["Automatic update"] = "自动更新"
+zh["Automatically install updates found by periodic checks"] = "自动安装定时检测发现的更新"
+zh["Disabled by default. When enabled, updates are installed automatically; if a security advisory or pre-update check recommends attention, your explicit confirmation is still required before any change is made."] = "默认关闭。开启后，定时检测发现的更新会自动安装；若存在安全公告或预检建议需关注，任何变更前仍会先征求您的明确确认。"
+zh["Periodic Check…"] = "定时检测…"
+zh["Periodic Check"] = "定时检测"
+zh["Auto Update"] = "自动更新"
+zh["Off"] = "关闭"
+
 # --- Recent release notes & notices dialog (distro notices popup) ---
 zh["Recent release notes & notices"] = "近期发布说明与通知"
 
@@ -184,6 +203,25 @@ es["Working"] = "Trabajando"
 es["Another update is already in progress"] = "Ya hay otra actualización en curso"
 es["%1 Environment Issue"] = "Problema del entorno %1"
 es["The %1 runtime environment is abnormal; sandbox application updates via this backend are unavailable. Please check the backend's installation and runtime."] = "El entorno de ejecución de %1 es anormal; las actualizaciones de aplicaciones en sandbox a través de este backend no están disponibles. Verifique la instalación y el entorno del backend."
+
+# --- Periodic check & auto-update settings dialog (UpdateDialogs / tray menus) ---
+es["Update Settings"] = "Configuración de actualizaciones"
+es["Periodic update check"] = "Comprobación periódica de actualizaciones"
+es["Off — check only when I ask or on events"] = "Desactivado — comprobar solo cuando yo lo solicite o en eventos"
+es["Every hour"] = "Cada hora"
+es["Every day"] = "Cada día"
+es["Every month"] = "Cada mes"
+es["Check every"] = "Comprobar cada"
+es["hour(s)"] = "hora(s)"
+es["day(s)"] = "día(s)"
+es["month(s)"] = "mes(es)"
+es["Automatic update"] = "Actualización automática"
+es["Automatically install updates found by periodic checks"] = "Instalar automáticamente las actualizaciones encontradas en las comprobaciones periódicas"
+es["Disabled by default. When enabled, updates are installed automatically; if a security advisory or pre-update check recommends attention, your explicit confirmation is still required before any change is made."] = "Desactivado por defecto. Cuando está activado, las actualizaciones se instalan automáticamente; si un aviso de seguridad o una comprobación previa recomienda atención, su confirmación explícita seguirá siendo necesaria antes de realizar cualquier cambio."
+es["Periodic Check…"] = "Comprobación periódica…"
+es["Periodic Check"] = "Comprobación periódica"
+es["Auto Update"] = "Actualización automática"
+es["Off"] = "Desactivado"
 
 # --- Recent release notes & notices dialog (distro notices popup) ---
 es["Recent release notes & notices"] = "Notas de la versión y avisos recientes"
@@ -260,6 +298,25 @@ fr["Another update is already in progress"] = "Une autre mise à jour est déjà
 fr["%1 Environment Issue"] = "Problème d'environnement %1"
 fr["The %1 runtime environment is abnormal; sandbox application updates via this backend are unavailable. Please check the backend's installation and runtime."] = "L'environnement d'exécution de %1 est anormal ; les mises à jour d'applications en sandbox via ce backend sont indisponibles. Vérifiez l'installation et l'environnement du backend."
 
+# --- Periodic check & auto-update settings dialog (UpdateDialogs / tray menus) ---
+fr["Update Settings"] = "Paramètres de mise à jour"
+fr["Periodic update check"] = "Vérification périodique des mises à jour"
+fr["Off — check only when I ask or on events"] = "Désactivé — vérifier uniquement sur demande ou lors d'événements"
+fr["Every hour"] = "Toutes les heures"
+fr["Every day"] = "Tous les jours"
+fr["Every month"] = "Tous les mois"
+fr["Check every"] = "Vérifier toutes les"
+fr["hour(s)"] = "heure(s)"
+fr["day(s)"] = "jour(s)"
+fr["month(s)"] = "mois"
+fr["Automatic update"] = "Mise à jour automatique"
+fr["Automatically install updates found by periodic checks"] = "Installer automatiquement les mises à jour trouvées lors des vérifications périodiques"
+fr["Disabled by default. When enabled, updates are installed automatically; if a security advisory or pre-update check recommends attention, your explicit confirmation is still required before any change is made."] = "Désactivé par défaut. Lorsqu'il est activé, les mises à jour sont installées automatiquement ; si un avis de sécurité ou une vérification préalable recommande votre attention, votre confirmation explicite reste requise avant toute modification."
+fr["Periodic Check…"] = "Vérification périodique…"
+fr["Periodic Check"] = "Vérification périodique"
+fr["Auto Update"] = "Mise à jour automatique"
+fr["Off"] = "Désactivé"
+
 # --- Recent release notes & notices dialog (distro notices popup) ---
 fr["Recent release notes & notices"] = "Notes de version et avis récents"
 
@@ -334,6 +391,25 @@ de["Working"] = "Wird verarbeitet"
 de["Another update is already in progress"] = "Eine andere Aktualisierung läuft bereits"
 de["%1 Environment Issue"] = "Problem mit der %1-Umgebung"
 de["The %1 runtime environment is abnormal; sandbox application updates via this backend are unavailable. Please check the backend's installation and runtime."] = "Die Laufzeitumgebung von %1 ist fehlerhaft; Sandbox-Anwendungsupdates über dieses Backend sind nicht verfügbar. Bitte prüfen Sie die Installation und Laufzeitumgebung des Backends."
+
+# --- Periodic check & auto-update settings dialog (UpdateDialogs / tray menus) ---
+de["Update Settings"] = "Aktualisierungseinstellungen"
+de["Periodic update check"] = "Periodische Aktualisierungsprüfung"
+de["Off — check only when I ask or on events"] = "Aus — nur auf Anfrage oder bei Ereignissen prüfen"
+de["Every hour"] = "Jede Stunde"
+de["Every day"] = "Jeden Tag"
+de["Every month"] = "Jeden Monat"
+de["Check every"] = "Prüfen alle"
+de["hour(s)"] = "Stunde(n)"
+de["day(s)"] = "Tag(e)"
+de["month(s)"] = "Monat(e)"
+de["Automatic update"] = "Automatische Aktualisierung"
+de["Automatically install updates found by periodic checks"] = "Aktualisierungen aus periodischen Prüfungen automatisch installieren"
+de["Disabled by default. When enabled, updates are installed automatically; if a security advisory or pre-update check recommends attention, your explicit confirmation is still required before any change is made."] = "Standardmäßig deaktiviert. Wenn aktiviert, werden Aktualisierungen automatisch installiert; wenn ein Sicherheitshinweis oder eine Vorabprüfung Ihre Aufmerksamkeit empfiehlt, ist vor jeder Änderung weiterhin Ihre ausdrückliche Bestätigung erforderlich."
+de["Periodic Check…"] = "Periodische Prüfung…"
+de["Periodic Check"] = "Periodische Prüfung"
+de["Auto Update"] = "Automatische Aktualisierung"
+de["Off"] = "Aus"
 
 # --- Recent release notes & notices dialog (distro notices popup) ---
 de["Recent release notes & notices"] = "Aktuelle Versionshinweise & Mitteilungen"

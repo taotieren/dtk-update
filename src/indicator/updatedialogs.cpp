@@ -6,7 +6,16 @@
 
 #include <DDialog>
 #include <DLog>
+#include <QCheckBox>
+#include <QHBoxLayout>
 #include <QIcon>
+#include <QLabel>
+#include <QRadioButton>
+#include <QSpinBox>
+#include <QVBoxLayout>
+#include <QWidget>
+
+#include "common/appconfig.h"
 
 using Dtk::Widget::DDialog;
 
@@ -136,6 +145,105 @@ namespace DtkUpdate
         dlg->setMessage(body);
         dlg->addButton(tr("OK"), true, DDialog::ButtonRecommend);
         dlg->exec();
+        dlg->deleteLater();
+    }
+
+    void UpdateDialogs::showScheduleSettings(AppConfig* config)
+    {
+        if (!config)
+            return;
+        DDialog* dlg = buildBaseDialog(tr("Update Settings"), QStringLiteral("preferences-system"));
+        auto* content = new QWidget(dlg);
+        auto* layout = new QVBoxLayout(content);
+
+        // —— 定时检测（默认关闭，需用户显式开启）——
+        auto* schedTitle = new QLabel(tr("Periodic update check"), content);
+        schedTitle->setStyleSheet(QStringLiteral("font-weight:bold;"));
+        layout->addWidget(schedTitle);
+
+        auto* offBtn = new QRadioButton(tr("Off — check only when I ask or on events"), content);
+        auto* hourlyBtn = new QRadioButton(tr("Every hour"), content);
+        auto* dailyBtn = new QRadioButton(tr("Every day"), content);
+        auto* monthlyBtn = new QRadioButton(tr("Every month"), content);
+        layout->addWidget(offBtn);
+        layout->addWidget(hourlyBtn);
+        layout->addWidget(dailyBtn);
+        layout->addWidget(monthlyBtn);
+
+        auto* valueRow = new QHBoxLayout;
+        auto* valueLabel = new QLabel(tr("Check every"), content);
+        auto* valueSpin = new QSpinBox(content);
+        valueSpin->setRange(1, 999);
+        valueSpin->setValue(config->checkIntervalValue());
+        auto* unitLabel = new QLabel(content);
+        valueRow->addWidget(valueLabel);
+        valueRow->addWidget(valueSpin);
+        valueRow->addWidget(unitLabel);
+        valueRow->addStretch();
+        layout->addLayout(valueRow);
+
+        const QString cur = config->checkIntervalUnit();
+        QRadioButton* curBtn = offBtn;
+        if (cur == QLatin1String("hour"))
+            curBtn = hourlyBtn;
+        else if (cur == QLatin1String("day"))
+            curBtn = dailyBtn;
+        else if (cur == QLatin1String("month"))
+            curBtn = monthlyBtn;
+        curBtn->setChecked(true);
+
+        auto updateUnitText = [=]()
+        {
+            const QString u = hourlyBtn->isChecked()    ? tr("hour(s)")
+                              : dailyBtn->isChecked()   ? tr("day(s)")
+                              : monthlyBtn->isChecked() ? tr("month(s)")
+                                                        : QString();
+            unitLabel->setText(u);
+            valueSpin->setEnabled(!offBtn->isChecked());
+        };
+        connect(offBtn, &QRadioButton::toggled, content, updateUnitText);
+        connect(hourlyBtn, &QRadioButton::toggled, content, updateUnitText);
+        connect(dailyBtn, &QRadioButton::toggled, content, updateUnitText);
+        connect(monthlyBtn, &QRadioButton::toggled, content, updateUnitText);
+        updateUnitText();
+
+        // —— 自动更新（默认关闭，需用户显式开启）——
+        auto* autoTitle = new QLabel(tr("Automatic update"), content);
+        autoTitle->setStyleSheet(QStringLiteral("font-weight:bold;"));
+        layout->addWidget(autoTitle);
+        auto* autoCheck =
+            new QCheckBox(tr("Automatically install updates found by periodic checks"), content);
+        autoCheck->setChecked(config->autoUpdateEnabled());
+        layout->addWidget(autoCheck);
+        auto* autoHint = new QLabel(
+            tr("Disabled by default. When enabled, updates are installed automatically; if a "
+               "security advisory or pre-update check recommends attention, your explicit "
+               "confirmation is still required before any change is made."),
+            content);
+        autoHint->setWordWrap(true);
+        autoHint->setStyleSheet(QStringLiteral("color: palette(placeholder-text);"));
+        layout->addWidget(autoHint);
+        layout->addStretch();
+
+        dlg->addContent(content);
+        dlg->addButton(tr("Cancel"), true, DDialog::ButtonRecommend);
+        dlg->addButton(tr("OK"), false, DDialog::ButtonNormal);
+        // DDialog::exec() 返回点击按钮的 0-based index；Accepted(1) = 点击第二个按钮(OK)。
+        // 与 showSecurityPrompt 中 `ret == DDialog::Accepted` 的既有语义保持一致。
+        if (dlg->exec() == DDialog::Accepted)
+        {
+            QString newUnit = QStringLiteral("disabled");
+            if (hourlyBtn->isChecked())
+                newUnit = QStringLiteral("hour");
+            else if (dailyBtn->isChecked())
+                newUnit = QStringLiteral("day");
+            else if (monthlyBtn->isChecked())
+                newUnit = QStringLiteral("month");
+            config->setCheckIntervalUnit(newUnit);
+            if (newUnit != QStringLiteral("disabled"))
+                config->setCheckIntervalValue(valueSpin->value()); // 关闭定时时无需写间隔值
+            config->setAutoUpdateEnabled(autoCheck->isChecked());
+        }
         dlg->deleteLater();
     }
 

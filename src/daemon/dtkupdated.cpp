@@ -24,6 +24,20 @@ namespace DtkUpdate
         // 必须显式接入 monitor 才能参与可升级列表聚合，否则 daemon 上报的 updatable
         // 会漏掉沙箱应用。
         BackendFactory::attachSandboxBackends(m_monitor, m_config, this);
+
+        // 自动更新场景：daemon 无 UI，无法弹确认框。若定时检测发现需确认的安全公告/预检
+        // 建议（needConfirm=true），自动更新会在该闸门安全暂停（绝不静默继续）；此处仅记录
+        // 日志，用户可稍后经 GUI/托盘确认后继续。
+        connect(m_monitor, &UpdateMonitor::securityPrompt, this,
+                [](const QString& sev, const QList<SecurityAdvisor::Advisory>& advs,
+                   const PreCheckReport& pre)
+                {
+                    Q_UNUSED(advs);
+                    Q_UNUSED(pre);
+                    qCWarning(dtkUpdateDaemon) << "auto-update paused pending user confirmation"
+                                               << "(severity:" << sev << ')';
+                });
+
         m_monitor->start();
 
         // 订阅系统唤醒与网络恢复信号，唤醒/联网后自动重新检查更新。
