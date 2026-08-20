@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
 
 project(dtk-update
-    VERSION 0.0.1
+    VERSION 0.0.2
     DESCRIPTION "DTK tray applet for monitoring and managing system package updates across distributions"
     LANGUAGES CXX
 )

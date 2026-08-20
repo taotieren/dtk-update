@@ -1,3 +1,34 @@
+dtk-update (0.0.2) beige; urgency=medium
+
+  * feat: scheduled update check (disabled/hour/day/month) with live hot-reload of
+    schedule; configurable from dde-dock tray menu, generic tray submenu and main GUI.
+  * feat: opt-in automatic update (default off); only periodic-check discovered
+    updates auto-install, security advisory / pre-check still require explicit confirm
+    (default focus cancel); manual/event-triggered checks never auto-update.
+  * fix: DConfig boolean switches were silently ineffective (schema keys are camelCase,
+    read via wrong lower-case key) — now mapped through explicit PascalCase→camelCase
+    table, locked by regression test.
+  * fix: manual/UI triggered updates bypassed confirm dialog when advisory hidden — now
+    always prompt (cancel-focused).
+  * fix: post-update cleanup callback mis-identification after cancel (stale callbacks
+    could falsely report completion) — guarded by in-flight cleanup count + orphan
+    callback guard.
+  * fix: orphan autoremove now only runs when a system backend actually upgraded this
+    round (no autoremove on sandbox-only upgrades).
+  * fix: generic tray double-free on destroy; daemon duplicate login1/NetworkManager
+    signal subscription; stray autostart desktop file launching GUI on boot.
+  * fix: openSUSE candidate version mis-map (zypper list-updates header); GUI version
+    hardcoded 0.1.0 corrected to 0.0.2.
+  * fix: generic tray menu memory leak (unparented QMenu); translations sourcelanguage
+    rewrite bug; empty/zero-target write ops now always return a result.
+  * feat(pacman): implement checkConfigFilesToReview (.pacnew/.pacsave/.pacorig) scan
+    under /etc via QDirIterator, locked by regression test.
+  * ci: dde-tray build is now distro-aware — deepin/UOS requires dde-tray-loader-dev and
+    verifies pluginsiteminterface.h (hard fail CI), non-deepin skips gracefully.
+  * docs: AGENTS.md updated skills list + new code-quality gating section.
+
+ -- dtk-update maintainers <maintainer@dtk-update.local>  Thu, 20 Aug 2026 00:00:00 +0000
+
 dtk-update (0.0.1) beige; urgency=medium
 
   * Initial stable release.

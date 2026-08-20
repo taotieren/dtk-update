@@ -89,7 +89,7 @@ jobs:
           IS_TAG="false"
           case "$VER" in
             0.*|1.*|2.*) IS_TAG="true" ;;  # 形如 0.1.0 的 tag
-            *) VER="0.0.1"; IS_TAG="false" ;;
+            *) VER="0.0.2"; IS_TAG="false" ;;
           esac
           sudo mkdir -p /tmp/artifacts
           # 不再用 `|| true` 吞掉失败：打包失败必须让本步骤红掉，

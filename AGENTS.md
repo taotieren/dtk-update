@@ -783,13 +783,13 @@ libdtk6widget-dev libdtk6log-dev libgtest-dev libpolkit-qt6-1-dev libxkbcommon-d
 ### 1. 版本号唯一事实源与三处一致性
 
 - **权威来源**：`CMakeLists.txt` 顶部的 `project(dtk-update VERSION X.Y.Z)` 是版本号的
-  唯一事实源（当前 `0.0.1`）。所有对外版本均由此派生，不得在其他地方硬编码不同版本。
+  唯一事实源（当前 `0.0.2`）。所有对外版本均由此派生，不得在其他地方硬编码不同版本。
 - **三处必须同步**（任一不一致即视为发行阻断）：
   1. `CMakeLists.txt` 的 `VERSION`；
   2. `debian/changelog` **顶部首段**版本号（且必须降序、不得倒挂；打包脚本
      `ci/package-deb.sh` 会改写首行 suite 为 `beige`，但版本号须手动与其对齐）；
   3. `.github/workflows/build.yml` 中分支触发 fallback 的默认版本
-     （`*) VER="0.0.1"; IS_TAG="false" ;;`，仅当推送非 `X.Y.Z` 形态的 ref 时生效）。
+     （`*) VER="0.0.2"; IS_TAG="false" ;;`，仅当推送非 `X.Y.Z` 形态的 ref 时生效）。
 - **tag 即版本**：正式发布一律用 **不带 `v` 前缀**的 `X.Y.Z` 形态 tag（如 `0.0.1`，不是 `v0.0.1`）。
   `build.yml` 的 release job 对 `refs/tags/*` 触发，直接取 `GITHUB_REF_NAME` 原样作版本号
   （无需去前缀），`debian/changelog` 顶部版本须与之相等。严禁用分支 push 冒充发布。
