@@ -243,13 +243,15 @@ namespace DtkUpdate
             sev = m_advisor->overallSeverity(advs);
         }
 
-        // 是否需弹确认对话框：有安全公告，或用户开启了安全提示，或预检有建议项。
-        // 自动更新（autoTriggered=true）为无人值守写系统，即使 showSecurityAdvisory 被关闭，
-        // 存在安全公告/预检建议时仍须征求用户确认，绝不静默越权（never decide for the user）。
-        const bool showAdvisory = m_config ? m_config->showSecurityAdvisory() : true;
+        // 写系统前必征求用户确认（AGENTS.md 硬约束 3：应用更新必须弹确认框，默认焦点取消）。
+        // - 自动更新（autoTriggered=true，无人值守 onTimeout）：存在安全公告/预检建议时
+        //   强制确认，绝不静默越权（never decide for the user）；常规无风险更新视为已由
+        //   "开启自动更新"授权，可直装。
+        // - 手动/UI 触发：无论有无安全内容一律经 securityPrompt 弹确认框，绝不静默提权
+        //   （此前用户关闭安全提示后，手动更新会绕过确认直接安装，闸门只保护了自动路径）。
         const bool needConfirm =
-            (autoTriggered || showAdvisory) &&
-            (sev != QStringLiteral("none") || !advs.isEmpty() || pre.hasAnything());
+            autoTriggered ? (sev != QStringLiteral("none") || !advs.isEmpty() || pre.hasAnything())
+                          : true;
         if (needConfirm)
         {
             emit securityPrompt(sev, advs, pre);
@@ -297,7 +299,10 @@ namespace DtkUpdate
         // 沙箱后端（snap/flatpak/linyaps）各自覆盖为 refresh/update/upgrade。
         QString error;
         m_pendingOps = 0;
-        m_cleanupOps = 0; // 清理计数同样复位，防止旧清理回调污染本轮
+        m_cleanupOps = 0;        // 清理计数同样复位，防止旧清理回调污染本轮
+        m_ignoredCleanupOps = 0; // cancel 后的旧清理回调忽略计数已自然耗散，本轮重新归零
+        // 仅当系统后端本轮实际参与了升级，才允许升级后孤儿清理（autoremove）。
+        m_sysUpgradedThisRound = !sysPkgs.isEmpty();
         if (m_backend && !sysPkgs.isEmpty())
         {
             ++m_pendingOps;
@@ -336,8 +341,12 @@ namespace DtkUpdate
         // 注意：install 可能仍在后台线程执行，置 m_cancelled 让 onBackendFinished 忽略
         // 其后续回调，避免"已取消"后又弹后检/重查。
         m_cancelled = true;
+        // cancel 前在途的后台清理回调数转存：旧清理回调到达时仍按"清理回调"忽略
+        // （绝不落入 m_pendingOps 误触发收尾/提前解锁）；proceedUpdate 时归零。
+        m_ignoredCleanupOps = m_cleanupOps;
         m_pendingOps = 0; // 清零进行中的异步写计数，避免旧后台回调污染下一轮 proceedUpdate 的计数
-        m_cleanupOps = 0; // 丢弃进行中的后台清理回调
+        m_cleanupOps = 0; // 已转存；在途清理结果由 m_ignoredCleanupOps 过滤
+        m_sysUpgradedThisRound = false; // 本轮升级作废，孤儿清理不再放行
         if (m_state != State::Updating)
             setState(State::HasUpdates);
         m_upgradable.clear(); // 用户已明确放弃本次升级
@@ -387,6 +396,14 @@ namespace DtkUpdate
             qCInfo(dtkUpdateCore) << "ignoring backend result after user cancelled";
             return;
         }
+        // cancel 前已在途的后台清理回调：仍按"清理回调"忽略（计数转存自 cancelUpdate），
+        // 防止旧清理结果落入 m_pendingOps 递减，被误判为本轮升级完成。
+        if (m_ignoredCleanupOps > 0)
+        {
+            --m_ignoredCleanupOps;
+            qCInfo(dtkUpdateCore) << "ignoring stale cleanup result after cancel";
+            return;
+        }
         // 升级后后台清理（autoremove/cleanCache）回调：只递减计数并忽略，绝不进入升级
         // 收尾流程，否则会误触发重复 upgradeFinished / 后检 / 重查。
         if (m_cleanupOps > 0)
@@ -401,6 +418,13 @@ namespace DtkUpdate
             --m_pendingOps;
         if (m_pendingOps > 0)
             return;
+        // 无在途升级也无在途清理的游离回调（cancel 后在途操作残留等）：
+        // 直接忽略，绝不进入收尾（否则会提前解锁并发锁、误 emit upgradeFinished）。
+        if (m_state != State::Updating)
+        {
+            qCInfo(dtkUpdateCore) << "ignoring stale backend result (not updating)";
+            return;
+        }
 
         if (success)
         {
@@ -436,7 +460,9 @@ namespace DtkUpdate
         // 孤儿清理仅对系统后端有意义：沙箱应用商店（snap/flatpak/linyaps）无孤儿依赖概念，
         // 其 operationArgs 返回空，runWriteOperation 会以 "skipped" 立即回传 finished，
         // m_cleanupOps 计数由 onBackendFinished 均衡递减，无副作用。
-        if (m_backend && m_config->autoRemoveOrphans())
+        // 且仅当系统后端本轮实际参与了升级才执行：系统未升级却 autoremove，
+        // 可能误删用户手动安装的被视为孤儿的包（见 m_sysUpgradedThisRound）。
+        if (m_backend && m_config->autoRemoveOrphans() && m_sysUpgradedThisRound)
         {
             ++m_cleanupOps;
             m_backend->autoremove(err);

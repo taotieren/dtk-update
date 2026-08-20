@@ -191,7 +191,7 @@ TEST(UpdateMonitorTest, ApplyUpdatesEmitsSecurityPromptThenProceed)
     EXPECT_EQ(spyFinished.count(), 1);
 }
 
-TEST(UpdateMonitorTest, ApplyUpdatesWithoutAdvisorInstallsDirectly)
+TEST(UpdateMonitorTest, ApplyUpdatesWithoutAdvisorStillAsksConfirmation)
 {
     ensureApp();
     MonitorFakeBackend backend;
@@ -201,7 +201,7 @@ TEST(UpdateMonitorTest, ApplyUpdatesWithoutAdvisorInstallsDirectly)
     backend.m_upgradable = {pi};
 
     FakeConfig config;
-    UpdateMonitor monitor(&backend, &config); // 无 advisor
+    UpdateMonitor monitor(&backend, &config); // 无 advisor：手动更新同样须确认
 
     QSignalSpy spyAvail(&monitor, &UpdateMonitor::updatesAvailable);
     monitor.checkNow();
@@ -210,8 +210,13 @@ TEST(UpdateMonitorTest, ApplyUpdatesWithoutAdvisorInstallsDirectly)
 
     QSignalSpy spyPrompt(&monitor, &UpdateMonitor::securityPrompt);
     monitor.applyUpdates();
-    // 无 advisor 时直接安装，不发安全提示
-    EXPECT_EQ(spyPrompt.count(), 0);
+    // 回归（AGENTS.md 硬约束 3）：手动/UI 触发的更新即使无 advisor、无安全内容，也必须经
+    // securityPrompt 征求用户确认（此前 needConfirm 依赖 showAdvisory/有内容，用户关闭
+    // 安全提示后手动更新会绕过确认直接提权安装）。确认后由 UI 调 proceedUpdate 继续。
+    EXPECT_EQ(spyPrompt.count(), 1);
+    EXPECT_TRUE(backend.m_installed.isEmpty());
+
+    monitor.proceedUpdate(); // 用户确认后继续
     EXPECT_TRUE(backend.m_installed.contains(QStringLiteral("firefox")));
 }
 
@@ -498,8 +503,15 @@ TEST(UpdateMonitorTest, MultiBackendAggregatesAndRoutes)
     EXPECT_TRUE(hasSys);
     EXPECT_TRUE(hasLl);
 
-    // 升级时按 backendId 分流：系统包交给系统后端，玲珑包交给玲珑后端
-    monitor.applyUpdates(); // 无 advisor，直接安装
+    // 升级时按 backendId 分流：系统包交给系统后端，玲珑包交给玲珑后端。
+    // 手动更新须经 securityPrompt 确认（硬约束 3），确认后 proceedUpdate 路由。
+    QSignalSpy spyPrompt(&monitor, &UpdateMonitor::securityPrompt);
+    monitor.applyUpdates();
+    EXPECT_EQ(spyPrompt.count(), 1);
+    EXPECT_TRUE(sysBackend.m_installed.isEmpty());
+    EXPECT_TRUE(llBackend.m_installed.isEmpty());
+
+    monitor.proceedUpdate();
     EXPECT_TRUE(sysBackend.m_installed.contains(QStringLiteral("systemd")));
     EXPECT_TRUE(llBackend.m_installed.contains(QStringLiteral("org.deepin.demo")));
     EXPECT_FALSE(sysBackend.m_installed.contains(QStringLiteral("org.deepin.demo")));
@@ -557,10 +569,43 @@ TEST(UpdateMonitorTest, BackendIdBackfilledWhenMissing)
             backfilled = true;
     EXPECT_TRUE(backfilled) << "聚合期未兜底回填沙箱包 backendId（commit 6f56292 回归）";
 
-    // 路由正确性：沙箱包仍交由玲珑后端安装，不污染系统后端
+    // 路由正确性：沙箱包仍交由玲珑后端安装，不污染系统后端。
+    // 手动更新须确认（硬约束 3），确认后 proceedUpdate 路由。
+    QSignalSpy spyPrompt(&monitor, &UpdateMonitor::securityPrompt);
     monitor.applyUpdates();
+    EXPECT_EQ(spyPrompt.count(), 1);
+    EXPECT_TRUE(llBackend.m_installed.isEmpty());
+    monitor.proceedUpdate();
     EXPECT_TRUE(llBackend.m_installed.contains(QStringLiteral("org.deepin.demo")));
     EXPECT_FALSE(sysBackend.m_installed.contains(QStringLiteral("org.deepin.demo")));
+}
+
+// 回归：cancelUpdate 后，在途旧操作的迟到回调（游离回调）不得误触发升级收尾，
+// 否则会提前解锁并发锁、重复 emit upgradeFinished（m_pendingOps==0 守卫 +
+// m_cancelled 吞首发）。锁定第十八轮 cleanup 代际防污染修复。
+TEST(UpdateMonitorTest, StaleOperationFinishedIgnoredAfterCancel)
+{
+    ensureApp();
+    MonitorFakeBackend backend;
+    PackageInfo pi;
+    pi.name = QStringLiteral("foo");
+    pi.isUpgradable = true;
+    backend.m_upgradable = {pi};
+
+    FakeConfig config;
+    UpdateMonitor monitor(&backend, &config);
+
+    QSignalSpy spyFinished(&monitor, &UpdateMonitor::upgradeFinished);
+    monitor.checkNow();
+    monitor.proceedUpdate(); // 升级同步 emit operationFinished → 正常收尾一次
+    EXPECT_EQ(spyFinished.count(), 1);
+
+    monitor.cancelUpdate(); // 用户取消：m_cancelled=true，在途计数清零
+    // 模拟 cancel 前在途操作的迟到回调：第一发被 m_cancelled 吞，第二发必须走
+    // "无在途升级也无在途清理"的游离回调守卫直接忽略，绝不再次收尾。
+    emit backend.operationFinished(true, QStringLiteral("stale-1"));
+    emit backend.operationFinished(true, QStringLiteral("stale-2"));
+    EXPECT_EQ(spyFinished.count(), 1) << "cancel 后游离回调不得触发第二次收尾";
 }
 
 #include "test_updatemonitor.moc"

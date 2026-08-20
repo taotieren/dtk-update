@@ -127,10 +127,17 @@ namespace DtkUpdate
         // onBackendFinished 每完成一个减 1，全部完成（=0）才统一收尾并 emit upgradeFinished，
         // 避免多后端并存时各后端独立 emit 导致重复收尾/重复解锁/重复后检的竞态。
         int m_pendingOps = 0;
+        // cancel 前在途的后台清理操作数：cancelUpdate 将其转存到此，使旧清理回调仍按
+        // "清理回调"忽略（绝不落入 m_pendingOps 误触发收尾/提前解锁），而非直接清零丢失身份。
+        int m_ignoredCleanupOps = 0;
         // 升级后后台清理（autoremove/cleanCache）的进行中异步计数。onBackendFinished 收到
         // 清理回调时先走本计数递减并忽略，绝不进入升级收尾流程；cancelUpdate/proceedUpdate
         // 时清零，避免旧清理回调污染下一轮计数。
         int m_cleanupOps = 0;
+        // 本轮系统后端是否实际参与了升级（proceedUpdate 时按系统包非空置位）。
+        // 供 runPostUpdateCleanup 的孤儿清理（autoremove）判断：系统后端本轮未升级
+        // 却执行 autoremove，可能误删用户手动安装的被视为孤儿的包。
+        bool m_sysUpgradedThisRound = false;
     };
 
 } // namespace DtkUpdate
