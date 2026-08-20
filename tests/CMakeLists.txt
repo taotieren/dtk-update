@@ -29,6 +29,7 @@ if(HAVE_GTEST)
         test_iniparser.cpp
         test_distroprobe.cpp
         test_backendconfig.cpp
+        test_appconfig.cpp
         test_healthcheck.cpp
         test_runprobe.cpp
         test_pacmanbackend.cpp
@@ -45,6 +46,10 @@ if(HAVE_GTEST)
     target_include_directories(test-core PRIVATE
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/src/core
+    )
+    # test_appconfig 需读取 DConfig schema 文件，校验键映射一致性（防 schema 漂移）
+    target_compile_definitions(test-core PRIVATE
+        DTK_UPDATE_DCONFIG_SCHEMA="${CMAKE_SOURCE_DIR}/data/dconfig/org.deepin.dtk-update.json"
     )
     target_link_libraries(test-core PRIVATE
         dtk-update-core

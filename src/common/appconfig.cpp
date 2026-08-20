@@ -2,6 +2,7 @@
 
 #include <DConfig>
 #include <QDebug>
+#include <QHash>
 
 #include "presetconfig.h"
 
@@ -145,16 +146,19 @@ namespace DtkUpdate
     bool AppConfig::boolOption(const QString& key, bool dconfigDefault) const
     {
         // 优先级：backend.conf 后端段 > backend.conf 全局段 > DConfig > 发行版预设
-        QVariantMap fileOpts = d->backendConfig->optionsFor(d->effectiveBackendId);
-        if (fileOpts.contains(key) && !fileOpts[key].isNull())
-            return fileOpts[key].toBool();
+        // backend.conf 层按"大小写不敏感"命中（与 iniparser 查询约定一致），否则用户
+        // 以小写/混合大小写书写键名时 QVariantMap::contains 会静默失效。
+        const QVariantMap fileOpts = d->backendConfig->optionsFor(d->effectiveBackendId);
+        for (auto it = fileOpts.constBegin(); it != fileOpts.constEnd(); ++it)
+            if (it.key().compare(key, Qt::CaseInsensitive) == 0)
+                return it.value().toBool();
 
         if (d->cfg)
         {
-            // DConfig schema 键均为小写（backend.conf 键保留原始大小写、iniparser 查询
-            // 大小写不敏感）；若直接按原 key 查询，keyList().contains 永不命中，DConfig
-            // 层的布尔开关将全部静默失效回落到默认值。
-            const QString dkey = key.toLower();
+            // DConfig schema 键为 camelCase（如 noInstallRecommends），与 backend.conf 的
+            // PascalCase 键（NoInstallRecommends）不同；经显式映射换算后再查 keyList，
+            // 否则 keyList().contains 永不命中、DConfig 层布尔开关静默失效回落到默认值。
+            const QString dkey = dConfigKeyFor(key);
             if (d->cfg->keyList().contains(dkey))
                 return d->cfg->value(dkey, dconfigDefault).toBool();
         }
@@ -163,6 +167,21 @@ namespace DtkUpdate
         if (preset.contains(key))
             return preset[key].toBool();
         return dconfigDefault;
+    }
+
+    QString AppConfig::dConfigKeyFor(const QString& backendConfKey)
+    {
+        // backend.conf(PascalCase) → DConfig schema(camelCase) 键映射。schema 中键为
+        // camelCase，与 backend.conf 键仅首字母大小写不同（见 data/dconfig/
+        // org.deepin.dtk-update.json）。显式列表明文对应，防未来新键漂移。
+        static const QHash<QString, QString> map{
+            {QStringLiteral("NoInstallRecommends"), QStringLiteral("noInstallRecommends")},
+            {QStringLiteral("AutoRemoveOrphans"), QStringLiteral("autoRemoveOrphans")},
+            {QStringLiteral("AutoCleanCache"), QStringLiteral("autoCleanCache")},
+            {QStringLiteral("ShowSecurityAdvisory"), QStringLiteral("showSecurityAdvisory")},
+            {QStringLiteral("FetchUpstreamAdvisories"), QStringLiteral("fetchUpstreamAdvisories")},
+        };
+        return map.value(backendConfKey, backendConfKey);
     }
 
     bool AppConfig::noInstallRecommends() const

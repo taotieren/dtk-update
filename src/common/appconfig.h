@@ -56,6 +56,10 @@ namespace DtkUpdate
         // 首选包管理器后端（解析后的值：配置文件优先，否则 DConfig，否则发行版预设）
         QString preferredBackend() const;
 
+        // backend.conf 键(PascalCase) → DConfig schema 键(camelCase) 换算（供 boolOption
+        // 查询 DConfig 前换算，避免大小写不匹配导致 DConfig 层开关静默失效；亦供测试/调试）。
+        static QString dConfigKeyFor(const QString& backendConfKey);
+
         // 安装时是否跳过可选依赖（Recommends）
         virtual bool noInstallRecommends() const;
 
