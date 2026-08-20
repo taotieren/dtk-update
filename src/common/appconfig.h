@@ -57,13 +57,13 @@ namespace DtkUpdate
         QString preferredBackend() const;
 
         // 安装时是否跳过可选依赖（Recommends）
-        bool noInstallRecommends() const;
+        virtual bool noInstallRecommends() const;
 
-        // 自动移除孤儿依赖（autoremove）
-        bool autoRemoveOrphans() const;
+        // 自动移除孤儿依赖（autoremove）。升级成功后按此开关执行后台清理（monitor 接线）。
+        virtual bool autoRemoveOrphans() const;
 
-        // 自动清理下载缓存
-        bool autoCleanCache() const;
+        // 自动清理下载缓存。升级成功后按此开关执行后台清理（monitor 接线）。
+        virtual bool autoCleanCache() const;
 
         // 当前生效后端所属发行系（用于 UI 展示）
         DistroProbe::Family distroFamily() const;

@@ -149,8 +149,15 @@ namespace DtkUpdate
         if (fileOpts.contains(key) && !fileOpts[key].isNull())
             return fileOpts[key].toBool();
 
-        if (d->cfg && d->cfg->keyList().contains(key))
-            return d->cfg->value(key, dconfigDefault).toBool();
+        if (d->cfg)
+        {
+            // DConfig schema 键均为小写（backend.conf 键保留原始大小写、iniparser 查询
+            // 大小写不敏感）；若直接按原 key 查询，keyList().contains 永不命中，DConfig
+            // 层的布尔开关将全部静默失效回落到默认值。
+            const QString dkey = key.toLower();
+            if (d->cfg->keyList().contains(dkey))
+                return d->cfg->value(dkey, dconfigDefault).toBool();
+        }
 
         QVariantMap preset = PresetConfig::defaultOptionsFor(d->effectiveBackendId);
         if (preset.contains(key))

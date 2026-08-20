@@ -32,7 +32,7 @@
             "description": "Show security advisory banners and require confirmation before updating critical packages"
         },
         "fetchUpstreamAdvisories": {
-            "value": true,
+            "value": false,
             "serial": 1,
             "flag": 1,
             "name": "Fetch upstream advisories",
