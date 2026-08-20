@@ -1,16 +1,11 @@
 #include "mainwindow.h"
 
-#include <DDBusSender>
 #include <DDialog>
-#include <DGuiApplicationHelper>
 #include <DListView>
 #include <DProgressBar>
 #include <DSpinner>
 #include <DTitlebar>
-#include <QCloseEvent>
-#include <QFormLayout>
 #include <QHBoxLayout>
-#include <QHeaderView>
 #include <QLabel>
 #include <QPushButton>
 #include <QStandardItemModel>

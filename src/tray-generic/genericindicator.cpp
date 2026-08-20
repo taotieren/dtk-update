@@ -22,6 +22,7 @@ namespace DtkUpdate
     GenericIndicator::GenericIndicator(QObject* parent) : UpdateIndicator(parent)
     {
         m_tray = new QSystemTrayIcon(this);
+        // QMenu 构造要求 QWidget* 父对象，本类为 QObject，故无父对象、析构手动释放
         m_menu = new QMenu;
         rebuildMenu();
         m_tray->setContextMenu(m_menu);
@@ -42,7 +43,10 @@ namespace DtkUpdate
 
     GenericIndicator::~GenericIndicator()
     {
-        delete m_unitGroup; // 托盘菜单不拥有 QObject 子对象，需手动释放防泄漏
+        // 托盘菜单（QMenu）无 QObject 父对象托管，必须手动释放防泄漏；
+        // QPointer 成员在对象删除后自动置空，无悬垂风险。
+        delete m_menu;
+        delete m_unitGroup;
     }
 
     void GenericIndicator::show()

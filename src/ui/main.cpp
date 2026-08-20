@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
     DApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("dtk-update"));
     app.setApplicationDisplayName(QObject::tr("Dtk Update"));
-    app.setApplicationVersion(QStringLiteral("0.1.0"));
+    app.setApplicationVersion(QStringLiteral("0.0.1"));
     app.loadTranslator();
 
     DLogManager::registerConsoleAppender();
@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
     if (backend)
         backend->setConfig(&config);
     DtkUpdate::SecurityAdvisor advisor;
-    // 是否到上游官方源获取公告，完全由用户配置决定（默认开启，用户可关）
+    // 是否到上游官方源获取公告，完全由用户配置决定（默认关闭，用户可开）
     advisor.setFetchUpstream(config.fetchUpstreamAdvisories());
     QPointer<DtkUpdate::MainWindow> w = new DtkUpdate::MainWindow(backend, &config, &advisor);
     w->show();

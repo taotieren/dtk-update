@@ -20,6 +20,22 @@
 - 配置键变更：`checkIntervalMinutes` 由 `checkIntervalUnit`（disabled/hour/day/month）与
   `checkIntervalValue`（间隔数值）取代。
 
+### 行为修正与完善
+
+- **自动孤儿清理 / 缓存清理接线**：`AutoRemoveOrphans` 与 `AutoCleanCache` 此前是"虚开关"
+  （配置存在但升级后从不执行）；现升级成功收尾后按配置触发后端的 `autoremove` /
+  `cleanCache`（apt/dnf 自动移除孤儿与清理缓存；pacman/zypper 明确不支持孤儿自动移除；
+  沙箱后端无此概念，自动跳过）。清理为后台维护性操作，不打断升级结果。
+- **修复 DConfig 层布尔开关失效**：DConfig schema 键为小写（`showSecurityAdvisory`、
+  `fetchUpstreamAdvisories`、`noInstallRecommends`、`autoRemoveOrphans`、
+  `autoCleanCache`），而读取端误用大写键查询导致永不着中、全部回落到默认值；现已按
+  schema 键名读取（backend.conf 大写键不受影响）。
+- **修复 openSUSE 候选版本误映射**：zypper `zypper list-updates` 表头解析此前把
+  `Current Version` 当候选版本列，导致 `candidateVersion` 返回已装版本；现优先匹配
+  `Available Version`。
+- 应用版本号修正为 `0.0.1`（此前 GUI 硬编码 `0.1.0`，与包版本不一致）。
+- 修复通用托盘菜单对象在重建时的内存泄漏（QMenu 无父对象托管）。
+
 ---
 
 ## 0.0.1 (2026-08-17)
