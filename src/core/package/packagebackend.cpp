@@ -225,7 +225,13 @@ namespace DtkUpdate
     {
         Q_UNUSED(error);
         if (op != Op::Autoremove && op != Op::CleanCache && packages.isEmpty())
-            return true; // 无目标包，视为已完成
+        {
+            // 无目标包，视为已完成——仍回传操作结果（契约必达），避免调用方只收进度
+            // 而无回调而卡住（与下方 args 为空的 skipped 回传同一约束）。
+            emit operationProgress(tr("Working"), 100);
+            emit operationFinished(true, QStringLiteral("no packages to operate, skipped"));
+            return true;
+        }
         // 进度文案按操作语义映射（与历史行为一致）
         static const QHash<Op, QString> stage = {
             {Op::Install, tr("Installing")},

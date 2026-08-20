@@ -60,10 +60,10 @@ namespace DtkUpdate
     {
         Q_UNUSED(onlyUpgradable)
         out.clear();
-        // `raw` 是 const 引用；此处仅读取内容，const_cast 安全（QTextStream 不修改它）
-        QTextStream stream(const_cast<QString*>(&raw));
-        QString line;
-        while (stream.readLineInto(&line))
+        // `raw` 是 const 引用；Qt6 的 QTextStream 仅接受非 const QString*（无法从 const 构造），
+        // 直接按行拆分遍历，避免 const_cast 也无须构造流对象。
+        const QStringList lines = raw.split(QLatin1Char('\n'));
+        for (const QString& line : lines)
         {
             const QString id = line.trimmed();
             if (id.isEmpty() || id.startsWith(QStringLiteral("/")) ||
