@@ -128,16 +128,24 @@ namespace DtkUpdate
 
     void UpdateMonitor::applyConfigInterval()
     {
-        const int minutes = m_config ? m_config->checkIntervalMinutes() : 360;
-        const int msec = qMax(1, minutes) * 60 * 1000;
-        m_timer->setInterval(msec);
-        qCInfo(dtkUpdateCore) << "check interval set to" << minutes << "min";
+        const int minutes = m_config ? m_config->effectiveCheckIntervalMinutes() : 0;
+        if (minutes <= 0)
+        {
+            // disabled（不开启）：定时检测关闭，仅手动/事件（唤醒、联网）触发检查
+            m_timer->stop();
+            qCInfo(dtkUpdateCore) << "periodic update check disabled (manual/event checks only)";
+            return;
+        }
+        m_timer->setInterval(minutes * 60 * 1000);
+        if (!m_timer->isActive())
+            m_timer->start();
+        qCInfo(dtkUpdateCore) << "periodic update check every" << minutes << "min";
     }
 
     void UpdateMonitor::start()
     {
-        m_timer->start();
-        checkNow(); // 启动即检查一次
+        applyConfigInterval(); // 按配置决定是否启动定时器（disabled 时不启动）
+        checkNow();            // 启动即检查一次（手动/事件语义）
     }
 
     void UpdateMonitor::stop()
@@ -146,6 +154,11 @@ namespace DtkUpdate
     }
 
     void UpdateMonitor::checkNow()
+    {
+        checkNowImpl(false); // 手动/事件触发：只检查，不自动更新
+    }
+
+    void UpdateMonitor::checkNowImpl(bool fromTimer)
     {
         if (m_state == State::Checking || m_state == State::Updating)
             return; // 避免重入
@@ -190,6 +203,12 @@ namespace DtkUpdate
         setState(list.isEmpty() ? State::Idle : State::HasUpdates);
         emit updatesAvailable(list);
 
+        // 自动更新（仅定时器触发的检测生效，默认关闭，需用户显式开启）：发现更新时
+        // 调 applyUpdates(true)。其内部 needConfirm 闸门对自动更新强制保留——存在安全公告
+        // 或预检建议时仍会弹确认（默认聚焦取消），绝不替用户静默继续；手动/事件触发的检查不自动更新。
+        if (fromTimer && !list.isEmpty() && m_config && m_config->autoUpdateEnabled())
+            applyUpdates(true);
+
         // 拿到可升级列表后，异步预取上游官方安全公告与发行版最近通知（不阻塞 UI）。
         // 结果在用户点击「更新」时由 SecurityAdvisor::fetchAdvisories 合并缓存使用。
         if (!list.isEmpty() && m_advisor)
@@ -202,7 +221,7 @@ namespace DtkUpdate
         }
     }
 
-    void UpdateMonitor::applyUpdates()
+    void UpdateMonitor::applyUpdates(bool autoTriggered)
     {
         if (m_state == State::Updating)
             return;
@@ -224,10 +243,13 @@ namespace DtkUpdate
             sev = m_advisor->overallSeverity(advs);
         }
 
-        // 是否需弹确认对话框：有安全公告，或用户开启了安全提示，或预检有建议项
+        // 是否需弹确认对话框：有安全公告，或用户开启了安全提示，或预检有建议项。
+        // 自动更新（autoTriggered=true）为无人值守写系统，即使 showSecurityAdvisory 被关闭，
+        // 存在安全公告/预检建议时仍须征求用户确认，绝不静默越权（never decide for the user）。
         const bool showAdvisory = m_config ? m_config->showSecurityAdvisory() : true;
         const bool needConfirm =
-            showAdvisory && (sev != QStringLiteral("none") || !advs.isEmpty() || pre.hasAnything());
+            (autoTriggered || showAdvisory) &&
+            (sev != QStringLiteral("none") || !advs.isEmpty() || pre.hasAnything());
         if (needConfirm)
         {
             emit securityPrompt(sev, advs, pre);
@@ -325,7 +347,7 @@ namespace DtkUpdate
 
     void UpdateMonitor::onTimeout()
     {
-        checkNow();
+        checkNowImpl(true); // 定时器触发：允许自动更新（若用户已开启且无安全风险）
     }
 
     void UpdateMonitor::onConfigChanged()

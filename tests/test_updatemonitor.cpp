@@ -81,11 +81,24 @@ class MonitorFakeBackend : public PackageBackend
     QStringList m_installed;
 };
 
-// 伪配置：固定间隔，避免依赖 DConfig 实现
+// 伪配置：定时/自动更新可控，避免依赖 DConfig 实现
 class FakeConfig : public AppConfig
 {
   public:
     explicit FakeConfig(QObject* p = nullptr) : AppConfig(p) {}
+
+    // 覆写 virtual getter，使定时调度与自动更新行为可在测试内确定控制
+    QString checkIntervalUnit() const override { return m_unit; }
+    int checkIntervalValue() const override { return m_value; }
+    int effectiveCheckIntervalMinutes() const override { return m_intervalMinutes; }
+    bool autoUpdateEnabled() const override { return m_autoUpdate; }
+    bool showSecurityAdvisory() const override { return m_showSecurityAdvisory; }
+
+    QString m_unit = QStringLiteral("disabled");
+    int m_value = 1;
+    int m_intervalMinutes = 0;          // 0 = 不开启定时检测
+    bool m_autoUpdate = false;          // 默认关闭，需用户显式开启
+    bool m_showSecurityAdvisory = true; // 默认开启安全提示
 };
 
 TEST(UpdateMonitorTest, CheckNowSetsHasUpdates)
@@ -193,6 +206,128 @@ TEST(UpdateMonitorTest, ApplyUpdatesEmptyNoOp)
     UpdateMonitor monitor(&backend, &config);
     monitor.applyUpdates();
     EXPECT_TRUE(backend.m_installed.isEmpty());
+}
+
+// —— 定时检测 + 自动更新（默认关闭，需用户显式开启）——
+// 自动更新仅在「定时器触发」的检测（onTimeout）后生效；手动/事件触发的 checkNow 永不自动更新。
+TEST(UpdateMonitorTest, ScheduledCheckWithAutoUpdateInstallsDirectly)
+{
+    ensureApp();
+    MonitorFakeBackend backend;
+    PackageInfo pi;
+    pi.name = QStringLiteral("firefox");
+    pi.isUpgradable = true;
+    backend.m_upgradable = {pi};
+
+    FakeConfig config;
+    config.m_autoUpdate = true;
+    UpdateMonitor monitor(&backend, &config); // 无 advisor：无安全风险，直接安装
+
+    QSignalSpy spyPrompt(&monitor, &UpdateMonitor::securityPrompt);
+    QSignalSpy spyFinished(&monitor, &UpdateMonitor::upgradeFinished);
+    EXPECT_TRUE(QMetaObject::invokeMethod(&monitor, "onTimeout"));
+    EXPECT_TRUE(backend.m_installed.contains(QStringLiteral("firefox")));
+    EXPECT_EQ(spyPrompt.count(), 0);
+    EXPECT_EQ(spyFinished.count(), 1);
+}
+
+TEST(UpdateMonitorTest, ScheduledAutoUpdateRespectsSecurityGate)
+{
+    ensureApp();
+    MonitorFakeBackend backend;
+    PackageInfo pi;
+    pi.name = QStringLiteral("systemd");
+    pi.isUpgradable = true; // critical 组件
+    backend.m_upgradable = {pi};
+
+    FakeConfig config;
+    config.m_autoUpdate = true;
+    SecurityAdvisor advisor;
+    UpdateMonitor monitor(&backend, &config);
+    monitor.setSecurityAdvisor(&advisor);
+
+    QSignalSpy spyPrompt(&monitor, &UpdateMonitor::securityPrompt);
+    QSignalSpy spyFinished(&monitor, &UpdateMonitor::upgradeFinished);
+    EXPECT_TRUE(QMetaObject::invokeMethod(&monitor, "onTimeout"));
+    // 即使开启自动更新，存在安全公告/预检建议时仍须先征求用户确认，绝不静默安装
+    EXPECT_EQ(spyPrompt.count(), 1);
+    EXPECT_TRUE(backend.m_installed.isEmpty());
+    EXPECT_EQ(spyFinished.count(), 0);
+
+    monitor.proceedUpdate(); // 用户确认后继续
+    EXPECT_TRUE(backend.m_installed.contains(QStringLiteral("systemd")));
+    EXPECT_EQ(spyFinished.count(), 1);
+}
+
+// 回归：即使 showSecurityAdvisory 被关闭，自动更新（定时器触发）存在安全公告/预检建议时
+// 仍必须征求用户确认，绝不因"关闭安全提示"而静默安装（P1 闸门不因 showAdvisory 短路）。
+TEST(UpdateMonitorTest, AutoUpdateKeepsSecurityGateEvenWhenAdvisoryHidden)
+{
+    ensureApp();
+    MonitorFakeBackend backend;
+    PackageInfo pi;
+    pi.name = QStringLiteral("systemd");
+    pi.isUpgradable = true; // critical 组件
+    backend.m_upgradable = {pi};
+
+    FakeConfig config;
+    config.m_autoUpdate = true;
+    config.m_showSecurityAdvisory = false; // 用户关闭了安全提示展示
+    SecurityAdvisor advisor;
+    UpdateMonitor monitor(&backend, &config);
+    monitor.setSecurityAdvisor(&advisor);
+
+    QSignalSpy spyPrompt(&monitor, &UpdateMonitor::securityPrompt);
+    QSignalSpy spyFinished(&monitor, &UpdateMonitor::upgradeFinished);
+    EXPECT_TRUE(QMetaObject::invokeMethod(&monitor, "onTimeout"));
+    // 自动更新为无人值守写系统：安全闸门与展示开关解耦，仍须确认
+    EXPECT_EQ(spyPrompt.count(), 1);
+    EXPECT_TRUE(backend.m_installed.isEmpty());
+    EXPECT_EQ(spyFinished.count(), 0);
+
+    monitor.proceedUpdate(); // 用户确认后继续
+    EXPECT_TRUE(backend.m_installed.contains(QStringLiteral("systemd")));
+    EXPECT_EQ(spyFinished.count(), 1);
+}
+
+TEST(UpdateMonitorTest, ManualCheckNeverAutoApplies)
+{
+    ensureApp();
+    MonitorFakeBackend backend;
+    PackageInfo pi;
+    pi.name = QStringLiteral("firefox");
+    pi.isUpgradable = true;
+    backend.m_upgradable = {pi};
+
+    FakeConfig config;
+    config.m_autoUpdate = true;
+    UpdateMonitor monitor(&backend, &config);
+
+    // 手动/事件触发的检查（checkNow）只刷新状态，永不自动更新
+    QSignalSpy spyFinished(&monitor, &UpdateMonitor::upgradeFinished);
+    monitor.checkNow();
+    EXPECT_TRUE(backend.m_installed.isEmpty());
+    EXPECT_EQ(spyFinished.count(), 0);
+    EXPECT_EQ(monitor.state(), UpdateMonitor::State::HasUpdates);
+}
+
+TEST(UpdateMonitorTest, ScheduledCheckWithoutAutoUpdateDoesNotApply)
+{
+    ensureApp();
+    MonitorFakeBackend backend;
+    PackageInfo pi;
+    pi.name = QStringLiteral("firefox");
+    pi.isUpgradable = true;
+    backend.m_upgradable = {pi};
+
+    FakeConfig config; // m_autoUpdate 默认 false（未开启）
+    UpdateMonitor monitor(&backend, &config);
+
+    QSignalSpy spyFinished(&monitor, &UpdateMonitor::upgradeFinished);
+    EXPECT_TRUE(QMetaObject::invokeMethod(&monitor, "onTimeout"));
+    EXPECT_TRUE(backend.m_installed.isEmpty());
+    EXPECT_EQ(spyFinished.count(), 0);
+    EXPECT_EQ(monitor.state(), UpdateMonitor::State::HasUpdates);
 }
 
 // 多后端聚合：系统后端 + 跨发行系玲珑(linyaps) 后端。

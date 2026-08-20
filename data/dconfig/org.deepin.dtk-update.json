@@ -3,12 +3,26 @@
     "name": "dtk-update configuration",
     "version": "1.0",
     "contents": {
-        "checkIntervalMinutes": {
-            "value": 360,
+        "checkIntervalUnit": {
+            "value": "disabled",
             "serial": 1,
             "flag": 1,
-            "name": "Check interval (minutes)",
-            "description": "Interval between automatic update checks"
+            "name": "Periodic check unit",
+            "description": "Unit of the periodic update check interval: disabled | hour | day | month. Disabled means checks only run on demand or on events (wake/network)"
+        },
+        "checkIntervalValue": {
+            "value": 1,
+            "serial": 1,
+            "flag": 1,
+            "name": "Periodic check value",
+            "description": "Interval value combined with checkIntervalUnit (e.g. 2 + day = every 2 days)"
+        },
+        "autoUpdateEnabled": {
+            "value": false,
+            "serial": 1,
+            "flag": 1,
+            "name": "Auto apply updates",
+            "description": "Automatically apply updates found during periodic checks. Disabled by default. Even when enabled, any security advisory or pre-update check recommendation still requires your explicit confirmation"
         },
         "showSecurityAdvisory": {
             "value": true,

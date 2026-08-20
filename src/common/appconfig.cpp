@@ -67,9 +67,62 @@ namespace DtkUpdate
         }
     }
 
-    int AppConfig::checkIntervalMinutes() const
+    QString AppConfig::checkIntervalUnit() const
     {
-        return d->cfg ? d->cfg->value("checkIntervalMinutes", 360).toInt() : 360;
+        const QString unit =
+            d->cfg ? d->cfg->value("checkIntervalUnit", QStringLiteral("disabled")).toString()
+                   : QStringLiteral("disabled");
+        // 只接受合法值；非法值一律视为 disabled（绝不把未知配置解释成自动检测）
+        if (unit == QLatin1String("hour") || unit == QLatin1String("day") ||
+            unit == QLatin1String("month"))
+            return unit;
+        return QStringLiteral("disabled");
+    }
+
+    int AppConfig::checkIntervalValue() const
+    {
+        return d->cfg ? qMax(1, d->cfg->value("checkIntervalValue", 1).toInt()) : 1;
+    }
+
+    int AppConfig::effectiveCheckIntervalMinutes() const
+    {
+        const QString unit = checkIntervalUnit();
+        const int v = checkIntervalValue();
+        if (unit == QLatin1String("hour"))
+            return v * 60;
+        if (unit == QLatin1String("day"))
+            return v * 24 * 60;
+        if (unit == QLatin1String("month"))
+            return v * 30 * 24 * 60; // 近似 30 天/月
+        return 0;                    // disabled → 不开启定时检测
+    }
+
+    bool AppConfig::autoUpdateEnabled() const
+    {
+        return d->cfg ? d->cfg->value("autoUpdateEnabled", false).toBool() : false;
+    }
+
+    void AppConfig::setCheckIntervalUnit(const QString& unit)
+    {
+        // 写入端同样归一化：非法值一律按 disabled 落盘，避免脏值污染后续读取
+        const QString normalized = (unit == QLatin1String("hour") || unit == QLatin1String("day") ||
+                                    unit == QLatin1String("month"))
+                                       ? unit
+                                       : QStringLiteral("disabled");
+        if (d->cfg)
+            d->cfg->setValue("checkIntervalUnit", normalized);
+    }
+
+    void AppConfig::setCheckIntervalValue(int value)
+    {
+        if (d->cfg)
+            d->cfg->setValue("checkIntervalValue", qMax(1, value));
+    }
+
+    void AppConfig::setAutoUpdateEnabled(bool enabled)
+    {
+        if (d->cfg)
+            d->cfg->setValue("autoUpdateEnabled", enabled);
     }
 
     bool AppConfig::showSecurityAdvisory() const
@@ -132,7 +185,10 @@ namespace DtkUpdate
         out += QStringLiteral(
             "# Effective configuration (merged: backend.conf > DConfig > distro preset)\n");
         out += QStringLiteral("PreferredBackend = ") + d->effectiveBackendId + QLatin1Char('\n');
-        out += QStringLiteral("CheckIntervalMinutes = ") + QString::number(checkIntervalMinutes()) +
+        out += QStringLiteral("CheckIntervalUnit = ") + checkIntervalUnit() + QLatin1Char('\n');
+        out += QStringLiteral("CheckIntervalValue = ") + QString::number(checkIntervalValue()) +
+               QLatin1Char('\n');
+        out += QStringLiteral("AutoUpdateEnabled = ") + (autoUpdateEnabled() ? "true" : "false") +
                QLatin1Char('\n');
         out += QStringLiteral("NoInstallRecommends = ") +
                (noInstallRecommends() ? "true" : "false") + QLatin1Char('\n');

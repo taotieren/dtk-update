@@ -33,6 +33,12 @@ ShowSecurityAdvisory = true
 # 仅作信息展示，获取失败会静默降级到系统本地信息，绝不阻塞升级。
 FetchUpstreamAdvisories = true
 
+# ---- 定时检测与自动更新（均在界面「设置」中配置，此处说明其 DConfig 键）----
+# checkIntervalUnit : disabled（不开启，默认）| hour | day | month
+# checkIntervalValue: 间隔数值（>=1，与单位配合，如 2 + day = 每 2 天）
+# autoUpdateEnabled : false（默认）| true —— 开启后仅「定时检测」发现的更新会自动安装，
+#                     存在安全公告或预检建议时仍会先征求您的确认，绝不静默越权。
+
 # 按后端细分配置（段名即后端 id）
 [apt]
 NoInstallRecommends = true

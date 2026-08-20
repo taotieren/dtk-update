@@ -60,8 +60,10 @@ namespace DtkUpdate
       public slots:
         void start();
         void stop();
-        void checkNow();      // 手动/事件触发检查
-        void applyUpdates();  // 执行升级（全部可升级包）
+        void checkNow(); // 手动/事件触发检查
+        // 执行升级（全部可升级包）。autoTriggered=true 表示由定时器触发的自动更新发起：
+        // 此时即使 showSecurityAdvisory 被关闭，存在安全公告/预检建议仍必须征求确认（绝不静默）。
+        void applyUpdates(bool autoTriggered = false);
         void proceedUpdate(); // 安全提示确认后继续（由 UI 调用）
         void cancelUpdate();  // 用户取消升级（由 UI 调用）
 
@@ -99,6 +101,9 @@ namespace DtkUpdate
       private:
         void setState(State s);
         void applyConfigInterval();
+        // fromTimer=true：定时器触发，允许自动更新（自动更新仅在该路径生效）；
+        // false：手动/事件（唤醒、联网）触发，只检查不自动更新。
+        void checkNowImpl(bool fromTimer);
 
         PackageBackend* m_backend;
         // 可选：跨发行版沙箱应用商店后端列表（linyaps/snap/flatpak 等），与系统包管理人正交。
