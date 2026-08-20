@@ -28,13 +28,36 @@ cd "$ROOT"
 chmod +x debian/rules
 
 # dde-dock SDK（dde-tray-loader-dev）已从 debian/control 的必需 Build-Depends 移除，
-# 使其成为可选依赖，从而非 deepin 环境也能完整编译。deepin beige 打包环境下主动安装
+# 使其成为可选依赖，从而非 deepin 环境也能完整编译。deepin/UOS 环境下主动安装
 # dde-tray-loader-dev：它 Provides dde-dock-dev（虚拟包），提供
 # /usr/include/dde-dock/pluginsiteminterface.h，使 src/tray 插件照常编进 deb。
-# 非 deepin 仓库无此包，该步自然跳过、不影响其余 target 编译。
-apt-get install -y dde-tray-loader-dev 2>&1 | tail -3 || \
-  echo "::warning::dde-tray-loader-dev 不可用（非 deepin 源），跳过 dde-tray 插件构建"
-# 安装失败时不应阻断打包（其余 target 仍要产出），故上面用 || 吞掉非零退出码。
+#
+# 环境区分策略（避免"静默跳过"导致 deepin 环境下 dde-tray 实际没编进却以为编了）：
+#   - 深 deepin/UOS 环境：dde-tray 是明确要交付的产物，SDK 装不上必须让 CI 红掉（硬失败），
+#     并在安装后校验头文件真实存在，防止"装了包却未提供头"的源侧异常被掩盖。
+#   - 非 deepin 环境（Debian/Ubuntu/Fedora/Arch 等）：该包不存在，优雅 warning 跳过，
+#     其余 target（通用托盘、GUI、daemon、core + tests）照常产出。
+is_deepin() {
+  if [ -r /etc/os-release ] && grep -qi '^ID=deepin\|^ID=uos\|deepin' /etc/os-release; then
+    return 0
+  fi
+  [ -d /usr/include/dde-dock ] && return 0
+  return 1
+}
+
+if is_deepin; then
+  echo "==> deepin/UOS 环境：安装 dde-dock SDK（dde-tray-loader-dev）为必须"
+  apt-get install -y dde-tray-loader-dev
+  if [ ! -f /usr/include/dde-dock/pluginsiteminterface.h ]; then
+    echo "::error::deepin 环境下 dde-tray-loader-dev 未提供 pluginsiteminterface.h，dde-tray 插件无法构建"
+    exit 1
+  fi
+  echo "==> dde-dock SDK 就绪，src/tray 插件将编入 deb"
+else
+  echo "==> 非 deepin 环境：跳过可选的 dde-dock SDK，src/tray 插件将不被构建"
+  apt-get install -y dde-tray-loader-dev 2>&1 | tail -3 || \
+    echo "::warning::dde-tray-loader-dev 不可用（非 deepin 源），跳过 dde-tray 插件构建"
+fi
 
 # 打包阶段不跑单元测试：测试由 .github/workflows/test.yml 在 ubuntu:devel 容器内
 # 原生跑 ctest 负责（结果真实、可失败）。此处 nocheck 避免 chroot 内重复且慢的测试，

@@ -58,6 +58,11 @@
   / `.pacorig` 残留配置文件时前检/后检从不提示；现用 `QDirIterator` 限定扫描 `/etc` 递归检测
   （避全盘 `find` 遇无权限目录返回非 0 被误判失败、且防主线程卡死），并以回归用例锁定
   （CI 无 pacman 则 SKIP，不伪通过）。
+- **dde-tray 改为发行版感知构建**（`ci/package-deb.sh`）：deepin/UOS 环境下
+  `dde-tray-loader-dev` 必须装得上且校验 `pluginsiteminterface.h` 真实存在，否则 CI 红
+  （避免"deepin 环境以为编了 dde-tray 实际没编"的静默漏编）；非 deepin 环境该包不存在，
+  仅 warning 跳过、其余 target 照常产出。配合 `src/tray/CMakeLists.txt` 的
+  `BUILD_DDE_TRAY` + SDK 探测，达成"deepin 开启 dde-dock 支持、非 deepin 不开启"。
 
 ### 文档与开发规范
 

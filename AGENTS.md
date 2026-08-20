@@ -560,6 +560,16 @@ beige chroot 内由 `ci/package-deb.sh` 主动安装 `dde-tray-loader-dev`**，�
 默认仍编译并进 dde-tray 插件；本地手动编译若想编出该插件需自装 `dde-dock-dev`
 （`dde-tray-loader-dev`）。
 
+> **dde-tray 的发行版感知构建策略（防静默漏编）**：`ci/package-deb.sh` 在装 SDK 前先用
+> `is_deepin()` 判定当前是否 deepin/UOS 环境（看 `/etc/os-release` 的 ID 或
+> `/usr/include/dde-dock` 目录）。deepin/UOS 环境下 `dde-tray` 是明确要交付的产物，
+> 须 `apt-get install -y dde-tray-loader-dev` 成功且校验
+> `/usr/include/dde-dock/pluginsiteminterface.h` 真实存在，否则 `exit 1` 让 CI 红
+> （避免在 deepin 环境"以为编了实际没编"）；**非** deepin 环境（Debian/Ubuntu/Fedora/Arch）
+> 该包不存在，仅 `::warning` 跳过、其余 target 照常产出。配合 `src/tray/CMakeLists.txt`
+> 的 `option(BUILD_DDE_TRAY ON)` + 探测 `pluginsiteminterface.h`：deepin 自动编入、非
+> deepin 优雅跳过，达成"deepin 开启 dde-dock 支持、非 deepin 不开启"的诉求。
+
 ### deepin 容器内从源码编译的依赖提示
 
 在 deepin 容器（非完整桌面环境）里编译时，可能遇到两个 CMake 提示，按如下补齐依赖即可：
