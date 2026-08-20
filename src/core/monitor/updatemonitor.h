@@ -104,6 +104,10 @@ namespace DtkUpdate
         // fromTimer=true：定时器触发，允许自动更新（自动更新仅在该路径生效）；
         // false：手动/事件（唤醒、联网）触发，只检查不自动更新。
         void checkNowImpl(bool fromTimer);
+        // 升级成功后按用户配置执行后台维护（孤儿清理 autoremove / 缓存清理 cleanCache）。
+        // fire-and-forget：结果经 operationFinished 由 onBackendFinished 的 m_cleanupOps
+        // 过滤丢弃，不进入升级收尾流程，避免重复 upgradeFinished/后检/重查。
+        void runPostUpdateCleanup();
 
         PackageBackend* m_backend;
         // 可选：跨发行版沙箱应用商店后端列表（linyaps/snap/flatpak 等），与系统包管理人正交。
@@ -123,6 +127,10 @@ namespace DtkUpdate
         // onBackendFinished 每完成一个减 1，全部完成（=0）才统一收尾并 emit upgradeFinished，
         // 避免多后端并存时各后端独立 emit 导致重复收尾/重复解锁/重复后检的竞态。
         int m_pendingOps = 0;
+        // 升级后后台清理（autoremove/cleanCache）的进行中异步计数。onBackendFinished 收到
+        // 清理回调时先走本计数递减并忽略，绝不进入升级收尾流程；cancelUpdate/proceedUpdate
+        // 时清零，避免旧清理回调污染下一轮计数。
+        int m_cleanupOps = 0;
     };
 
 } // namespace DtkUpdate

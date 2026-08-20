@@ -72,13 +72,25 @@ class MonitorFakeBackend : public PackageBackend
     }
     bool remove(const QStringList&, QString&) override { return true; }
     bool purge(const QStringList&, QString&) override { return true; }
-    bool autoremove(QString&) override { return true; }
-    bool cleanCache(QString&) override { return true; }
+    bool autoremove(QString&) override
+    {
+        ++m_autoremoveCalls;
+        emit operationFinished(true, QStringLiteral("fake autoremove"));
+        return true;
+    }
+    bool cleanCache(QString&) override
+    {
+        ++m_cleanCacheCalls;
+        emit operationFinished(true, QStringLiteral("fake cleanCache"));
+        return true;
+    }
     QStringList privilegedPrefix() const override { return {}; }
 
     PackageList m_upgradable;
     bool m_fetchOk = true;
     QStringList m_installed;
+    int m_autoremoveCalls = 0; // 升级后后台清理调用计数（post-update cleanup）
+    int m_cleanCacheCalls = 0;
 };
 
 // 伪配置：定时/自动更新可控，避免依赖 DConfig 实现
@@ -93,12 +105,16 @@ class FakeConfig : public AppConfig
     int effectiveCheckIntervalMinutes() const override { return m_intervalMinutes; }
     bool autoUpdateEnabled() const override { return m_autoUpdate; }
     bool showSecurityAdvisory() const override { return m_showSecurityAdvisory; }
+    bool autoRemoveOrphans() const override { return m_autoRemoveOrphans; }
+    bool autoCleanCache() const override { return m_autoCleanCache; }
 
     QString m_unit = QStringLiteral("disabled");
     int m_value = 1;
     int m_intervalMinutes = 0;          // 0 = 不开启定时检测
     bool m_autoUpdate = false;          // 默认关闭，需用户显式开启
     bool m_showSecurityAdvisory = true; // 默认开启安全提示
+    bool m_autoRemoveOrphans = false;   // 默认关闭（测试内确定控制，不影响既有用例）
+    bool m_autoCleanCache = false;
 };
 
 TEST(UpdateMonitorTest, CheckNowSetsHasUpdates)
@@ -288,6 +304,53 @@ TEST(UpdateMonitorTest, AutoUpdateKeepsSecurityGateEvenWhenAdvisoryHidden)
     monitor.proceedUpdate(); // 用户确认后继续
     EXPECT_TRUE(backend.m_installed.contains(QStringLiteral("systemd")));
     EXPECT_EQ(spyFinished.count(), 1);
+}
+
+// 回归：autoRemoveOrphans/autoCleanCache 必须接线到升级后的后台清理行为，
+// 而非"看起来可配置但行为不变"的虚开关。升级成功收尾后应各触发一次后端清理，
+// 且不重复触发 upgradeFinished。
+TEST(UpdateMonitorTest, PostUpgradeCleanupRunsWhenEnabled)
+{
+    ensureApp();
+    MonitorFakeBackend backend;
+    PackageInfo pi;
+    pi.name = QStringLiteral("foo");
+    pi.isUpgradable = true;
+    backend.m_upgradable = {pi};
+
+    FakeConfig config;
+    config.m_autoRemoveOrphans = true;
+    config.m_autoCleanCache = true;
+    UpdateMonitor monitor(&backend, &config);
+
+    QSignalSpy spyFinished(&monitor, &UpdateMonitor::upgradeFinished);
+    monitor.checkNow(); // 填充 m_upgradable，进入 HasUpdates
+    monitor.proceedUpdate();
+    EXPECT_EQ(spyFinished.count(), 1);
+    EXPECT_EQ(backend.m_autoremoveCalls, 1);
+    EXPECT_EQ(backend.m_cleanCacheCalls, 1);
+    EXPECT_EQ(monitor.state(), UpdateMonitor::State::Idle);
+}
+
+// 默认关闭：升级成功后不应触发任何后台清理（零副作用）。
+TEST(UpdateMonitorTest, NoPostUpgradeCleanupWhenDisabled)
+{
+    ensureApp();
+    MonitorFakeBackend backend;
+    PackageInfo pi;
+    pi.name = QStringLiteral("foo");
+    pi.isUpgradable = true;
+    backend.m_upgradable = {pi};
+
+    FakeConfig config; // autoRemoveOrphans/autoCleanCache 默认 false
+    UpdateMonitor monitor(&backend, &config);
+
+    QSignalSpy spyFinished(&monitor, &UpdateMonitor::upgradeFinished);
+    monitor.checkNow();
+    monitor.proceedUpdate();
+    EXPECT_EQ(spyFinished.count(), 1);
+    EXPECT_EQ(backend.m_autoremoveCalls, 0);
+    EXPECT_EQ(backend.m_cleanCacheCalls, 0);
 }
 
 TEST(UpdateMonitorTest, ManualCheckNeverAutoApplies)

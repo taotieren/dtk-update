@@ -297,6 +297,7 @@ namespace DtkUpdate
         // 沙箱后端（snap/flatpak/linyaps）各自覆盖为 refresh/update/upgrade。
         QString error;
         m_pendingOps = 0;
+        m_cleanupOps = 0; // 清理计数同样复位，防止旧清理回调污染本轮
         if (m_backend && !sysPkgs.isEmpty())
         {
             ++m_pendingOps;
@@ -336,6 +337,7 @@ namespace DtkUpdate
         // 其后续回调，避免"已取消"后又弹后检/重查。
         m_cancelled = true;
         m_pendingOps = 0; // 清零进行中的异步写计数，避免旧后台回调污染下一轮 proceedUpdate 的计数
+        m_cleanupOps = 0; // 丢弃进行中的后台清理回调
         if (m_state != State::Updating)
             setState(State::HasUpdates);
         m_upgradable.clear(); // 用户已明确放弃本次升级
@@ -385,6 +387,14 @@ namespace DtkUpdate
             qCInfo(dtkUpdateCore) << "ignoring backend result after user cancelled";
             return;
         }
+        // 升级后后台清理（autoremove/cleanCache）回调：只递减计数并忽略，绝不进入升级
+        // 收尾流程，否则会误触发重复 upgradeFinished / 后检 / 重查。
+        if (m_cleanupOps > 0)
+        {
+            --m_cleanupOps;
+            qCInfo(dtkUpdateCore) << "ignoring post-update cleanup result";
+            return;
+        }
         // 多后端并存时每个后端独立 emit 一次；仅当本轮所有异步写都完成才统一收尾，
         // 否则提前 emit 会导致重复 upgradeFinished / 重复解锁 / 重复后检。
         if (m_pendingOps > 0)
@@ -396,6 +406,9 @@ namespace DtkUpdate
         {
             m_upgradable.clear();
             setState(State::Idle);
+            // 升级成功后按用户配置执行后台维护（孤儿清理/缓存清理）。fire-and-forget：
+            // 结果经 m_cleanupOps 过滤，不会重复触发收尾；不支持的操作为"skipped"立即回传。
+            runPostUpdateCleanup();
         }
         else
         {
@@ -412,6 +425,37 @@ namespace DtkUpdate
             PostCheckReport post = PostUpdateCheck::run(m_backend);
             emit postCheck(post);
             QTimer::singleShot(500, this, &UpdateMonitor::checkNow);
+        }
+    }
+
+    void UpdateMonitor::runPostUpdateCleanup()
+    {
+        if (!m_config)
+            return;
+        QString err;
+        // 孤儿清理仅对系统后端有意义：沙箱应用商店（snap/flatpak/linyaps）无孤儿依赖概念，
+        // 其 operationArgs 返回空，runWriteOperation 会以 "skipped" 立即回传 finished，
+        // m_cleanupOps 计数由 onBackendFinished 均衡递减，无副作用。
+        if (m_backend && m_config->autoRemoveOrphans())
+        {
+            ++m_cleanupOps;
+            m_backend->autoremove(err);
+        }
+        // 缓存清理对系统后端与各可用沙箱后端都尝试；不支持的以 skipped 回传。
+        if (m_config->autoCleanCache())
+        {
+            if (m_backend)
+            {
+                ++m_cleanupOps;
+                m_backend->cleanCache(err);
+            }
+            for (const auto& sb : m_sandboxBackends)
+            {
+                if (!sb)
+                    continue;
+                ++m_cleanupOps;
+                sb->cleanCache(err);
+            }
         }
     }
 
