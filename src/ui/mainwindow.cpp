@@ -66,12 +66,6 @@ namespace DtkUpdate
         {
             const QString info = tr("Backend: %1").arg(m_backend->backendName());
             d->summary->setText(info);
-            connect(m_backend, &PackageBackend::operationFinished, this,
-                    [this](bool ok, const QString& detail)
-                    {
-                        Q_UNUSED(ok)
-                        Q_UNUSED(detail)
-                    });
         }
 
         connect(m_monitor, &UpdateMonitor::stateChanged, this, &MainWindow::onStateChanged);
@@ -288,7 +282,9 @@ namespace DtkUpdate
     {
         if (m_monitor->upgradable().isEmpty())
             return;
-        // advisor 会在 applyUpdates 内发 securityPrompt，这里再做最终确认
+        // 手动更新（autoTriggered=false）在 applyUpdates 内恒发 securityPrompt 弹确认框
+        // （AGENTS.md 硬约束 3：应用更新必须弹确认框、默认焦点取消），确认后由 UI 回调
+        // proceedUpdate；取消则由 UI 回调 cancelUpdate，绝不静默提权。
         m_monitor->applyUpdates();
     }
 

@@ -2,9 +2,9 @@
 install(FILES dtk-update.desktop
     DESTINATION share/applications
 )
-install(FILES dtk-update-tray.desktop
-    DESTINATION /etc/xdg/autostart
-)
+# 仅通用托盘自启（dde-dock 插件由 Dock 加载、GUI 由用户手动打开，均无需 autostart）。
+# 历史遗留 dtk-update-tray.desktop（Exec=dtk-update-gui）已删除：其会导致开机弹出 GUI
+# 主窗口并与 generic 托盘重复自启。
 install(FILES dtk-update-tray-generic.desktop
     DESTINATION /etc/xdg/autostart
 )

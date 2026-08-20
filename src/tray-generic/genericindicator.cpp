@@ -43,10 +43,11 @@ namespace DtkUpdate
 
     GenericIndicator::~GenericIndicator()
     {
-        // 托盘菜单（QMenu）无 QObject 父对象托管，必须手动释放防泄漏；
-        // QPointer 成员在对象删除后自动置空，无悬垂风险。
+        // 托盘菜单（QMenu）无 QObject 父对象托管，必须手动释放防泄漏。
+        // m_unitGroup 是 m_menu 的子对象（new QActionGroup(m_menu)），delete m_menu 会
+        // 级联释放它，绝不能再次 delete（double free）；rebuildMenu 内是每次重建前的
+        // 手动释放，属必要（QMenu::clear 只删 QAction 不删 QObject 子对象）。
         delete m_menu;
-        delete m_unitGroup;
     }
 
     void GenericIndicator::show()

@@ -3,7 +3,6 @@ usr/lib/dtk-update/dtk-update-daemon
 usr/lib/dtk-update/dtk-update-tray-generic
 usr/share/dde-dock/icons/dcc-setting/dcc-dtk-update.dci
 usr/share/applications/dtk-update.desktop
-etc/xdg/autostart/dtk-update-tray.desktop
 etc/xdg/autostart/dtk-update-tray-generic.desktop
 usr/share/dbus-1/services/com.dtk.update.Daemon.service
 usr/lib/systemd/user/dtk-update.service
