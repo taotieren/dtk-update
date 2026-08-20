@@ -1,6 +1,7 @@
 #include "pacmanbackend.h"
 
 #include <QDir>
+#include <QDirIterator>
 #include <QFileInfo>
 #include <QSysInfo>
 #include <QTextStream>
@@ -183,6 +184,38 @@ namespace DtkUpdate
             }
         }
         return false; // 无可靠探测手段，视为不支持
+    }
+
+    bool PacmanBackend::checkConfigFilesToReview(QStringList& paths, QString& error)
+    {
+        paths.clear();
+        Q_UNUSED(error);
+        // pacman 升级后会在被改动的配置文件旁留下 .pacnew（或 .pacsave/.pacorig）残留，
+        // 需用户手动审阅合并。这类残留几乎只落在 /etc 下，故限定单目录递归扫描，
+        // 既覆盖绝大多数真实场景，又避免全盘 find 在 UI 主线程长时间阻塞冻结桌面。
+        // 容器内无此类残留概念，跳过以免误报。
+        if (SystemInfo::isContainer())
+            return true; // 支持但不扫描（视为无可审阅项）
+        const QString root(QStringLiteral("/etc"));
+        if (!QDir(root).exists())
+            return true;
+
+        // 用 QDirIterator 递归扫描，不依赖外部 find（find 遇无权限子目录返回非 0 退出码，
+        // 经 runQuery 会被误判为探测失败）；QDirIterator 仅跳过无权限项、不中断。
+        // 设上限防御极端超大目录树，避免 UI 主线程卡死。
+        QDirIterator it(root,
+                        QStringList() << QStringLiteral("*.pacnew") << QStringLiteral("*.pacsave")
+                                      << QStringLiteral("*.pacorig"),
+                        QDir::Files, QDirIterator::Subdirectories);
+        int guard = 0;
+        while (it.hasNext() && guard < 20000)
+        {
+            const QString p = it.next();
+            if (!paths.contains(p))
+                paths.append(p);
+            ++guard;
+        }
+        return true;
     }
 
 } // namespace DtkUpdate

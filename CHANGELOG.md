@@ -53,6 +53,18 @@
 - 修复通用托盘菜单对象在重建时的内存泄漏（QMenu 无父对象托管）。
 - 修复翻译生成脚本误改写 `sourcelanguage`（把源语言也替换为目标语言）；无目标包/
   空参数的后端写操作补齐操作结果回传（契约必达）。
+- **补齐 Arch 系升级后配置审阅能力**：`PacmanBackend` 此前未实现 `checkConfigFilesToReview`
+  （`supportsResidualConfig()` 恒为 false），Arch/Manjaro 用户升级后有 `.pacnew` / `.pacsave`
+  / `.pacorig` 残留配置文件时前检/后检从不提示；现用 `QDirIterator` 限定扫描 `/etc` 递归检测
+  （避全盘 `find` 遇无权限目录返回非 0 被误判失败、且防主线程卡死），并以回归用例锁定
+  （CI 无 pacman 则 SKIP，不伪通过）。
+
+### 文档与开发规范
+
+- 更新 `AGENTS.md` 可用 Skills 清单为新会话实际技能（新增 `find-skills` / `skill-creator` /
+  `pdf`，并标注技能回流机制）；新增「代码质量要求（提交前强制门禁）」章节，量化防低质量与
+  严重漏洞代码的 10 条红线（提权/异步写/功能真实实现/零回归验证/回归锁定/内存并发/解析稳健/
+  提交卫生/分组提交/多 agent 交叉验证），与常态化审查工作流互补。
 
 ---
 

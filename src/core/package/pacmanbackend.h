@@ -14,7 +14,9 @@ namespace DtkUpdate
      * 系统级后端，与 apt/dnf 同类，强绑定 Arch 系发行版。
      * 所有写操作经 pkexec + pacman 提权（由基类 runPrivileged 调用）。
      *
-     * 注意：下列命令与解析为初始实现，可能需要按具体发行版微调。
+     * 注意：下列命令与解析为已对齐 Arch/Manjaro 的实现；pacman 无 recommends 概念
+     * （backendOptions 已移除 noInstallRecommends），但有 .pacnew 残留配置需审阅
+     * （checkConfigFilesToReview 已实现，扫描 /etc 下 .pacnew / .pacsave / .pacorig 残留）。
      */
     class PacmanBackend : public PackageBackend
     {
@@ -26,7 +28,7 @@ namespace DtkUpdate
         QString backendId() const override { return QStringLiteral("pacman"); }
         QString backendName() const override { return QStringLiteral("Pacman (Arch/Manjaro)"); }
         bool isAvailable() const override;
-        bool supportsResidualConfig() const override { return false; }
+        bool supportsResidualConfig() const override { return true; }
         QVariantMap backendOptions() const override;
 
         bool fetchUpgradable(PackageList& out, QString& error) override;
@@ -37,6 +39,7 @@ namespace DtkUpdate
 
         // 预检/后检探针（pacman 系）
         bool checkRebootRequired(bool& required, QString& error) override;
+        bool checkConfigFilesToReview(QStringList& paths, QString& error) override;
 
       protected:
         // 写操作经基类 runWriteOperation 模板执行，本类仅描述"操作→参数"
